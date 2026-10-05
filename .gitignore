@@ -1,0 +1,18 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Builds e testes
+dist/
+build/
+coverage/
+
+# Sistema e IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
