@@ -6,6 +6,7 @@ RUN apt-get update \
     curl \
     ca-certificates \
     postgresql-client \
+    unzip \
   && rm -rf /var/lib/apt/lists/*
 
 ENV BUN_INSTALL=/usr/local/bun
