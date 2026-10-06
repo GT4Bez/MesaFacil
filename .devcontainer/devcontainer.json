@@ -1,0 +1,39 @@
+{
+  "name": "MesaFacil Dev",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "node",
+  "forwardPorts": [3001, 5173, 5432],
+  "portsAttributes": {
+    "3001": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "5173": {
+      "label": "Frontend (Vite)",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "editorconfig.editorconfig",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "git config --global --add safe.directory /workspace"
+}
