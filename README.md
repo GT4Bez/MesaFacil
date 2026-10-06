@@ -348,20 +348,86 @@ Interfaces que sustentam o fluxo central:
 <a id="10-execucao-do-ambiente"></a>
 ## 🚀 10. Execução do Ambiente
 
-<details>
-<summary><b>Expandir / Recolher Inicialização</b></summary>
+<details open>
+<summary><b>Expandir / Recolher Instruções de Inicialização</b></summary>
 <br/>
 
-O ambiente do projeto é conteinerizado e deve subir via Docker Compose:
+O projeto está configurado com **Bun** e **PostgreSQL 16**. Você pode executá-lo de duas formas: diretamente pelo **DevContainer** (recomendado para isolamento total) ou via **terminal local**.
+
+---
+
+### 10.1 Pré-requisitos
+- [Docker](https://www.docker.com/) e Docker Compose instalados e em execução.
+- [Bun](https://bun.sh/) $\ge$ v1.3.x (caso execute fora do DevContainer).
+- [VS Code](https://code.visualstudio.com/) com a extensão **Dev Containers** (opcional, para modo container).
+
+---
+
+### 10.2 Configuração das Variáveis de Ambiente
+
+Antes de iniciar, crie o arquivo `.env` na raiz do projeto com base no modelo:
 
 ```bash
-docker compose up
+cp .env.example .env
 ```
 
-Serviços orquestrados:
-- `frontend`
-- `backend`
-- `database`
+> **Atenção à URL do Banco:**  
+> - Se estiver rodando o Bun **na sua máquina local (host)**, utilize:  
+>   `DATABASE_URL="postgresql://mesafacil:mesafacil@localhost:5432/mesafacil?schema=public"`  
+> - Se estiver dentro do **DevContainer**, utilize o host interno:  
+>   `DATABASE_URL="postgresql://mesafacil:mesafacil@db:5432/mesafacil?schema=public"`
+
+---
+
+### 10.3 Opção A: Execução via DevContainer (Recomendado)
+
+O DevContainer inicializa todo o ecossistema (Bun + PostgreSQL 16) de forma automatizada e isolada:
+
+1. Abra a pasta do projeto no **VS Code**.
+2. Pressione `F1` (ou `Ctrl + Shift + P`) e selecione:  
+   **`Dev Containers: Reopen in Container`**
+3. O VS Code construirá o ambiente e abrirá o terminal já conectado dentro do container Linux com o Bun instalado.
+4. Para instalar as dependências e rodar:
+   ```bash
+   bun install
+   bun run dev
+   ```
+
+---
+
+### 10.4 Opção B: Execução Local no Host (Bun + Docker Compose)
+
+Se preferir rodar o Bun diretamente no seu sistema operacional, utilize o Docker apenas para orquestrar o banco de dados:
+
+1. **Subir apenas o serviço de banco de dados (PostgreSQL):**
+   ```bash
+   docker compose -f .devcontainer/docker-compose.yml up -d db
+   ```
+
+2. **Instalar dependências do projeto:**
+   ```bash
+   bun install
+   ```
+
+3. **Executar em modo desenvolvimento:**
+   ```bash
+   bun run dev
+   ```
+
+4. **Para parar o banco de dados:**
+   ```bash
+   docker compose -f .devcontainer/docker-compose.yml down
+   ```
+
+---
+
+### 10.5 Serviços e Portas Padrão
+
+| Serviço | Porta Local | Credenciais Padrão |
+|---|---|---|
+| **PostgreSQL** | `5432` | Usuário: `mesafacil` \| Senha: `mesafacil` \| DB: `mesafacil` |
+| **Backend API** | `3001` | `http://localhost:3001` |
+| **Frontend Web** | `5173` | `http://localhost:5173` |
 
 </details>
 
