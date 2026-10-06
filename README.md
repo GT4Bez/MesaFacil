@@ -128,7 +128,7 @@ Todos os desafios partem do mesmo ambiente técnico padronizado:
 | :--- | :--- |
 | **Front-end** | • React<br/>• JavaScript ou TypeScript<br/>• API REST<br/>• Formulários, estado, loading e feedback |
 | **Back-end** | • Node.js + Express<br/>• JWT + hash de senha<br/>• Validação de entrada<br/>• Controle de acesso por papel |
-| **Banco** | • MySQL<br/>• Relacionamentos + constraints<br/>• Migrations / scripts<br/>• Seed quando necessário |
+| **Banco** | • PostgreSQL<br/>• Relacionamentos + constraints<br/>• Migrations / scripts<br/>• Seed quando necessário |
 | **Infra** | • Docker + Docker Compose<br/>• frontend + backend + mysql<br/>• Ambiente sobe com `docker compose up` |
 | **Engenharia** | • GitHub Projects<br/>• Issues + branches + PRs<br/>• $\ge$ 1 review antes do merge<br/>• README técnico |
 
