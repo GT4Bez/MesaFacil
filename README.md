@@ -1,4 +1,4 @@
-## 🍽️ MesaFácil — Sistema de Gestão Operacional para Restaurantes
+# 🍽️ MesaFácil — Sistema de Gestão Operacional para Restaurantes
 
 > **Documento Oficial de Engenharia & Especificação de Produto (PO)**  
 > Informações e diretrizes gerais declaradas para o projeto MesaFácil.
