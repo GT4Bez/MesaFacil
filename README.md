@@ -379,7 +379,23 @@ cp .env.example .env
 
 ---
 
-### 10.3 Opção A: Execução via DevContainer (Recomendado)
+### 10.3 Stack completa via Docker Compose
+
+Sobe banco, backend e frontend com um único comando (a partir da raiz do projeto, com o `.env` criado):
+
+```bash
+docker compose up --build
+```
+
+- O `db` aplica automaticamente `sql/migrations/*.sql` e depois `sql/seeds/*.sql` **apenas na primeira inicialização** (volume vazio).
+- Para recriar o banco do zero após alterar migrations/seeds: `docker compose down -v`.
+- `backend/` e `frontend/` são montados como volume, então alterações no código recarregam sem rebuild. Ao mudar dependências, rode `docker compose up --build`.
+- Cada serviço precisa expor um script `dev` no seu `package.json` (o frontend recebe `--host 0.0.0.0`).
+- Não rode este compose junto com o DevContainer: ambos publicam a porta `5432`. Se precisar, altere `DB_PORT` no `.env`.
+
+---
+
+### 10.4 Opção A: Execução via DevContainer (Recomendado)
 
 O DevContainer inicializa todo o ecossistema (Bun + PostgreSQL 16) de forma automatizada e isolada:
 
@@ -395,13 +411,13 @@ O DevContainer inicializa todo o ecossistema (Bun + PostgreSQL 16) de forma auto
 
 ---
 
-### 10.4 Opção B: Execução Local no Host (Bun + Docker Compose)
+### 10.5 Opção B: Execução Local no Host (Bun + Docker Compose)
 
 Se preferir rodar o Bun diretamente no seu sistema operacional, utilize o Docker apenas para orquestrar o banco de dados:
 
 1. **Subir apenas o serviço de banco de dados (PostgreSQL):**
    ```bash
-   docker compose -f .devcontainer/docker-compose.yml up -d db
+   docker compose up -d db
    ```
 
 2. **Instalar dependências do projeto:**
@@ -416,12 +432,12 @@ Se preferir rodar o Bun diretamente no seu sistema operacional, utilize o Docker
 
 4. **Para parar o banco de dados:**
    ```bash
-   docker compose -f .devcontainer/docker-compose.yml down
+   docker compose down
    ```
 
 ---
 
-### 10.5 Serviços e Portas Padrão
+### 10.6 Serviços e Portas Padrão
 
 | Serviço | Porta Local | Credenciais Padrão |
 |---|---|---|
