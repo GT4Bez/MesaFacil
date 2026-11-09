@@ -74,10 +74,12 @@ describe('POST /auth/login', () => {
     assert.equal(text.includes('secreta'), false)
   })
 
-  // Contrato da Sprint 1 (docs/SPRINT_1.md §3): "error" é uma STRING. Hoje a API devolve { code, message }.
-  // Remova o `todo` quando o time decidir o formato (ou ajuste o doc).
-  test('contrato: campo error é string', { todo: 'divergência com docs/SPRINT_1.md' }, async () => {
+  // Contrato da Sprint 1 (docs/SPRINT_1.md §3): "error" é uma STRING.
+  test('contrato: campo error é string', async () => {
     const res = await login({ email: 'garcom@mesafacil.com', password: 'errada' })
-    assert.equal(typeof (await res.json()).error, 'string')
+    const json = await res.json()
+    assert.equal(typeof json.error, 'string')
+    assert.equal(json.error.includes('inválidos'), true)
+    assert.equal(json.code, 'UNAUTHORIZED')
   })
 })
