@@ -56,7 +56,8 @@ describe('errorMiddleware com erros do banco', () => {
     const res = run(pgError('23505', { constraint: 'x' }))
     assert.equal(res.code, 409)
     assert.equal(res.body.success, false)
-    assert.equal(res.body.error.code, 'CONFLICT')
+    assert.equal(typeof res.body.error, 'string')
+    assert.equal(res.body.code, 'CONFLICT')
   })
 
   test('erro não mapeado continua 500 genérico', () => {
@@ -65,6 +66,8 @@ describe('errorMiddleware com erros do banco', () => {
     const res = run(pgError('42P01'))
     console.error = original
     assert.equal(res.code, 500)
-    assert.equal(res.body.error.code, 'INTERNAL_ERROR')
+    assert.equal(res.body.success, false)
+    assert.equal(typeof res.body.error, 'string')
+    assert.equal(res.body.code, 'INTERNAL_ERROR')
   })
 })

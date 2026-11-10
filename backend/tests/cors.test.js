@@ -56,6 +56,8 @@ describe('CORS', () => {
       body: '{email:',
     })
     assert.equal(res.status, 400)
-    assert.equal((await res.json()).error.code, 'BAD_REQUEST')
+    const json = await res.json()
+    assert.equal(typeof json.error, 'string')
+    assert.equal(json.code, 'BAD_REQUEST')
   })
 })
