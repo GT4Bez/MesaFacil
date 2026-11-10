@@ -1,40 +1,250 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { get, post, patch, del } from '../services/api';
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { useAction } from '../hooks/useAction'
+import { api } from '../services/api'
+import { formatMoney, ITEM_STATUS_LABELS, ORDER_STATUS_LABELS } from '../utils/format'
 
-const money = n => Number(n || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const ALL_CATEGORIES = 'Todos'
+
 export default function Order() {
-  const { id } = useParams(); const navigate = useNavigate();
-  const [order,setOrder] = useState(null); const [menu,setMenu] = useState([]);
-  const [category,setCategory] = useState('Todos'); const [qty,setQty] = useState(1); const [note,setNote] = useState('');
-  const [selected,setSelected] = useState(null); const [loading,setLoading] = useState(true); const [error,setError] = useState(''); const [busy,setBusy] = useState(false);
+  const { id } = useParams()
+  const [order, setOrder] = useState(null)
+  const [menu, setMenu] = useState([])
+  const { busy, error, run } = useAction()
 
-  const load = useCallback(async()=>{
-    try { setError(''); const [o,m] = await Promise.all([get(`/orders/${id}`),get('/menu-items')]); setOrder(o.order||o); setMenu(Array.isArray(m)?m:m.items||m.menuItems||[]); }
-    catch(e){setError(e.message);} finally{setLoading(false);}
-  },[id]);
-  useEffect(()=>{load();},[load]);
-  const items = order?.items || order?.orderItems || [];
-  const categories = ['Todos',...new Set(menu.map(x=>x.category?.name||x.category||'Outros'))];
-  const filtered = category==='Todos'?menu:menu.filter(x=>(x.category?.name||x.category||'Outros')===category);
-  const subtotal = useMemo(()=>items.reduce((s,x)=>s+Number(x.unitPrice??x.price??x.menuItem?.price??0)*Number(x.quantity||1),0),[items]);
+  async function loadOrder() {
+    setOrder(await api.get(`/orders/${id}`))
+  }
 
-  async function action(fn){setBusy(true);setError('');try{await fn();await load();}catch(e){setError(e.message);}finally{setBusy(false);}}
-  async function addItem(){if(!selected)return;await action(()=>post(`/orders/${id}/items`,{menuItemId:selected.id,quantity:Number(qty),observation:note}));setSelected(null);setQty(1);setNote('');}
-  async function updateQty(item,value){await action(()=>patch(`/order-items/${item.id}/quantity`,{quantity:Number(value)}));}
-  async function removeItem(item){await action(()=>del(`/order-items/${item.id}`));}
-  async function sendKitchen(){await action(()=>patch(`/orders/${id}/send-to-kitchen`));}
-  async function readyToPay(){await action(()=>patch(`/orders/${id}/ready-to-pay`));}
-  const locked = ['closed','ready_to_pay','ready-to-pay'].includes(order?.status);
+  useEffect(() => {
+    run(() => Promise.all([loadOrder(), api.get('/menu-items').then(setMenu)]))
+  }, [id])
 
-  if(loading)return <div className="empty-state">Carregando comanda...</div>;
-  return <><div className="page-heading"><div><span className="eyebrow">ATENDIMENTO</span><h1>Comanda da mesa {order?.table?.number || order?.tableNumber || '—'}</h1><p>Pedido #{id} · Aberto em {order?.createdAt ? new Date(order.createdAt).toLocaleString('pt-BR') : '—'} · Status: {order?.status || 'ativo'}</p></div><button className="outline-btn" onClick={()=>navigate('/tables')}>← Voltar às mesas</button></div>
-    {error&&<div className="alert error">{error}</div>}
-    <div className="order-layout"><section className="panel"><div className="panel-heading"><div><h2>Cardápio</h2><p>Escolha os produtos para adicionar à comanda.</p></div></div><div className="category-row">{categories.map(c=><button key={c} className={category===c?'category active':'category'} onClick={()=>setCategory(c)}>{c}</button>)}</div>
-      <div className="menu-list">{filtered.map(item=><div className="menu-item" key={item.id}><div><b>{item.name}</b><small>{item.description||item.category?.name||'Item do cardápio'}</small><strong>{money(item.price)}</strong></div><button className="add-btn" onClick={()=>setSelected(item)}>+</button></div>)}</div>
-      {selected&&<div className="add-form"><b>Adicionar: {selected.name}</b><div className="form-row"><label>Quantidade<input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)}/></label><label className="grow">Observação<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Ex.: sem cebola, bem passado"/></label></div><div className="button-row"><button className="outline-btn" onClick={()=>setSelected(null)}>Cancelar</button><button className="primary-btn" disabled={busy||Number(qty)<1} onClick={addItem}>Adicionar à comanda</button></div></div>}
+  const change = (request) =>
+    run(async () => {
+      await request()
+      await loadOrder()
+    })
+
+  const addItem = (item) => change(() => api.post(`/orders/${id}/items`, item))
+  const setQuantity = (item, quantity) =>
+    change(() => api.patch(`/order-items/${item.id}/quantity`, { quantity }))
+  const removeItem = (item) =>
+    change(() => api.patch(`/order-items/${item.id}/status`, { status: 'canceled' }))
+  const setStatus = (status) => change(() => api.patch(`/orders/${id}/status`, { status }))
+
+  if (!order) {
+    return error ? (
+      <div className="alert error">{error}</div>
+    ) : (
+      <div className="empty-state">Carregando comanda...</div>
+    )
+  }
+
+  const activeItems = order.items.filter((item) => item.status !== 'canceled')
+  const subtotal = activeItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  const hasPendingItems = activeItems.some((item) => item.status === 'pending')
+  // RN-06: a conta só pode ser pedida quando a cozinha terminou todos os itens.
+  const kitchenDone =
+    order.status === 'in_kitchen' && activeItems.every((item) => item.status === 'ready')
+
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">ATENDIMENTO</span>
+          <h1>Comanda da mesa {order.table.number}</h1>
+          <p>
+            Pedido #{order.id} · Aberto em {new Date(order.createdAt).toLocaleString('pt-BR')} ·
+            Status: {ORDER_STATUS_LABELS[order.status]}
+          </p>
+        </div>
+        <Link className="outline-btn" to="/tables">
+          ← Voltar às mesas
+        </Link>
+      </div>
+
+      {error && <div className="alert error">{error}</div>}
+
+      <div className="order-layout">
+        <Menu menu={menu} busy={busy} onAdd={addItem} />
+
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Itens da comanda</h2>
+              <p>{order.items.length} item(ns) lançado(s)</p>
+            </div>
+          </div>
+
+          <div className="order-items">
+            {order.items.map((item) => (
+              <OrderItem
+                key={item.id}
+                item={item}
+                busy={busy}
+                onQuantityChange={(quantity) => setQuantity(item, quantity)}
+                onRemove={() => removeItem(item)}
+              />
+            ))}
+            {!order.items.length && (
+              <div className="empty-state">Nenhum item adicionado ainda.</div>
+            )}
+          </div>
+
+          <div className="subtotal-row">
+            <span>Subtotal</span>
+            <strong>{formatMoney(subtotal)}</strong>
+          </div>
+          <div className="stack-buttons">
+            <button
+              className="primary-btn full"
+              disabled={busy || !hasPendingItems}
+              onClick={() => setStatus('in_kitchen')}
+            >
+              Enviar para a cozinha →
+            </button>
+            <button
+              className="outline-btn full"
+              disabled={busy || !kitchenDone}
+              onClick={() => setStatus('ready_to_pay')}
+            >
+              Pedir a conta
+            </button>
+          </div>
+        </section>
+      </div>
+    </>
+  )
+}
+
+function Menu({ menu, busy, onAdd }) {
+  const [category, setCategory] = useState(ALL_CATEGORIES)
+  const [selected, setSelected] = useState(null)
+
+  const categories = [ALL_CATEGORIES, ...new Set(menu.map((item) => item.category))]
+  const visibleItems =
+    category === ALL_CATEGORIES ? menu : menu.filter((item) => item.category === category)
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    const form = new FormData(event.target)
+    const added = await onAdd({
+      menuItemId: selected.id,
+      quantity: Number(form.get('quantity')),
+      notes: form.get('notes'),
+    })
+    if (added) setSelected(null)
+  }
+
+  return (
+    <section className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Cardápio</h2>
+          <p>Escolha os produtos para adicionar à comanda.</p>
+        </div>
+      </div>
+
+      <div className="category-row">
+        {categories.map((name) => (
+          <button
+            key={name}
+            className={name === category ? 'category active' : 'category'}
+            onClick={() => setCategory(name)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+
+      <div className="menu-list">
+        {visibleItems.map((item) => (
+          <div className="menu-item" key={item.id}>
+            <div>
+              <b>{item.name}</b>
+              <small>{item.category}</small>
+              <strong>{formatMoney(item.price)}</strong>
+            </div>
+            <button
+              className="add-btn"
+              aria-label={`Adicionar ${item.name}`}
+              onClick={() => setSelected(item)}
+            >
+              +
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {selected && (
+        // A key reinicia os campos ao trocar o item selecionado.
+        <form className="add-form" key={selected.id} onSubmit={handleSubmit}>
+          <b>Adicionar: {selected.name}</b>
+          <div className="form-row">
+            <label>
+              Quantidade
+              <input name="quantity" type="number" min="1" defaultValue="1" required />
+            </label>
+            <label className="grow">
+              Observação
+              <input name="notes" placeholder="Ex.: sem cebola, bem passado" />
+            </label>
+          </div>
+          <div className="button-row">
+            <button type="button" className="outline-btn" onClick={() => setSelected(null)}>
+              Cancelar
+            </button>
+            <button className="primary-btn" disabled={busy}>
+              Adicionar à comanda
+            </button>
+          </div>
+        </form>
+      )}
     </section>
-    <section className="panel"><div className="panel-heading"><div><h2>Itens da comanda</h2><p>{items.length} item(ns) lançado(s)</p></div></div><div className="order-items">{items.map(item=>{const pending=item.status==='pending';return <div className="order-item" key={item.id}><div className="order-item-main"><b>{item.menuItem?.name||item.name||'Produto'}</b><small>{item.observation||'Sem observações'}</small><span className={`item-status ${item.status||'pending'}`}>{item.status||'pending'}</span></div><div className="item-controls">{pending?<><input aria-label="Quantidade" type="number" min="1" defaultValue={item.quantity} onBlur={e=>{if(Number(e.target.value)>0&&Number(e.target.value)!==item.quantity)updateQty(item,e.target.value)}}/><button className="remove-btn" onClick={()=>removeItem(item)}>×</button></>:<span>Qtd. {item.quantity}</span>}</div><strong>{money((item.unitPrice??item.price??item.menuItem?.price??0)*item.quantity)}</strong></div>})}{!items.length&&<div className="empty-state">Nenhum item adicionado ainda.</div>}</div>
-      <div className="subtotal-row"><span>Subtotal</span><strong>{money(subtotal)}</strong></div><div className="stack-buttons"><button className="primary-btn full" disabled={busy||!items.some(x=>x.status==='pending')} onClick={sendKitchen}>Enviar para a cozinha →</button><button className="outline-btn full" disabled={busy||!items.length||locked} onClick={readyToPay}>Pedir a conta</button></div>
-    </section></div></>;
+  )
+}
+
+function OrderItem({ item, busy, onQuantityChange, onRemove }) {
+  // RN-04: depois de enviado à cozinha, o item não pode mais ser alterado.
+  const editable = item.status === 'pending'
+
+  function handleBlur(event) {
+    const quantity = Number(event.target.value)
+    if (quantity >= 1 && quantity !== item.quantity) onQuantityChange(quantity)
+  }
+
+  return (
+    <div className="order-item">
+      <div className="order-item-main">
+        <b>{item.name}</b>
+        <small>{item.notes || 'Sem observações'}</small>
+        <span className={`item-status ${item.status}`}>{ITEM_STATUS_LABELS[item.status]}</span>
+      </div>
+      <div className="item-controls">
+        {editable ? (
+          <>
+            <input
+              aria-label="Quantidade"
+              type="number"
+              min="1"
+              defaultValue={item.quantity}
+              onBlur={handleBlur}
+            />
+            <button
+              className="remove-btn"
+              aria-label="Remover item"
+              disabled={busy}
+              onClick={onRemove}
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <span>Qtd. {item.quantity}</span>
+        )}
+      </div>
+      <strong>{formatMoney(item.unitPrice * item.quantity)}</strong>
+    </div>
+  )
 }

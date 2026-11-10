@@ -5,11 +5,13 @@
     "": {
       "name": "mesa-facil-frontend",
       "dependencies": {
-        "@vitejs/plugin-react": "latest",
-        "react": "latest",
-        "react-dom": "latest",
-        "react-router-dom": "latest",
-        "vite": "latest",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "react-router-dom": "^7.18.5",
+      },
+      "devDependencies": {
+        "@vitejs/plugin-react": "^6.3.0",
+        "vite": "^8.3.7",
       },
     },
   },

@@ -1,32 +1,35 @@
-import { createContext, useContext, useState } from 'react';
-import { post } from '../services/api';
+import { createContext, useContext, useState } from 'react'
+import { api, TOKEN_KEY } from '../services/api'
 
-const AuthContext = createContext(null);
+const USER_KEY = 'mesa-facil-user'
+
+const AuthContext = createContext(null)
+
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY))
+  } catch {
+    return null
+  }
+}
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mesa-facil-user') || 'null'); }
-    catch { return null; }
-  });
+  const [user, setUser] = useState(readStoredUser)
 
   async function login(email, password) {
-    const result = await post('/auth/login', { email, password });
-    const token = result.token || result.accessToken;
-    const loggedUser = result.user || result;
-    if (!token) throw new Error('O backend não retornou o token de autenticação.');
-    localStorage.setItem('mesa-facil-token', token);
-    localStorage.setItem('mesa-facil-user', JSON.stringify(loggedUser));
-    setUser(loggedUser);
-    return loggedUser;
+    const session = await api.post('/auth/login', { email, password })
+    localStorage.setItem(TOKEN_KEY, session.token)
+    localStorage.setItem(USER_KEY, JSON.stringify(session.user))
+    setUser(session.user)
   }
 
   function logout() {
-    localStorage.removeItem('mesa-facil-token');
-    localStorage.removeItem('mesa-facil-user');
-    setUser(null);
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+    setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!localStorage.getItem('mesa-facil-token') }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext)
