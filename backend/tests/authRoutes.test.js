@@ -22,13 +22,6 @@ const { default: app } = await import('../src/app.js')
 
 let server
 let base
-before(async () => {
-  await new Promise((resolve) => {
-    server = app.listen(0, resolve)
-  })
-  base = `http://127.0.0.1:${server.address().port}`
-})
-after(() => server.close())
 
 const login = (body) =>
   fetch(`${base}/auth/login`, {
@@ -38,6 +31,15 @@ const login = (body) =>
   })
 
 describe('POST /auth/login', () => {
+  // Hooks dentro do describe: no Node 18 os hooks no nível do arquivo não são executados.
+  before(async () => {
+    await new Promise((resolve) => {
+      server = app.listen(0, resolve)
+    })
+    base = `http://127.0.0.1:${server.address().port}`
+  })
+  after(() => server.close())
+
   test('200 com { success, data: { token, user } }', async () => {
     const res = await login({ email: 'garcom@mesafacil.com', password: '123' })
     assert.equal(res.status, 200)
