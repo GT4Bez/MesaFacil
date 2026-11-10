@@ -15,16 +15,15 @@ export function errorMiddleware(error, req, res, next) {
   if (appError) {
     return res.status(appError.statusCode).json({
       success: false,
-      error: { code: appError.code, message: appError.message },
+      error: appError.message,
+      code: appError.code,
     })
   }
 
   console.error(error)
   return res.status(500).json({
     success: false,
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: 'Ocorreu um erro interno no servidor.',
-    },
+    error: 'Ocorreu um erro interno no servidor.',
+    code: 'INTERNAL_ERROR',
   })
 }
