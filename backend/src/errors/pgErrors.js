@@ -10,7 +10,7 @@ const INVALID_TEXT_REPRESENTATION = '22P02'
 /**
  * Verifica se o erro veio do driver `pg` com o SQLSTATE (e, opcionalmente, a constraint) informado.
  * Útil nos services para dar mensagens específicas de regra de negócio, por exemplo:
- *   if (isPgError(err, '23505', 'shifts_only_one_open_idx')) throw new ConflictError('Já existe um turno aberto.')
+ *   if (isPgError(err, '23505', 'shifts_single_open_idx')) throw new ConflictError('Já existe um turno aberto.')
  */
 export function isPgError(error, code, constraint) {
   if (!error || error.code !== code) return false
