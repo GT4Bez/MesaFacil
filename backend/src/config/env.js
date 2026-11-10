@@ -22,5 +22,10 @@ export const env = Object.freeze({
   port,
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '8h'
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '8h',
+  // Origens permitidas no CORS, separadas por vírgula. Padrão: dev server do Vite.
+  corsOrigins: (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 });
