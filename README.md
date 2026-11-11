@@ -389,11 +389,11 @@ docker compose up --build
 
 - O `db` aplica automaticamente `sql/migrations/*.sql` e depois `sql/seeds/*.sql` **apenas na primeira inicialização** (volume vazio).
 - Para recriar o banco do zero após alterar migrations/seeds: `docker compose down -v`.
-- `backend/` e `frontend/` são montados como volume, então alterações no código recarregam sem rebuild. Ao mudar dependências, rode `docker compose up --build`.
+- `backend/` e `frontend/` são montados como volume, então alterações no código recarregam sem rebuild. Ao mudar dependências, reinicie o serviço (`docker compose restart backend frontend`): o `bun install` roda a cada subida do container.
 - Cada serviço precisa expor um script `dev` no seu `package.json` (o frontend recebe `--host 0.0.0.0`).
 - Não rode este compose junto com o DevContainer: ambos publicam a porta `5432`. Se precisar, altere `DB_PORT` no `.env`.
 - As portas publicadas no host podem ser trocadas no `.env` com `DB_PORT`, `BACKEND_PORT` e `FRONTEND_PORT`.
-- Acesso pelo Cloudflare Tunnel (`mesafacil.shop`): o Vite já aceita esse host (`allowedHosts` em `frontend/vite.config.js`). Defina no `.env` o `CORS_ORIGIN` com o domínio público e o `VITE_API_URL` com a URL pública da API.
+- Acesso pelo Cloudflare Tunnel (`mesafacil.shop`): o Vite já aceita esse host (`allowedHosts` em `frontend/vite.config.js`). O `CORS_ORIGIN` padrão já libera `http://localhost:5173` e `https://mesafacil.shop`; defina no `.env` o `VITE_API_URL` com a URL pública da API (`https://api.mesafacil.shop`).
 
 ---
 

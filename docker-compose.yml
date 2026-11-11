@@ -27,7 +27,7 @@ services:
       PORT: 3001
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (cp .env.example .env)}
       DATABASE_URL: postgresql://${POSTGRES_USER:-mesafacil}:${POSTGRES_PASSWORD:-mesafacil}@db:5432/${POSTGRES_DB:-mesafacil}?schema=public
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,https://mesafacil.shop}
     volumes:
       - ./backend:/app
       - backend-node-modules:/app/node_modules
