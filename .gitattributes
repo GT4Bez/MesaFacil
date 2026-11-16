@@ -1,0 +1,2 @@
+# Garante quebras de linha LF para scripts shell montados em containers Linux
+*.sh text eol=lf
