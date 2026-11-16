@@ -387,6 +387,8 @@ Sobe banco, backend e frontend com um único comando (a partir da raiz do projet
 docker compose up --build
 ```
 
+> **Importante (`JWT_SECRET`):** após copiar `.env.example` para `.env`, substitua `JWT_SECRET=changeme` por uma chave própria (ex: `openssl rand -hex 32`) antes de subir os containers — `backend/src/config/env.js` bloqueia o placeholder por segurança.
+
 - O `db` aplica automaticamente `sql/migrations/*.sql` e depois `sql/seeds/*.sql` **apenas na primeira inicialização** (volume vazio).
 - Para recriar o banco do zero após alterar migrations/seeds: `docker compose down -v`.
 - `backend/` e `frontend/` são montados como volume, então alterações no código recarregam sem rebuild. Ao mudar dependências, reinicie o serviço (`docker compose restart backend frontend`): o `bun install` roda a cada subida do container.
