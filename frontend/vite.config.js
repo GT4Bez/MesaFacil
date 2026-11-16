@@ -3,5 +3,12 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173, strictPort: true },
+  server: {
+    port: 5173,
+    strictPort: true,
+    // Domínio público servido pelo Cloudflare Tunnel
+    allowedHosts: ['mesafacil.shop'],
+    // Necessário para o hot reload funcionar com volume montado no Docker
+    watch: { usePolling: true },
+  },
 })
