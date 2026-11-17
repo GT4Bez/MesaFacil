@@ -12,9 +12,17 @@ import { isPgError } from '../errors/pgErrors.js';
 const SERVICE_TAX_RATE = 0.1;
 const PAYMENT_METHODS = ['cash', 'card', 'pix'];
 const KITCHEN_FLOW = { sent: 'preparing', preparing: 'ready' };
+const MAX_PG_INT = 2147483647;
+const MAX_PG_MONEY = 99999999.99;
+const ORDER_TRANSITION_ROLES = {
+  in_kitchen: ['waiter', 'manager'],
+  ready_to_pay: ['waiter', 'manager'],
+  closed: ['cashier', 'manager'],
+  canceled: ['manager']
+};
 
 const roundMoney = (value) => Math.round(value * 100) / 100;
-const isPositiveInteger = (value) => Number.isInteger(value) && value > 0;
+const isPositiveInteger = (value) => Number.isInteger(value) && value > 0 && value <= MAX_PG_INT;
 
 export class OrderService {
   constructor(
@@ -112,6 +120,9 @@ export class OrderService {
           }
           await this.orders.cancelItem(itemId, { canceledBy: user.id, reason: reason.trim() }, db);
         } else {
+          if (!['waiter', 'manager'].includes(user.role)) {
+            throw new ForbiddenError('Apenas o garçom ou gerente pode remover itens pendentes.');
+          }
           await this.orders.cancelItem(itemId, {}, db);
         }
         return { id: item.id, status };
@@ -134,6 +145,12 @@ export class OrderService {
 
   // RN-03: máquina de estados do pedido.
   async updateStatus(orderId, { status } = {}, user) {
+    const allowedRoles = ORDER_TRANSITION_ROLES[status];
+    if (!allowedRoles) throw new BadRequestError('Status do pedido inválido.');
+    if (!allowedRoles.includes(user.role)) {
+      throw new ForbiddenError('Você não possui permissão para alterar para este status.');
+    }
+
     return this.orders.transaction(async (db) => {
       const order = await this.#lockOrder(orderId, db);
       const items = await this.orders.findItems(orderId, db);
@@ -167,15 +184,9 @@ export class OrderService {
         }
 
         case 'canceled':
-          if (user.role !== 'manager') {
-            throw new ForbiddenError('Apenas o gerente pode cancelar pedidos.');
-          }
           if (!ACTIVE_ORDER_STATUSES.includes(order.status)) throw this.#invalidTransition();
           await this.orders.setTableStatus(order.tableId, 'available', db);
           break;
-
-        default:
-          throw new BadRequestError('Status do pedido inválido.');
       }
 
       await this.orders.updateStatus(orderId, status, db);
@@ -210,7 +221,10 @@ export class OrderService {
   }
 
   async addPayment(orderId, { amount, method } = {}) {
-    if (typeof amount !== 'number' || !(amount > 0)) {
+    const normalizedAmount = typeof amount === 'number' && Number.isFinite(amount)
+      ? roundMoney(amount)
+      : 0;
+    if (!(normalizedAmount > 0) || normalizedAmount > MAX_PG_MONEY) {
       throw new DomainValidationError('Valor do pagamento inválido.');
     }
     if (!PAYMENT_METHODS.includes(method)) {
@@ -222,7 +236,7 @@ export class OrderService {
         throw new ConflictError('Não é possível registrar pagamento neste pedido.');
       }
       const id = await this.orders.addPayment(
-        { orderId, amount: roundMoney(amount), method },
+        { orderId, amount: normalizedAmount, method },
         db
       );
       return { id };
