@@ -1,483 +1,159 @@
-# 🍽️ MesaFácil — Sistema de Gestão Operacional para Restaurantes
+# 🍽️ MesaFácil
 
-> **Documento Oficial de Engenharia & Especificação de Produto (PO)**  
-> Informações e diretrizes gerais declaradas para o projeto MesaFácil.
+![MesaFácil — Painel de Acesso](docs/assets/mesa-facil-cover.jpg)
 
----
-
-<a id="indice"></a>
-## 📑 Índice Interativo
-
-- [🎯 1. Visão Geral do Produto](#1-visao-geral-do-produto)
-  - [1.1 O que é](#11-o-que-e)
-  - [1.2 Foco](#12-foco)
-  - [1.3 Fora do Escopo Obrigatório](#13-fora-do-escopo-obrigatorio)
-- [👥 2. Usuários e Papéis](#2-usuarios-e-papeis)
-- [🔄 3. Fluxo Principal da Operação](#3-fluxo-principal-da-operacao)
-- [🏗️ 4. Stack Base Obrigatória](#4-stack-base-obrigatoria)
-- [⚙️ 5. Máquinas de Estados](#5-maquinas-de-estados)
-  - [5.1 Estados do Pedido](#51-estados-do-pedido)
-  - [5.2 Estados do Item](#52-estados-do-item)
-- [📋 6. Regras de Negócio do Domínio](#6-regras-de-negocio-do-dominio)
-  - [6.1 Núcleo Obrigatório (RN-01 até RN-07)](#61-nucleo-obrigatorio-rn-01-ate-rn-07)
-  - [6.2 Evoluções do Produto (RN-08 até RN-10)](#62-evolucoes-do-produto-rn-08-ate-rn-10)
-  - [6.3 Matriz de Demonstração das Regras](#63-matriz-de-demonstracao-das-regras)
-- [🗺️ 7. Mapa do Domínio (Módulos e Entidades)](#7-mapa-do-dominio-modulos-e-entidades)
-- [🖥️ 8. Telas Mínimas](#8-telas-minimas)
-- [🛣️ 9. Rotas Esperadas da API](#9-rotas-esperadas-da-api)
-- [🚀 10. Execução do Ambiente](#10-execucao-do-ambiente)
-- [📐 11. Régua de Avaliação de Engenharia](#11-regua-de-avaliacao-de-engenharia)
+Sistema de PDV e gestão operacional presencial para restaurantes, conectando **salão**, **cozinha** e **caixa** em um fluxo único, transacional e auditável.
 
 ---
 
-<a id="1-visao-geral-do-produto"></a>
-## 🎯 1. Visão Geral do Produto
+## 🔄 Visão Geral e Fluxo Operacional
 
-<details open>
-<summary><b>Expandir / Recolher Visão Geral</b></summary>
-<br/>
-
-### 1.1 O que é
-Sistema de operação interna para restaurantes, bares e *food parks*.  
-Conecta o atendimento do salão ao preparo da cozinha e ao fechamento no caixa — funcionando como um PDV simplificado.
-
-### 1.2 Foco
-Gerenciamento exclusivo do atendimento presencial:
-$$\text{SALÃO} \longrightarrow \text{COZINHA} \longrightarrow \text{CAIXA}$$
-
-### 1.3 Fora do Escopo Obrigatório
-*Não faz parte do produto obrigatório:*
-- Delivery
-- Entregadores
-- Endereço de entrega
-- Frete
-- Geolocalização
-- Rastreio
-- Marketplace
-- Integração com iFood
-- Pagamento online real
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
-
----
-
-<a id="2-usuarios-e-papeis"></a>
-## 👥 2. Usuários e Papéis
-
-<details open>
-<summary><b>Expandir / Recolher Usuários e Atribuições</b></summary>
-<br/>
-
-Cada papel atua em uma etapa diferente da operação do restaurante:
-
-| Papel | Responsabilidades Declaradas |
-| :--- | :--- |
-| **Garçom** | Mesas · abrir pedido · adicionar itens · enviar à cozinha · acompanhar |
-| **Cozinha** | Ver itens enviados · iniciar preparo · marcar como pronto |
-| **Caixa** | Visualizar conta · registrar pagamentos · finalizar pedido |
-| **Gerente** | Cardápio · cancelamentos · turnos · relatórios |
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
-
----
-
-<a id="3-fluxo-principal-da-operacao"></a>
-## 🔄 3. Fluxo Principal da Operação
-
-<details open>
-<summary><b>Expandir / Recolher Fluxo Principal</b></summary>
-<br/>
-
-A sequência oficial de uso do produto:
+O sistema organiza o atendimento presencial do restaurante ponta a ponta — da abertura de turno e ocupação da mesa até o preparo na cozinha, recebimento de pagamentos parciais e liberação da mesa.
 
 ```mermaid
 flowchart LR
-    A([Login]) --> B[Abrir Mesa]
-    B --> C[Criar Pedido]
-    C --> D[Adicionar Itens]
-    D --> E[Enviar à Cozinha]
-    E --> F[Preparar]
-    F --> G[Itens Prontos]
-    G --> H[Pagamento]
-    H --> I[Encerrar Pedido]
-    I --> J([Mesa Disponível])
+    A[Login] --> B[Abrir Turno / Mesa]
+    B --> C[Lançar Itens]
+    C --> D[Enviar à Cozinha]
+    D --> E[Preparo e Entrega]
+    E --> F[Pagamentos Parciais]
+    F --> G[Encerrar e Liberar Mesa]
 ```
 
-$$\text{Login} \rightarrow \text{abrir mesa} \rightarrow \text{criar pedido} \rightarrow \text{adicionar itens} \rightarrow \text{enviar à cozinha} \rightarrow \text{preparar} \rightarrow \text{itens prontos} \rightarrow \text{pagamento} \rightarrow \text{encerrar pedido} \rightarrow \text{mesa disponível}$$
+### Perfis de Acesso (RBAC)
 
-</details>
-
-[⬆ Voltar ao Índice](#indice)
-
----
-
-<a id="4-stack-base-obrigatoria"></a>
-## 🏗️ 4. Stack Base Obrigatória
-
-<details>
-<summary><b>Expandir / Recolher Definição da Stack Técnica</b></summary>
-<br/>
-
-Todos os desafios partem do mesmo ambiente técnico padronizado:
-
-| Área | Tecnologia & Requisitos Declarados |
+| Papel (`role`) | Responsabilidade na Operação |
 | :--- | :--- |
-| **Front-end** | • React<br/>• JavaScript ou TypeScript<br/>• API REST<br/>• Formulários, estado, loading e feedback |
-| **Back-end** | • Node.js + Express<br/>• JWT + hash de senha<br/>• Validação de entrada<br/>• Controle de acesso por papel |
-| **Banco** | • PostgreSQL<br/>• Relacionamentos + constraints<br/>• Migrations / scripts<br/>• Seed quando necessário |
-| **Infra** | • Docker + Docker Compose<br/>• frontend + backend + PostgreSQL<br/>• Ambiente sobe com `docker compose up` |
-| **Engenharia** | • GitHub Projects<br/>• Issues + branches + PRs<br/>• $\ge$ 1 review antes do merge<br/>• README técnico |
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
+| `waiter` (Garçom) | Visualiza mesas, abre comandas, adiciona/edita itens pendentes, envia pedidos à cozinha e solicita a conta |
+| `kitchen` (Cozinha) | Recebe itens enviados e atualiza o status de preparo (`sent` -> `preparing` -> `ready`) |
+| `cashier` (Caixa) | Consulta extratos com ou sem taxa de 10%, registra pagamentos parciais e encerra pedidos quitados |
+| `manager` (Gerente) | Abre e encerra turnos, cancela itens já enviados com justificativa e possui acesso completo à operação |
 
 ---
 
-<a id="5-maquinas-de-estados"></a>
-## ⚙️ 5. Máquinas de Estados
+## 📋 Regras de Negócio e Arquitetura
 
-<details open>
-<summary><b>Expandir / Recolher Máquinas de Estados</b></summary>
-<br/>
+- **Controle de Turno e Mesa (`RN-01`, `RN-02`):** impede múltiplos pedidos ativos na mesma mesa via constraint parcial no PostgreSQL e exige turno aberto para iniciar atendimentos, bloqueando o encerramento do turno enquanto houver comandas ativas.
+- **Máquinas de Estado e Trava Pós-Envio (`RN-03`, `RN-04`, `RN-06`):** transições validadas em transação (`OrderService`); itens enviados não sofrem alteração por garçom/caixa e a conta só vai para pagamento quando todos os itens estão concluídos ou cancelados.
+- **Cancelamento Auditado (`RN-05`):** itens já enviados à cozinha só podem ser cancelados pelo perfil `manager` mediante justificativa obrigatória gravada no banco.
+- **Fechamento Financeiro e Preço Congelado (`RN-07`, `RN-08`, `RN-09`):** suporte a múltiplos pagamentos parciais, bloqueio de encerramento com saldo pendente, taxa de serviço opcional de 10% sobre itens ativos e snapshot de `unit_price` no ato do lançamento.
 
-### 5.1 Estados do Pedido
-- **Fluxo normal:** `open` $\longrightarrow$ `in_kitchen` $\longrightarrow$ `ready_to_pay` $\longrightarrow$ `closed`
-- **Cancelamento:** pode existir antes de `closed`.
-- **Validação:** transição inválida deve ser rejeitada.
+> 📌 **Atenção às Invariantes de Domínio:** As regras críticas (`RN-01`, `RN-02`, `RN-05`, `RN-07`) possuem dupla proteção — são validadas na camada de serviço (`OrderService`) com bloqueio de linha (`SELECT ... FOR UPDATE`) e garantidas por constraints e índices únicos parciais diretamente no PostgreSQL.
 
-```mermaid
-stateDiagram-v2
-    [*] --> open: Criar pedido
-    open --> in_kitchen: Enviar itens à cozinha
-    open --> canceled: Cancelar
-    in_kitchen --> ready_to_pay: Itens prontos/cancelados (RN-06)
-    in_kitchen --> canceled: Cancelar
-    ready_to_pay --> closed: Conta paga integralmente (RN-07)
-    ready_to_pay --> canceled: Cancelar
-    closed --> [*]
-    canceled --> [*]
+> 📄 **Documentação Complementar:** O detalhamento completo das máquinas de estado e especificações está em [`docs/ESPECIFICACAO.md`](docs/ESPECIFICACAO.md), [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) e [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md).
+
+### Stack e Estrutura do Projeto
+
+- **Frontend:** React 19, Vite 8, React Router 7 (JavaScript ESM)
+- **Backend:** Bun, Express 5, PostgreSQL (`pg` com SQL puro e transações), JWT (`jsonwebtoken`), `bcrypt`
+- **Banco e Infra:** PostgreSQL 16 (migrations e seeds SQL versionados), Docker & Docker Compose
+
+```text
+MesaFacil/
+├── backend/       # API REST (routes, controllers, services, repositories, middlewares, tests)
+├── frontend/      # SPA React (pages, context, hooks, services) + CONTRATO-API.md
+├── sql/           # Migrations (001–007) e seeds iniciais (001–007)
+├── docker/        # Script de inicialização automática do PostgreSQL
+└── docs/          # Especificação funcional, arquitetura e guias de sprint
 ```
 
 ---
 
-### 5.2 Estados do Item
-- **Fluxo normal:** `pending` $\longrightarrow$ `sent` $\longrightarrow$ `preparing` $\longrightarrow$ `ready` (ou `canceled`)
-- **Restrição de alteração:** depois de `sent`, garçom e caixa não alteram quantidade, produto ou observação.
+## 🚀 Como Executar
 
-```mermaid
-stateDiagram-v2
-    [*] --> pending: Item adicionado
-    pending --> sent: Enviado à cozinha (RN-04)
-    pending --> canceled: Remover
-    sent --> preparing: Iniciar preparo
-    sent --> canceled: Cancelado por gerente (RN-05)
-    preparing --> ready: Pronto
-    preparing --> canceled: Cancelado por gerente (RN-05)
-    ready --> canceled: Cancelado por gerente (RN-05)
-    ready --> [*]
-    canceled --> [*]
+### Opção 1: Stack Completa via Docker Compose (Recomendado)
+
+1. **Crie o arquivo `.env`** na raiz a partir do modelo:
+   ```bash
+   cp .env.example .env
+   ```
+
+> ⚠️ **Atenção (`JWT_SECRET`):** Antes de subir os containers, substitua `JWT_SECRET=changeme` no `.env` por uma chave própria (ex.: `openssl rand -hex 32`). O arquivo `backend/src/config/env.js` bloqueia a inicialização caso o valor padrão `changeme` seja mantido.
+
+2. **Suba o banco, a API e o Frontend** com um único comando:
+   ```bash
+   docker compose up --build
+   ```
+
+> 💡 **Inicialização do Banco:** As migrations (`sql/migrations/*.sql`) e os seeds (`sql/seeds/*.sql`) são aplicados automaticamente na primeira subida do volume. Para recriar o banco do zero após alterações em `sql/`, execute `docker compose down -v && docker compose up --build`.
+
+3. **Acesse os serviços:**
+   - **Frontend Web:** `http://localhost:5173`
+   - **Backend API:** `http://localhost:3001`
+   - **PostgreSQL:** `localhost:5432` (usuário, senha e banco: `mesafacil`)
+
+### Opção 2: Execução Local com Bun
+
+Suba apenas o banco via Docker e inicie **backend** e **frontend** em terminais dedicados:
+
+```bash
+# 1. Subir PostgreSQL
+docker compose up -d db
+
+# 2. Rodar Backend (terminal 1)
+cd backend && bun install && bun run dev
+
+# 3. Rodar Frontend (terminal 2)
+cd frontend && bun install && bun run dev
 ```
 
-</details>
-
-[⬆ Voltar ao Índice](#indice)
+> ⚠️ **Atenção à Estrutura de Pacotes:** Não há `package.json` na raiz do repositório. Os comandos `bun install` e `bun run dev` devem ser executados dentro de `backend/` e `frontend/` separadamente.
 
 ---
 
-<a id="6-regras-de-negocio-do-dominio"></a>
-## 📋 6. Regras de Negócio do Domínio
+## 🔑 Credenciais de Demonstração
 
-<details open>
-<summary><b>Expandir / Recolher Regras de Negócio Oficiais</b></summary>
-<br/>
+O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-cadastrados para testar cada perfil da operação:
 
-### 6.1 Núcleo Obrigatório (RN-01 até RN-07)
-*São o núcleo do domínio. A equipe precisa demonstrar as sete funcionando no código — não basta descrevê-las no README. Não existe "escolher as sete mais fáceis". O conjunto obrigatório já está definido.*
-
-* **01 · Uma mesa não pode ter dois pedidos abertos**  
-  Se já existir `order.status = open` para a mesa, POST de novo pedido deve responder `409 Conflict` e não criar registro.
-* **02 · É obrigatório existir um turno aberto**  
-  Pedido só nasce com `shift.status = open`. O turno não fecha enquanto houver pedido ativo do próprio shift.
-* **03 · O pedido possui máquina de estados**  
-  Fluxo normal: `open` $\rightarrow$ `in_kitchen` $\rightarrow$ `ready_to_pay` $\rightarrow$ `closed`. Cancelamento pode existir antes de `closed`; transição inválida deve ser rejeitada.
-* **04 · O item também possui estados**  
-  `pending` $\rightarrow$ `sent` $\rightarrow$ `preparing` $\rightarrow$ `ready` (ou `canceled`). Depois de `sent`, garçom e caixa não alteram quantidade, produto ou observação.
-* **05 · Cancelar item enviado exige gerente**  
-  Se o item está `sent`, `preparing` ou `ready`: apenas gerente cancela, com motivo persistido. Sem motivo $\rightarrow$ `422`; papel sem permissão $\rightarrow$ `403`.
-* **06 · Pedido só vai para pagamento quando a cozinha terminar**  
-  `in_kitchen` $\rightarrow$ `ready_to_pay` somente se TODOS os `order_items` estiverem `ready` ou `canceled`. Restou `pending`, `sent` ou `preparing`? Rejeitar.
-* **07 · Pedido só fecha quando estiver pago**  
-  Vários payments são permitidos. Só muda para `closed` quando `saldo_restante <= 0`. Fechar com saldo aberto $\rightarrow$ `409 Conflict`.
-
----
-
-### 6.2 Evoluções do Produto (RN-08 até RN-10)
-*Aumentam a profundidade do projeto e são ótimos diferenciais depois que o núcleo obrigatório estiver sólido.*
-
-* **08 · Taxa de serviço**  
-  Taxa opcional de 10%, calculada apenas sobre itens não cancelados.
-* **09 · Snapshot de preço**  
-  `unit_price` é congelado em `order_items` no lançamento. Alterar o cardápio depois não muda pedidos antigos; `available=false` sai de novas listagens.
-* **10 · Fechamento financeiro do turno**  
-  `total_turno` = soma dos payments dos pedidos do shift. O backend deriva do banco; o React não "inventa" faturamento.
-
----
-
-### 6.3 Matriz de Demonstração das Regras
-
-| Regra | Ação no Backend | Reflexo na Interface | Como Demonstrar |
+| Perfil | E-mail | Senha | Papel (`role`) |
 | :--- | :--- | :--- | :--- |
-| **RN-01** | Valida se a mesa já possui pedido aberto; retorna `409 Conflict` se houver tentativa de duplicação. | Bloqueia/indica mesa ocupada visualmente no mapa. | Tentar abrir novo pedido para uma mesa que já possui pedido aberto. |
-| **RN-02** | Exige `shift.status = open` para criar pedido; impede fechar turno se houver pedidos ativos no shift. | Alerta ausência de turno aberto; bloqueia fechamento de turno em andamento. | Tentar criar pedido sem turno aberto ou tentar fechar turno com pedido ativo. |
-| **RN-03** | Rejeita transições de status fora do fluxo ou após finalização. | Ações de transição de estado orientadas por etapa. | Tentar forçar transição inválida de status do pedido. |
-| **RN-04** | Bloqueia alteração de dados do item quando status $\ne$ `pending`. | Trava campos de edição/exclusão do item após envio. | Tentar editar quantidade ou observação de item já em `sent`. |
-| **RN-05** | Exige papel de gerente e motivo obrigatório para cancelar item enviado; valida `403` e `422`. | Exibe modal solicitando perfil de gerente e campo de justificativa. | Tentar cancelar item com garçom (403) ou com gerente sem informar motivo (422). |
-| **RN-06** | Valida se todos os itens estão `ready` ou `canceled` antes de liberar para `ready_to_pay`. | Bloqueia envio para pagamento se houver itens pendentes/em preparo. | Tentar avançar pedido para pagamento com item ainda na cozinha. |
-| **RN-07** | Permite múltiplos pagamentos; só permite mudar para `closed` quando `saldo_restante <= 0` (senão `409`). | Exibe saldo devedor e impede conclusão até quitação total. | Registrar pagamento parcial e tentar fechar a conta (409). |
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
+| **Garçom** | `garcom@mesafacil.com` | `123` | `waiter` |
+| **Cozinha** | `cozinha@mesafacil.com` | `123` | `kitchen` |
+| **Caixa** | `caixa@mesafacil.com` | `123` | `cashier` |
+| **Gerente** | `gerente@mesafacil.com` | `123` | `manager` |
 
 ---
 
-<a id="7-mapa-do-dominio-modulos-e-entidades"></a>
-## 🗺️ 7. Mapa do Domínio (Módulos e Entidades)
+## 🛣️ Rotas da API e Testes
 
-<details open>
-<summary><b>Expandir / Recolher Mapa do Domínio</b></summary>
-<br/>
+| Recurso | Endpoints | Controle de Acesso |
+| :--- | :--- | :--- |
+| **Autenticação** | `POST /auth/login` | Público |
+| **Mesas e Turnos** | `GET /tables`, `GET /shifts/active`, `POST /shifts`, `PATCH /shifts/:id/close` | Autenticado (`POST`/`PATCH` restritos a `manager`) |
+| **Cardápio** | `GET /menu-items` | Autenticado |
+| **Pedidos** | `POST /orders`, `GET /orders/:id`, `PATCH /orders/:id/status` | Autenticado + RBAC por transição |
+| **Itens da Comanda** | `POST /orders/:id/items`, `PATCH /order-items/:id/quantity`, `PATCH /order-items/:id/status` | Autenticado + RBAC por operação |
+| **Caixa** | `GET /orders/:id/bill?serviceTax=true\|false`, `POST /orders/:id/payments` | Autenticado (`POST` restrito a `cashier` e `manager`) |
 
-*Estrutura explícita declarada no projeto para posterior modelagem pelo time:*
+> 🔌 **Contrato de Resposta Padronizado:** Todas as rotas retornam o envelope `{ "success": true, "data": ... }` em caso de sucesso ou `{ "success": false, "error": "mensagem" }` em caso de falha, conforme documentado em [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md).
 
-### Módulos Declarados
-- autenticação
-- usuários
-- mesas
-- cardápio
-- pedidos
-- itens do pedido
-- KDS / cozinha
-- pagamentos
-- turnos
-- relatório do turno
+### Executando os Testes Automatizados
 
-### Entidades Declaradas
-- `users`
-- `tables`
-- `menu_items`
-- `orders`
-- `order_items`
-- `payments`
-- `shifts`
-
-### Relação-Chave
-$$\text{shift} \longrightarrow \text{orders} \longrightarrow \text{items / payments}$$
-
-> *Nota: A modelagem estrutural das tabelas, tipos de dados, chaves e atributos será concebida diretamente pela equipe de engenharia.*
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
-
----
-
-<a id="8-telas-minimas"></a>
-## 🖥️ 8. Telas Mínimas
-
-<details>
-<summary><b>Expandir / Recolher Telas Obrigatórias</b></summary>
-<br/>
-
-Interfaces que sustentam o fluxo central:
-1. **Login**
-2. **Mapa de mesas**
-3. **Pedido da mesa**
-4. **KDS da cozinha**
-5. **Caixa**
-6. **Admin do cardápio**
-7. **Admin do turno**
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
-
----
-
-<a id="9-rotas-esperadas-da-api"></a>
-## 🛣️ 9. Rotas Esperadas da API
-
-<details>
-<summary><b>Expandir / Recolher Rotas Esperadas</b></summary>
-<br/>
-
-*Exemplos declarados para orientar a API — a squad pode organizar endpoints equivalentes:*
-
-### Rotas Principais
-- `POST /auth/login`
-- `GET /tables`
-- `GET /menu-items`
-- `POST /menu-items`
-- `PATCH /menu-items/:id`
-- `POST /orders`
-- `GET /orders/:id`
-- `PATCH /orders/:id/status`
-
-### Continuação
-- `POST /orders/:id/items`
-- `PATCH /order-items/:id/status`
-- `GET /kitchen/orders`
-- `POST /orders/:id/payments`
-- `POST /shifts`
-- `PATCH /shifts/:id/close`
-- `GET /shifts/:id/report`
-
-> *As rotas precisam refletir as regras do domínio, não apenas CRUD genérico.*
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
-
----
-
-<a id="10-execucao-do-ambiente"></a>
-## 🚀 10. Execução do Ambiente
-
-<details open>
-<summary><b>Expandir / Recolher Instruções de Inicialização</b></summary>
-<br/>
-
-O projeto está configurado com **Bun** e **PostgreSQL 16**. Você pode executá-lo de duas formas: diretamente pelo **DevContainer** (recomendado para isolamento total) ou via **terminal local**.
-
----
-
-### 10.1 Pré-requisitos
-- [Docker](https://www.docker.com/) e Docker Compose instalados e em execução.
-- [Bun](https://bun.sh/) $\ge$ v1.3.x (caso execute fora do DevContainer).
-- [VS Code](https://code.visualstudio.com/) com a extensão **Dev Containers** (opcional, para modo container).
-
----
-
-### 10.2 Configuração das Variáveis de Ambiente
-
-Antes de iniciar, crie o arquivo `.env` na raiz do projeto com base no modelo:
+O backend conta com 6 suítes automatizadas em `backend/tests/` (`node:test`), validando autenticação, RBAC, CORS, tradução de erros do PostgreSQL e o fluxo operacional ponta a ponta (`RN-01` a `RN-09`):
 
 ```bash
-cp .env.example .env
+cd backend
+bun install   # ou npm install
+npm test
 ```
 
-> **Atenção à URL do Banco:**  
-> - Se estiver rodando o Bun **na sua máquina local (host)**, utilize:  
->   `DATABASE_URL="postgresql://mesafacil:mesafacil@localhost:5432/mesafacil?schema=public"`  
-> - Se estiver dentro do **DevContainer**, utilize o host interno:  
->   `DATABASE_URL="postgresql://mesafacil:mesafacil@db:5432/mesafacil?schema=public"`
-
 ---
 
-### 10.3 Stack completa via Docker Compose
+## 👥 Equipe e Gestão Ágil
 
-Sobe banco, backend e frontend com um único comando (a partir da raiz do projeto, com o `.env` criado):
+| Integrante | GitHub | Atuação Principal |
+| :--- | :--- | :--- |
+| **Paulo Henrique** | [@PauloHenrrq](https://github.com/PauloHenrrq) | Tech Lead, Product Owner (PO), Governança, QA e Code Review |
+| **Rodolfo Bertini** | [@rodox83br](https://github.com/rodox83br) | Infraestrutura/DevOps (Docker, DevContainer) e Engenharia Full-Stack |
+| **Abraão Alves** | [@AbraaoAlvs](https://github.com/AbraaoAlvs) | Backend, Autenticação/JWT, Middlewares e Tratamento de Erros |
+| **Jadson Laurindo** | [@jadsonelorraine](https://github.com/jadsonelorraine) | Banco de Dados (Modelagem relacional, Migrations, Constraints e Seeds SQL) |
+| **Kauan Santos** | [@kauansantos01](https://github.com/kauansantos01) | Frontend e Interfaces de Operação em React |
 
-```bash
-docker compose up --build
-```
+### Como a Equipe Operou (Engenharia & Agilidade)
 
-> **Importante (`JWT_SECRET`):** após copiar `.env.example` para `.env`, substitua `JWT_SECRET=changeme` por uma chave própria (ex: `openssl rand -hex 32`) antes de subir os containers — `backend/src/config/env.js` bloqueia o placeholder por segurança.
+A condução do projeto seguiu práticas enxutas de engenharia para garantir entregas paralelas sem bloqueios entre as frentes:
 
-- O `db` aplica automaticamente `sql/migrations/*.sql` e depois `sql/seeds/*.sql` **apenas na primeira inicialização** (volume vazio).
-- Para recriar o banco do zero após alterar migrations/seeds: `docker compose down -v`.
-- `backend/` e `frontend/` são montados como volume, então alterações no código recarregam sem rebuild. Ao mudar dependências, reinicie o serviço (`docker compose restart backend frontend`): o `bun install` roda a cada subida do container.
-- Cada serviço precisa expor um script `dev` no seu `package.json` (o frontend recebe `--host 0.0.0.0`).
-- Não rode este compose junto com o DevContainer: ambos publicam a porta `5432`. Se precisar, altere `DB_PORT` no `.env`.
-- As portas publicadas no host podem ser trocadas no `.env` com `DB_PORT`, `BACKEND_PORT` e `FRONTEND_PORT`.
-- Acesso pelo Cloudflare Tunnel (`mesafacil.shop`): o Vite já aceita esse host (`allowedHosts` em `frontend/vite.config.js`). O `CORS_ORIGIN` padrão já libera `http://localhost:5173` e `https://mesafacil.shop`; defina no `.env` o `VITE_API_URL` com a URL pública da API (`https://api.mesafacil.shop`).
-
----
-
-### 10.4 Opção A: Execução via DevContainer (Recomendado)
-
-O DevContainer inicializa todo o ecossistema (Bun + PostgreSQL 16) de forma automatizada e isolada:
-
-1. Abra a pasta do projeto no **VS Code**.
-2. Pressione `F1` (ou `Ctrl + Shift + P`) e selecione:  
-   **`Dev Containers: Reopen in Container`**
-3. O VS Code construirá o ambiente e abrirá o terminal já conectado dentro do container Linux com o Bun instalado.
-4. Para instalar as dependências e rodar:
-   ```bash
-   bun install
-   bun run dev
-   ```
-
----
-
-### 10.5 Opção B: Execução Local no Host (Bun + Docker Compose)
-
-Se preferir rodar o Bun diretamente no seu sistema operacional, utilize o Docker apenas para orquestrar o banco de dados:
-
-1. **Subir apenas o serviço de banco de dados (PostgreSQL):**
-   ```bash
-   docker compose up -d db
-   ```
-
-2. **Instalar dependências do projeto:**
-   ```bash
-   bun install
-   ```
-
-3. **Executar em modo desenvolvimento:**
-   ```bash
-   bun run dev
-   ```
-
-4. **Para parar o banco de dados:**
-   ```bash
-   docker compose down
-   ```
-
----
-
-### 10.6 Serviços e Portas Padrão
-
-| Serviço | Porta Local | Credenciais Padrão |
-|---|---|---|
-| **PostgreSQL** | `5432` | Usuário: `mesafacil` \| Senha: `mesafacil` \| DB: `mesafacil` |
-| **Backend API** | `3001` | `http://localhost:3001` |
-| **Frontend Web** | `5173` | `http://localhost:5173` |
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
-
----
-
-<a id="11-regua-de-avaliacao-de-engenharia"></a>
-## 📐 11. Régua de Avaliação de Engenharia
-
-<details>
-<summary><b>Expandir / Recolher Requisitos de Avaliação</b></summary>
-<br/>
-
-*O objetivo não é apenas "fazer telas e CRUDs" — é demonstrar engenharia de software profissional.*
-
-### O Produto Precisa Provar:
-- Modelagem de domínio
-- Autenticação e autorização
-- Regras no backend
-- Persistência relacional
-- Tratamento correto de erros
-
-### A Squad Precisa Operar:
-- Transações em operações críticas
-- Integração React + API
-- Organização de código
-- Docker, Git e Pull Requests ($\ge$ 1 review antes do merge)
-- Documentação técnica
-
-</details>
-
-[⬆ Voltar ao Índice](#indice)
+- **Abordagem *Contract-First*:** antes da codificação das telas e rotas, o contrato de comunicação (`docs/SPRINT_1.md` e `frontend/CONTRATO-API.md`) definiu payloads e envelopes de erro padronizados, permitindo que Frontend, Backend e Banco avançassem simultaneamente sem depender uns dos outros.
+- **Isolamento por Domínio e Zero Conflito no Git:** o repositório foi particionado por áreas de responsabilidade (`sql/`, `backend/`, `frontend/`, `docker/`), com branches curtas por funcionalidade (`feat/`, `fix/`, `chore/`) e proibição de commits diretos na `main`.
+- **Governança de PRs com *KISS* e *YAGNI*:** todas as entregas passaram por Pull Requests granulares, revisão de código pelo Tech Lead, validação por suíte de testes e corte rigoroso de escopo desnecessário (*"Tesoura do PO"*), priorizando código limpo, SQL explícito em transações e regras de domínio auditáveis.
+- **Sincronização Contínua:** acompanhamento por prioridades (`P0` a `P3`) no GitHub Issues combinado a *Dailies Assíncronas de 3 Linhas* (entregas do dia, próximo passo e bloqueios) para atuação imediata em impedimentos técnicos.
