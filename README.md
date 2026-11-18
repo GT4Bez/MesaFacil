@@ -120,7 +120,7 @@ O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-c
 | :--- | :--- | :--- |
 | **Autenticação** | `POST /auth/login` | Público |
 | **Mesas e Turnos** | `GET /tables`, `GET /shifts/active`, `POST /shifts`, `PATCH /shifts/:id/close` | Autenticado (`POST`/`PATCH` restritos a `manager`) |
-| **Cardápio** | `GET /menu-items` | Autenticado |
+| **Cardápio** | `GET /menu-items`, `GET /menu-items/categories`, `GET /menu-items?all=true`, `POST /menu-items`, `PATCH /menu-items/:id` | Autenticado (`?all=true`, `POST` e `PATCH` restritos a `manager`) |
 | **Pedidos** | `POST /orders`, `GET /orders/:id`, `PATCH /orders/:id/status` | Autenticado + RBAC por transição |
 | **Itens da Comanda** | `POST /orders/:id/items`, `PATCH /order-items/:id/quantity`, `PATCH /order-items/:id/status` | Autenticado + RBAC por operação |
 | **Caixa** | `GET /orders/:id/bill?serviceTax=true\|false`, `POST /orders/:id/payments` | Autenticado (`POST` restrito a `cashier` e `manager`) |

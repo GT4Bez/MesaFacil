@@ -32,6 +32,16 @@ Papéis, estados e rotas seguem o `README.md` da raiz; o envelope de resposta se
 - `GET /orders/:id` — `{ id, status, createdAt, table: { number }, items }`, com cada item no
   formato `{ id, name, quantity, unitPrice, notes, status }`.
 - `GET /menu-items` — array de `{ id, name, category, price }` (apenas itens disponíveis).
+
+## Administração do cardápio (gerente)
+
+- `GET /menu-items?all=true` — todos os itens, inclusive fora de linha: `{ id, name, category, price, available }`.
+- `GET /menu-items/categories` — categorias já usadas, em ordem alfabética (`["Bebidas", "Pratos"]`).
+- `POST /menu-items` — body `{ "name": "Moqueca", "category": "Pratos", "price": 79.9, "available": true }`
+  (`available` opcional, padrão `true`). Resposta `201` com o item criado.
+- `PATCH /menu-items/:id` — qualquer subconjunto de `{ name, category, price, available }`.
+  Não existe `DELETE`: o item sai de linha com `available: false` e o preço já lançado em pedidos não muda (RN-09).
+- Erros: `403` papel, `404` item inexistente, `422` validação (nome 1–100, categoria 1–50, preço ≥ 0).
 - `POST /orders/:id/items` — body `{ "menuItemId": 1, "quantity": 2, "notes": "sem cebola" }`.
 - `PATCH /order-items/:id/quantity` — body `{ "quantity": 2 }`; só para item `pending` (RN-04).
 - `PATCH /order-items/:id/status` — body `{ "status": "canceled" }` remove um item `pending`.
