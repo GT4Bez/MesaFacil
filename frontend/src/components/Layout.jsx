@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ROLE_LABELS } from '../utils/format'
+import { menuFor } from '../utils/access'
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -18,12 +19,11 @@ export default function Layout() {
 
         <div className="side-label">MENU PRINCIPAL</div>
         <nav>
-          <NavLink to="/tables">
-            ▦ <span>Salão e mesas</span>
-          </NavLink>
-          <NavLink to="/cashier">
-            ▤ <span>Caixa</span>
-          </NavLink>
+          {menuFor(user.role).map((screen) => (
+            <NavLink key={screen.path} to={screen.path}>
+              {screen.icon} <span>{screen.label}</span>
+            </NavLink>
+          ))}
         </nav>
 
         <div className="sidebar-bottom">
