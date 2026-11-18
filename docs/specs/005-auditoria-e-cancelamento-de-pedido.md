@@ -76,7 +76,7 @@ Botão "Cancelar pedido" (só gerente) na comanda abre modal com motivo obrigat�
 - [ ] Itens ativos do pedido cancelado ficam `canceled` com o mesmo motivo.
 - [ ] Cancelar item enviado e cancelar pedido geram `audit_logs` com `shift_id`.
 - [ ] Se a gravação da auditoria falhar, o cancelamento sofre rollback (teste).
-- [ ] README §6: RN-14 na seção "Evoluções da squad".
+- [ ] `docs/ESPECIFICACAO.md`: RN-14 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
