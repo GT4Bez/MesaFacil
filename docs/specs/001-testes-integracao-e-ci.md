@@ -28,7 +28,7 @@ Sem mudanças. O banco de teste é `mesafacil_test`, configurado por `TEST_DATAB
   - `services: postgres:16-alpine` com healthcheck;
   - job **backend**: `bun install` → `bun run test` com `TEST_DATABASE_URL` apontando para o service;
   - job **frontend**: `bun install` → `bun run build`.
-- README §10: como rodar os testes localmente (`docker compose up -d db` + criar `mesafacil_test`).
+- README "Executando os Testes Automatizados": como rodar os testes localmente (`docker compose up -d db` + criar `mesafacil_test`).
 
 ## Critérios de aceite
 
