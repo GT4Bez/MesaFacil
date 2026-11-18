@@ -1,4 +1,6 @@
 import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
+import { ShiftRepository } from '../repositories/ShiftRepository.js';
+import { AuditLogService } from './AuditLogService.js';
 import { DomainValidationError, NotFoundError } from '../errors/AppError.js';
 
 const MAX_PRICE = 99999999.99;
@@ -38,8 +40,14 @@ function parseMenuItem(body = {}, { partial }) {
 }
 
 export class MenuItemService {
-  constructor(menuItemRepository = new MenuItemRepository()) {
+  constructor(
+    menuItemRepository = new MenuItemRepository(),
+    shiftRepository = new ShiftRepository(),
+    auditLogService = new AuditLogService()
+  ) {
     this.menuItems = menuItemRepository;
+    this.shifts = shiftRepository;
+    this.audit = auditLogService;
   }
 
   list({ all = false } = {}) {
@@ -55,13 +63,33 @@ export class MenuItemService {
   }
 
   // Não existe exclusão: o item sai de linha com available = false (RN-09 preserva o histórico).
-  async update(id, body) {
+  async update(id, body, user) {
     const fields = parseMenuItem(body, { partial: true });
     if (Object.keys(fields).length === 0) {
       throw new DomainValidationError('Informe ao menos um campo para atualizar.');
     }
-    const updated = await this.menuItems.update(id, fields);
-    if (!updated) throw new NotFoundError('Item do cardápio não encontrado.');
-    return updated;
+
+    return this.menuItems.transaction(async (db) => {
+      const current = await this.menuItems.findById(id, { lock: true }, db);
+      if (!current) throw new NotFoundError('Item do cardápio não encontrado.');
+      const updated = await this.menuItems.update(id, fields, db);
+
+      // RN-11: mudança de preço fica na auditoria, ligada ao turno aberto (se houver).
+      if (updated.price !== current.price) {
+        const shift = await this.shifts.findActive(db);
+        await this.audit.record(
+          {
+            userId: user.id,
+            shiftId: shift?.id ?? null,
+            action: 'menu_item.price_changed',
+            entity: 'menu_item',
+            entityId: updated.id,
+            details: { from: current.price, to: updated.price }
+          },
+          db
+        );
+      }
+      return updated;
+    });
   }
 }

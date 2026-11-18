@@ -35,7 +35,7 @@ flowchart LR
 
 - **Controle de Turno e Mesa (`RN-01`, `RN-02`):** impede múltiplos pedidos ativos na mesma mesa via constraint parcial no PostgreSQL e exige turno aberto para iniciar atendimentos, bloqueando o encerramento do turno enquanto houver comandas ativas.
 - **Máquinas de Estado e Trava Pós-Envio (`RN-03`, `RN-04`, `RN-06`):** transições validadas em transação (`OrderService`); itens enviados não sofrem alteração por garçom/caixa e a conta só vai para pagamento quando todos os itens estão concluídos ou cancelados.
-- **Cancelamento Auditado (`RN-05`):** itens já enviados à cozinha só podem ser cancelados pelo perfil `manager` mediante justificativa obrigatória gravada no banco.
+- **Cancelamento Auditado (`RN-05`, `RN-11`):** itens já enviados à cozinha e pedidos inteiros só podem ser cancelados pelo perfil `manager` mediante justificativa obrigatória gravada no banco; pedido com pagamento não é cancelado. Cancelamentos, abertura/fechamento de turno e mudança de preço do cardápio ficam em `audit_logs`, gravados na mesma transação da ação.
 - **Fechamento Financeiro e Preço Congelado (`RN-07`, `RN-08`, `RN-09`):** suporte a múltiplos pagamentos parciais, bloqueio de encerramento com saldo pendente, taxa de serviço opcional de 10% sobre itens ativos e snapshot de `unit_price` no ato do lançamento.
 
 > 📌 **Atenção às Invariantes de Domínio:** As regras críticas (`RN-01`, `RN-02`, `RN-05`, `RN-07`) possuem dupla proteção — são validadas na camada de serviço (`OrderService`) com bloqueio de linha (`SELECT ... FOR UPDATE`) e garantidas por constraints e índices únicos parciais diretamente no PostgreSQL.

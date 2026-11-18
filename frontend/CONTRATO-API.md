@@ -34,8 +34,9 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 
 ## Comanda
 
-- `GET /orders/:id` — `{ id, status, createdAt, table: { number }, items }`, com cada item no
-  formato `{ id, name, quantity, unitPrice, notes, status }`.
+- `GET /orders/:id` — `{ id, status, createdAt, table: { number }, cancellation, items }`, com cada item no
+  formato `{ id, name, quantity, unitPrice, notes, status }`. `cancellation` é
+  `{ reason, canceledBy: { id, name } }` no pedido cancelado com motivo, senão `null`.
 - `GET /menu-items` — array de `{ id, name, category, price }` (apenas itens disponíveis).
 
 ## Administração do cardápio (gerente)
@@ -50,8 +51,11 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `POST /orders/:id/items` — body `{ "menuItemId": 1, "quantity": 2, "notes": "sem cebola" }`.
 - `PATCH /order-items/:id/quantity` — body `{ "quantity": 2 }`; só para item `pending` (RN-04).
 - `PATCH /order-items/:id/status` — body `{ "status": "canceled" }` remove um item `pending`.
+  Item já enviado: só `manager`, com `{ "status": "canceled", "reason": "..." }` (RN-05; `403`/`422`).
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).
+- Cancelar o pedido: `{ "status": "canceled", "reason": "cliente desistiu" }` — só `manager` (`403`),
+  motivo obrigatório (`422`), `409` se houver pagamento registrado. Cancela os itens ativos e libera a mesa (RN-11).
 
 ## Cozinha (KDS)
 

@@ -78,7 +78,7 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
     const orderId = await createOrder()
     assert.equal((await api('PATCH', `/shifts/${shiftId}/close`)).status, 409)
 
-    await api('PATCH', `/orders/${orderId}/status`, { body: { status: 'canceled' } })
+    await api('PATCH', `/orders/${orderId}/status`, { body: { status: 'canceled', reason: 'Cliente desistiu' } })
     const closed = await api('PATCH', `/shifts/${shiftId}/close`)
     assert.equal(closed.status, 200)
     assert.equal(closed.json.data.status, 'closed')
