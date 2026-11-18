@@ -1,6 +1,6 @@
 # 011 — Administração de usuários e superadmin
 
-> Status: proposta · Fase: Fase 2 · Regras: controle de acesso por papel (RBAC) · Telas: Usuários, Minha conta
+> Status: proposta · Fase: Fase 2 · Regras: **RN-16 (nova)** — controle de acesso por papel (RBAC) · Telas: Usuários, Minha conta
 
 ## Contexto
 
@@ -40,9 +40,12 @@ ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1;
 -- E-mail sempre normalizado: a unicidade existente passa a valer sem diferenciar maiúsculas.
 ALTER TABLE users ADD CONSTRAINT users_email_normalized_check
     CHECK (email = lower(trim(email)));
+
+-- Ampliar o CHECK de audit_logs com as ações desta spec (preservando as ações já existentes na main):
+-- 'user.created', 'user.updated', 'user.password_reset', 'user.password_changed'
 ```
 
-Seed novo `008_seed_admin.sql` (apenas desenvolvimento/testes locais — nunca aplicar senha padrão em produção): `Administrador`, `admin@mesafacil.com`, senha `123`, papel `admin`.
+Seed novo (próximo número livre na `main`, ex.: `008_seed_admin.sql`, apenas desenvolvimento/testes locais — nunca aplicar senha padrão em produção): `Administrador`, `admin@mesafacil.com`, senha `123`, papel `admin`.
 
 ## Contrato da API
 
@@ -76,7 +79,7 @@ Erros: `401` sem token, usuário inativo ou removido; `403` papel; `404` usuári
 - [ ] Eventos sensíveis de usuário/privilégio/senha são gravados em `audit_logs` na mesma transação.
 - [ ] E-mail com maiúsculas é normalizado; repetido → `409`; senha com menos de 8 caracteres → `422`.
 - [ ] Troca da própria senha exige a senha atual.
-- [ ] `docs/ESPECIFICACAO.md` (perfis e permissões), README (credenciais de demonstração e rotas) e `frontend/CONTRATO-API.md` atualizados.
+- [ ] `docs/ESPECIFICACAO.md` (perfis e permissões, seção 3.3 e matriz §4 com RN-16), README (credenciais de demonstração e rotas) e `frontend/CONTRATO-API.md` atualizados.
 
 ## Fora de escopo
 

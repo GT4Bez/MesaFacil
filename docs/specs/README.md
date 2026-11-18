@@ -27,7 +27,7 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 
 **MVP** fecha as regras obrigatórias RN-01 a RN-10 e as telas mínimas. **Fase 2** (pós-MVP) só é retomada depois do MVP entregue e com acordo da equipe; as regras novas são numeradas na ordem de implementação (RN-11 é a da spec 005).
 
-Os números de migration (`sql/migrations/NNN_*.sql`) citados nas specs são exemplos: na implementação usa-se o próximo número livre na `main`.
+Os números de migration (`sql/migrations/NNN_*.sql`) e de seed (`sql/seeds/NNN_*.sql`) citados nas specs são exemplos: na implementação usa-se o próximo número livre na `main`.
 
 ## Template
 
