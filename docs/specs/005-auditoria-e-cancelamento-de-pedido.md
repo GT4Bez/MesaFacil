@@ -1,12 +1,12 @@
 # 005 — Auditoria e cancelamento de pedido com motivo
 
-> Status: proposta · Regras: RN-03, RN-05, **RN-14 (nova)**
+> Status: proposta · Regras: RN-03, RN-05, **RN-11 (nova)**
 
 ## Contexto
 
 Cancelar item enviado já exige gerente e motivo (RN-05), mas cancelar o **pedido inteiro** não pede motivo nem registra quem cancelou. Operações sensíveis (cancelamentos, sangrias, fechamento de turno, mudança de preço, ajuste de estoque) não deixam rastro consultável.
 
-## Regras (RN-14)
+## Regras (RN-11)
 
 1. Cancelar pedido: apenas `manager`, com motivo obrigatório (sem motivo → `422`, outro papel → `403`).
 2. Pedido com pagamento registrado não pode ser cancelado → `409` (estorno fora de escopo).
@@ -17,10 +17,10 @@ Cancelar item enviado já exige gerente e motivo (RN-05), mas cancelar o **pedid
 | :-- | :-- |
 | `order_item.canceled` | cancelamento de item enviado (RN-05) |
 | `order.canceled` | este documento |
-| `shift.opened` / `shift.closed` | turnos (spec 007/008) |
-| `cash.withdrawal` / `cash.reinforcement` | spec 007 |
+| `shift.opened` / `shift.closed` | abertura e fechamento de turno (rotas atuais) |
 | `menu_item.price_changed` | spec 002 |
-| `stock.adjusted` | spec 009 |
+
+As specs da Fase 2 (movimentos de caixa, conferência cega, estoque) acrescentam suas ações com uma migration que amplia o `CHECK`, junto da funcionalidade.
 
 5. Não há tela de auditoria: os registros aparecem no relatório do turno (spec 010).
 
@@ -50,7 +50,7 @@ CREATE TABLE audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT audit_logs_action_check CHECK (action IN (
     'order_item.canceled', 'order.canceled', 'shift.opened', 'shift.closed',
-    'cash.withdrawal', 'cash.reinforcement', 'menu_item.price_changed', 'stock.adjusted'))
+    'menu_item.price_changed'))
 );
 CREATE INDEX audit_logs_shift_idx ON audit_logs (shift_id);
 ```
@@ -76,7 +76,8 @@ Botão "Cancelar pedido" (só gerente) na comanda abre modal com motivo obrigat�
 - [ ] Itens ativos do pedido cancelado ficam `canceled` com o mesmo motivo.
 - [ ] Cancelar item enviado e cancelar pedido geram `audit_logs` com `shift_id`.
 - [ ] Se a gravação da auditoria falhar, o cancelamento sofre rollback (teste).
-- [ ] `docs/ESPECIFICACAO.md`: RN-14 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
+- [ ] Os testes existentes que cancelam pedido sem motivo (`backend/tests/integration/orders.test.js`) são atualizados no mesmo PR.
+- [ ] `docs/ESPECIFICACAO.md`: RN-11 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
