@@ -59,7 +59,7 @@ Mover a lógica de turnos de `shiftRoutes.js` para um `ShiftService` (abrir com 
 - [ ] Sangria sem motivo → `422`; acima do dinheiro esperado → `422`; em turno fechado → `409`.
 - [ ] Garçom e cozinha → `403`.
 - [ ] Movimentos geram auditoria com `shift_id`.
-- [ ] README §6: RN-12.
+- [ ] `docs/ESPECIFICACAO.md`: RN-12 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
