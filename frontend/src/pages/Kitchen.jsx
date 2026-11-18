@@ -18,18 +18,32 @@ function waitingTime(sentAt, now) {
 export default function Kitchen() {
   const [orders, setOrders] = useState(null)
   const [now, setNow] = useState(Date.now())
+  const [pollError, setPollError] = useState('')
   const { busy, error, run } = useAction()
 
-  async function load() {
-    setOrders(await api.get('/kitchen/orders'))
+  async function load(isActive = () => true) {
+    const data = await api.get('/kitchen/orders')
+    if (!isActive()) return
+    setOrders(data)
     setNow(Date.now())
+    setPollError('')
   }
 
   useEffect(() => {
-    run(load)
-    // Polling simples (sem WebSocket): a fila se atualiza sozinha a cada 5 s.
-    const timer = setInterval(() => run(load), POLLING_MS)
-    return () => clearInterval(timer)
+    let active = true
+    run(() => load(() => active))
+    // Polling em segundo plano (sem WebSocket): não trava botões nem limpa erro de ação.
+    const timer = setInterval(async () => {
+      try {
+        await load(() => active)
+      } catch (e) {
+        if (active) setPollError(e.message)
+      }
+    }, POLLING_MS)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
   }, [])
 
   const advance = (item) =>
@@ -37,6 +51,8 @@ export default function Kitchen() {
       await api.patch(`/order-items/${item.id}/status`, { status: NEXT_STATUS[item.status].status })
       await load()
     })
+
+  const displayError = error || pollError
 
   return (
     <>
@@ -48,10 +64,10 @@ export default function Kitchen() {
         </div>
       </div>
 
-      {error && <div className="alert error">{error}</div>}
+      {displayError && <div className="alert error">{displayError}</div>}
 
       {!orders ? (
-        !error && <div className="empty-state">Carregando fila...</div>
+        !displayError && <div className="empty-state">Carregando fila...</div>
       ) : orders.length === 0 ? (
         <div className="empty-state">Nenhum item na fila. Tudo pronto por aqui!</div>
       ) : (
