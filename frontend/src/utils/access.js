@@ -4,6 +4,7 @@ export const SCREENS = {
   tables: { path: '/tables', label: 'Salão e mesas', icon: '▦', roles: ['waiter', 'cashier', 'manager'] },
   kitchen: { path: '/kitchen', label: 'Cozinha (KDS)', icon: '♨', roles: ['kitchen', 'manager'] },
   cashier: { path: '/cashier', label: 'Caixa', icon: '▤', roles: ['cashier', 'manager'] },
+  menuAdmin: { path: '/admin/menu', label: 'Admin do cardápio', icon: '☰', roles: ['manager'] },
 }
 
 const HOME_BY_ROLE = {
