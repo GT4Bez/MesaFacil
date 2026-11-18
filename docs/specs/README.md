@@ -23,6 +23,9 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 | 008 | [Fechamento com conferência cega](008-conferencia-cega.md) | 007 |
 | 009 | [Insumos e ficha técnica](009-insumos-e-ficha-tecnica.md) | 002, 005 |
 | 010 | [Relatório do turno](010-relatorio-do-turno.md) | 008, 009 |
+| 011 | [Administração de usuários e superadmin](011-usuarios-e-superadmin.md) | 004 |
+
+Os números de migration (`sql/migrations/NNN_*.sql`) citados nas specs são exemplos: na implementação usa-se o próximo número livre na `main`.
 
 ## Template
 
