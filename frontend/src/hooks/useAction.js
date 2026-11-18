@@ -20,5 +20,5 @@ export function useAction() {
     }
   }
 
-  return { busy, error, run }
+  return { busy, error, clearError: () => setError(''), run }
 }
