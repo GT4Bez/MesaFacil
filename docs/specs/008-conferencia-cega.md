@@ -57,7 +57,7 @@ Admin do turno → "Fechar turno": três campos de valor declarado, sem nenhum t
 - [ ] Diferença ≠ 0 sem motivo → `422`; com motivo → fecha e grava.
 - [ ] Esperado em dinheiro considera fundo, troco, sangrias e reforços (teste com todos).
 - [ ] Pedido ativo → `409` e nenhuma linha em `shift_closings`.
-- [ ] README §6: RN-13.
+- [ ] `docs/ESPECIFICACAO.md`: RN-13 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
