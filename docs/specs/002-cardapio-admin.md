@@ -40,7 +40,7 @@ Item: `{ id, name, category, price, available }`. Erros: `404` item inexistente,
 - [ ] Gerente cria, edita preço e desativa item; garçom recebe `403`.
 - [ ] Item desativado some de `GET /menu-items` e de `POST /orders/:id/items` (`404`).
 - [ ] Alterar o preço não muda o `unitPrice` de itens já lançados (teste de integração).
-- [ ] `frontend/CONTRATO-API.md` e README §9 atualizados.
+- [ ] `frontend/CONTRATO-API.md` e tabela "Rotas da API" do README atualizados.
 
 ## Fora de escopo
 
