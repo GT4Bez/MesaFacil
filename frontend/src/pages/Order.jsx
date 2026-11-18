@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAction } from '../hooks/useAction'
+import { useAuth } from '../context/AuthContext'
+import ReasonModal from '../components/ReasonModal'
 import { api } from '../services/api'
 import { formatMoney, ITEM_STATUS_LABELS, ORDER_STATUS_LABELS } from '../utils/format'
 
 const ALL_CATEGORIES = 'Todos'
+const ACTIVE_ORDER_STATUSES = ['open', 'in_kitchen', 'ready_to_pay']
 
 export default function Order() {
   const { id } = useParams()
   const [order, setOrder] = useState(null)
   const [menu, setMenu] = useState([])
+  // null, { kind: 'order' } ou { kind: 'item', item }: o que o gerente está cancelando.
+  const [cancelTarget, setCancelTarget] = useState(null)
   const { busy, error, run } = useAction()
+  const { user } = useAuth()
+  const isManager = user.role === 'manager'
 
   async function loadOrder() {
     setOrder(await api.get(`/orders/${id}`))
@@ -32,6 +39,13 @@ export default function Order() {
   const removeItem = (item) =>
     change(() => api.patch(`/order-items/${item.id}/status`, { status: 'canceled' }))
   const setStatus = (status) => change(() => api.patch(`/orders/${id}/status`, { status }))
+  // RN-05 (item enviado) e RN-11 (pedido): só o gerente, com motivo.
+  const confirmCancel = (reason) =>
+    cancelTarget.kind === 'order'
+      ? change(() => api.patch(`/orders/${id}/status`, { status: 'canceled', reason }))
+      : change(() =>
+          api.patch(`/order-items/${cancelTarget.item.id}/status`, { status: 'canceled', reason }),
+        )
 
   if (!order) {
     return error ? (
@@ -47,6 +61,7 @@ export default function Order() {
   // RN-06: a conta só pode ser pedida quando a cozinha terminou todos os itens.
   const kitchenDone =
     order.status === 'in_kitchen' && activeItems.every((item) => item.status === 'ready')
+  const orderActive = ACTIVE_ORDER_STATUSES.includes(order.status)
 
   return (
     <>
@@ -59,12 +74,29 @@ export default function Order() {
             Status: {ORDER_STATUS_LABELS[order.status]}
           </p>
         </div>
-        <Link className="outline-btn" to="/tables">
-          ← Voltar às mesas
-        </Link>
+        <div className="button-row">
+          {isManager && orderActive && (
+            <button
+              className="outline-btn"
+              disabled={busy}
+              onClick={() => setCancelTarget({ kind: 'order' })}
+            >
+              Cancelar pedido
+            </button>
+          )}
+          <Link className="outline-btn" to="/tables">
+            ← Voltar às mesas
+          </Link>
+        </div>
       </div>
 
-      {error && <div className="alert error">{error}</div>}
+      {order.cancellation && (
+        <div className="alert warning">
+          Pedido cancelado por {order.cancellation.canceledBy.name}. Motivo:{' '}
+          {order.cancellation.reason}
+        </div>
+      )}
+      {error && !cancelTarget && <div className="alert error">{error}</div>}
 
       <div className="order-layout">
         <Menu menu={menu} busy={busy} onAdd={addItem} />
@@ -85,6 +117,9 @@ export default function Order() {
                 busy={busy}
                 onQuantityChange={(quantity) => setQuantity(item, quantity)}
                 onRemove={() => removeItem(item)}
+                onCancel={
+                  isManager && orderActive ? () => setCancelTarget({ kind: 'item', item }) : null
+                }
               />
             ))}
             {!order.items.length && (
@@ -114,6 +149,26 @@ export default function Order() {
           </div>
         </section>
       </div>
+
+      {cancelTarget && (
+        <ReasonModal
+          title={
+            cancelTarget.kind === 'order'
+              ? `Cancelar o pedido #${order.id}`
+              : `Cancelar ${cancelTarget.item.name}`
+          }
+          description={
+            cancelTarget.kind === 'order'
+              ? 'Todos os itens ainda ativos serão cancelados e a mesa será liberada. Pedido com pagamento registrado não pode ser cancelado.'
+              : 'O item já foi enviado à cozinha. O cancelamento fica registrado com o seu nome.'
+          }
+          confirmLabel={cancelTarget.kind === 'order' ? 'Cancelar pedido' : 'Cancelar item'}
+          busy={busy}
+          error={error}
+          onConfirm={confirmCancel}
+          onClose={() => setCancelTarget(null)}
+        />
+      )}
     </>
   )
 }
@@ -205,7 +260,7 @@ function Menu({ menu, busy, onAdd }) {
   )
 }
 
-function OrderItem({ item, busy, onQuantityChange, onRemove }) {
+function OrderItem({ item, busy, onQuantityChange, onRemove, onCancel }) {
   // RN-04: depois de enviado à cozinha, o item não pode mais ser alterado.
   const editable = item.status === 'pending'
 
@@ -241,7 +296,20 @@ function OrderItem({ item, busy, onQuantityChange, onRemove }) {
             </button>
           </>
         ) : (
-          <span>Qtd. {item.quantity}</span>
+          <>
+            <span>Qtd. {item.quantity}</span>
+            {onCancel && item.status !== 'canceled' && (
+              <button
+                className="remove-btn"
+                aria-label={`Cancelar ${item.name}`}
+                title="Cancelar item enviado"
+                disabled={busy}
+                onClick={onCancel}
+              >
+                ×
+              </button>
+            )}
+          </>
         )}
       </div>
       <strong>{formatMoney(item.unitPrice * item.quantity)}</strong>
