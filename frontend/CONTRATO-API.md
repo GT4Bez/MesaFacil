@@ -48,6 +48,14 @@ Papéis, estados e rotas seguem o `README.md` da raiz; o envelope de resposta se
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).
 
+## Cozinha (KDS)
+
+- `GET /kitchen/orders` — `kitchen` e `manager`. Itens `sent` e `preparing` de pedidos ativos, agrupados por
+  pedido, do envio mais antigo para o mais novo:
+  `[{ "orderId": "12", "table": { "number": 4 }, "items": [{ "id": "40", "name": "Picanha na Chapa", "quantity": 2, "notes": "ao ponto", "status": "sent", "sentAt": "2026-11-18T19:02:11Z" }] }]`.
+- Transições pela rota existente `PATCH /order-items/:id/status` (`sent → preparing → ready`).
+- `sentAt` é gravado no envio à cozinha (`PATCH /orders/:id/status` com `in_kitchen`) e nunca muda.
+
 ## Caixa
 
 - `GET /orders/:id/bill?serviceTax=true|false` — resposta:

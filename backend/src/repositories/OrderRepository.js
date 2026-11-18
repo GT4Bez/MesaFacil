@@ -127,7 +127,9 @@ export class OrderRepository {
 
   async sendPendingItems(orderId, db = this.database) {
     await db.query(
-      `UPDATE order_items SET status = 'sent' WHERE order_id = $1 AND status = 'pending'`,
+      `UPDATE order_items
+       SET status = 'sent', sent_at = CURRENT_TIMESTAMP
+       WHERE order_id = $1 AND status = 'pending'`,
       [orderId]
     );
   }
