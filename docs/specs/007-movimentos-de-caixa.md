@@ -1,12 +1,12 @@
 # 007 — Movimentos de caixa: fundo, sangria e reforço
 
-> Status: proposta · Regras: RN-02, **RN-12 (nova)** · Tela mínima: Admin do turno
+> Status: proposta · Regras: RN-02, **RN-13 (nova)** · Tela mínima: Admin do turno
 
 ## Contexto
 
 O turno abre e fecha, mas o sistema não sabe quanto dinheiro deveria estar na gaveta: não registra o troco inicial (fundo), as retiradas para o cofre (sangria) nem os suprimentos de troco (reforço). Sem isso, a conferência cega (spec 008) não tem valor esperado.
 
-## Regras (RN-12)
+## Regras (RN-13)
 
 1. Abrir turno exige `openingFloat` (número ≥ 0, pode ser 0); ausente/inválido → `422`. O fundo vira um movimento `opening_float`.
 2. Sangria (`withdrawal`) e reforço (`reinforcement`): `cashier` ou `manager`, turno aberto (`409` se fechado), `amount > 0`, motivo obrigatório (`422`).
@@ -33,6 +33,11 @@ CREATE TABLE cash_movements (
   CONSTRAINT cash_movements_reason_check CHECK (type = 'opening_float' OR length(trim(COALESCE(reason, ''))) > 0)
 );
 CREATE UNIQUE INDEX cash_movements_single_float_idx ON cash_movements (shift_id) WHERE type = 'opening_float';
+
+ALTER TABLE audit_logs DROP CONSTRAINT audit_logs_action_check;
+ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_action_check CHECK (action IN (
+  'order_item.canceled', 'order.canceled', 'shift.opened', 'shift.closed',
+  'menu_item.price_changed', 'cash.withdrawal', 'cash.reinforcement'));
 ```
 
 Seed: fundo para o turno encerrado do seed atual.
@@ -47,7 +52,7 @@ Seed: fundo para o turno encerrado do seed atual.
 
 ## Implementação
 
-Mover a lógica de turnos de `shiftRoutes.js` para um `ShiftService` (abrir com fundo + auditoria numa transação), com `CashMovementRepository`. Cálculo do esperado em um único método reutilizado pelas specs 008 e 010.
+Estender `ShiftService` (abrir com fundo + auditoria numa transação), com `CashMovementRepository`. Cálculo do esperado em um único método reutilizado pelas specs 008 e 010.
 
 ## Telas
 
@@ -55,11 +60,11 @@ Mover a lógica de turnos de `shiftRoutes.js` para um `ShiftService` (abrir com 
 
 ## Critérios de aceite
 
-- [ ] Abrir turno sem `openingFloat` → `422`; com 0 → ok.
+- [ ] Abrir turno sem `openingFloat` → `422`; com 0 → ok (atualizando as chamadas de `POST /shifts` nos testes de integração existentes).
 - [ ] Sangria sem motivo → `422`; acima do dinheiro esperado → `422`; em turno fechado → `409`.
 - [ ] Garçom e cozinha → `403`.
 - [ ] Movimentos geram auditoria com `shift_id`.
-- [ ] `docs/ESPECIFICACAO.md`: RN-12 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
+- [ ] `docs/ESPECIFICACAO.md`: RN-13 na seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
