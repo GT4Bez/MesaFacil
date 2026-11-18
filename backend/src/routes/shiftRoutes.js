@@ -15,6 +15,10 @@ router.post('/', requireRole('manager'), async (req, res) => {
   res.status(201).json({ success: true, data: await shiftService.open(req.user) });
 });
 
+router.get('/:id/report', requireRole('manager'), async (req, res) => {
+  res.json({ success: true, data: await shiftService.getReport(req.params.id) });
+});
+
 router.patch('/:id/close', requireRole('manager'), async (req, res) => {
   res.json({ success: true, data: await shiftService.close(req.params.id, req.user) });
 });

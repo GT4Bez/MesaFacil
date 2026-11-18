@@ -119,7 +119,7 @@ O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-c
 | Recurso | Endpoints | Controle de Acesso |
 | :--- | :--- | :--- |
 | **Autenticação** | `POST /auth/login` | Público |
-| **Mesas e Turnos** | `GET /tables`, `GET /shifts/active`, `POST /shifts`, `PATCH /shifts/:id/close` | Autenticado (`POST`/`PATCH` restritos a `manager`) |
+| **Mesas e Turnos** | `GET /tables`, `GET /shifts/active`, `POST /shifts`, `PATCH /shifts/:id/close`, `GET /shifts/:id/report` | Autenticado (`POST`, `PATCH` e relatório restritos a `manager`) |
 | **Cardápio** | `GET /menu-items`, `GET /menu-items/categories`, `GET /menu-items?all=true`, `POST /menu-items`, `PATCH /menu-items/:id` | Autenticado (`?all=true`, `POST` e `PATCH` restritos a `manager`) |
 | **Pedidos** | `POST /orders`, `GET /orders/:id`, `PATCH /orders/:id/status` | Autenticado + RBAC por transição |
 | **Cozinha (KDS)** | `GET /kitchen/orders` | Autenticado (`kitchen` e `manager`) |
