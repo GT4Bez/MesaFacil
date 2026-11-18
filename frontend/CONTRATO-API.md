@@ -27,6 +27,12 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `GET /shifts/active` — `{ id, status: "open" }` ou `null` quando não há turno aberto.
 - `POST /shifts` — abre o turno (gerente).
 - `PATCH /shifts/:id/close` — encerra o turno; `409` se houver pedido ativo (RN-02).
+- `GET /shifts/:id/report` — relatório do turno (gerente; `404` se não existir), parcial enquanto aberto (RN-10):
+  `{ shift: { id, status, openedAt, closedAt, openedBy }, totalShift, ordersClosed, averageTicket,
+  byPaymentMethod: [{ method, total, count }], byMenuItem: [{ menuItemId, name, quantity, total }],
+  cancellations: { ordersCount, orders: [{ orderId, reason, by }], items: [{ orderItemId, name, quantity, reason, by }] } }`.
+  `byPaymentMethod` sempre traz `cash`, `card` e `pix`; `byMenuItem` vem do maior para o menor total;
+  `cancellations.items` lista só cancelamentos gerenciais de pedidos não cancelados.
 - `GET /tables` — array de `{ id, number, status, activeOrderId }`, com `status` igual a
   `available` ou `occupied` e `activeOrderId` preenchido nas mesas ocupadas.
 - `POST /orders` — body `{ "tableId": 1 }`; resposta `{ "id": 123 }`. `409` se a mesa já tiver

@@ -1,12 +1,18 @@
 import { ShiftRepository } from '../repositories/ShiftRepository.js';
+import { ShiftReportRepository } from '../repositories/ShiftReportRepository.js';
 import { AuditLogService } from './AuditLogService.js';
 import { ConflictError, NotFoundError } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
 
 export class ShiftService {
-  constructor(shiftRepository = new ShiftRepository(), auditLogService = new AuditLogService()) {
+  constructor(
+    shiftRepository = new ShiftRepository(),
+    auditLogService = new AuditLogService(),
+    shiftReportRepository = new ShiftReportRepository()
+  ) {
     this.shifts = shiftRepository;
     this.audit = auditLogService;
+    this.reports = shiftReportRepository;
   }
 
   findActive() {
@@ -41,6 +47,28 @@ export class ShiftService {
       if (!shift) throw new NotFoundError('Turno não encontrado.');
       if (shift.status === 'closed') throw new ConflictError('O turno já está encerrado.');
       throw new ConflictError('Não é possível encerrar o turno com pedidos ativos.');
+    });
+  }
+
+  // RN-10: relatório derivado do banco; com o turno aberto, é parcial.
+  async getReport(id) {
+    return this.reports.snapshot(async (db) => {
+      const shift = await this.reports.findShift(id, db);
+      if (!shift) throw new NotFoundError('Turno não encontrado.');
+
+      const totals = await this.reports.findTotals(id, db);
+      const byPaymentMethod = await this.reports.findByPaymentMethod(id, db);
+      const byMenuItem = await this.reports.findByMenuItem(id, db);
+      const orders = await this.reports.findCanceledOrders(id, db);
+      const items = await this.reports.findCanceledItems(id, db);
+
+      return {
+        shift,
+        ...totals,
+        byPaymentMethod,
+        byMenuItem,
+        cancellations: { ordersCount: orders.length, orders, items }
+      };
     });
   }
 
