@@ -6,6 +6,11 @@ recebem `Authorization: Bearer <token>`.
 Papéis, estados e rotas seguem o `README.md` da raiz; o envelope de resposta segue o
 `docs/SPRINT_1.md`.
 
+## Navegação por papel (frontend)
+
+A matriz de telas por papel fica em `src/utils/access.js` (home e menu de cada papel); rota fora do papel
+redireciona para a home. O backend continua respondendo `403` como barreira real.
+
 ## Envelope
 
 - Sucesso: `{ "success": true, "data": ... }` — os formatos abaixo descrevem o conteúdo de `data`.
