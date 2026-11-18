@@ -15,8 +15,6 @@ export default function ShiftAdmin() {
   const [loaded, setLoaded] = useState(false)
   const { busy, error, run } = useAction()
 
-  const reportId = selectedId ?? activeShift?.id ?? null
-
   async function load(id = selectedId) {
     const active = await api.get('/shifts/active')
     setActiveShift(active)
@@ -68,7 +66,7 @@ export default function ShiftAdmin() {
           <h1>Turno e relatório</h1>
           <p>Abra e encerre o turno e acompanhe o fechamento financeiro.</p>
         </div>
-        <button className="outline-btn" disabled={busy || !reportId} onClick={() => run(() => load())}>
+        <button className="outline-btn" disabled={busy} onClick={() => run(() => load())}>
           ↻ Atualizar
         </button>
       </div>
