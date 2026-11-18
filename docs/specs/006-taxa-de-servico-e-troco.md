@@ -53,7 +53,7 @@ Caixa: chave "Taxa de serviço (10%)" que chama a rota nova; após pagamento em 
 - [ ] Dinheiro acima do saldo grava o troco; cartão/Pix acima do saldo → `422`.
 - [ ] Desligar a taxa com pagamento maior que o novo total → `409`.
 - [ ] `frontend/CONTRATO-API.md` atualizado (o `?serviceTax=` deixa de existir).
-- [ ] README §6: RN-11.
+- [ ] `docs/ESPECIFICACAO.md`: RN-11 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
