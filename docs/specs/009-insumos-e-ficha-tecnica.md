@@ -51,11 +51,20 @@ CREATE TABLE stock_movements (
   user_id BIGINT NOT NULL REFERENCES users (id),
   reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT stock_movements_sale_item_check CHECK ((type = 'sale') = (order_item_id IS NOT NULL))
+  CONSTRAINT stock_movements_sale_item_check CHECK ((type = 'sale') = (order_item_id IS NOT NULL)),
+  CONSTRAINT stock_movements_quantity_sign_check CHECK (
+    (type = 'sale' AND quantity < 0) OR (type = 'purchase' AND quantity > 0) OR type = 'adjustment'),
+  CONSTRAINT stock_movements_adjustment_reason_check CHECK (
+    type <> 'adjustment' OR length(trim(COALESCE(reason, ''))) > 0)
 );
+
+ALTER TABLE audit_logs DROP CONSTRAINT audit_logs_action_check;
+ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_action_check CHECK (action IN (
+  'order_item.canceled', 'order.canceled', 'shift.opened', 'shift.closed',
+  'menu_item.price_changed', 'cash.withdrawal', 'cash.reinforcement', 'stock.adjusted'));
 ```
 
-Seed `008_seed_ingredients.sql`: ~10 insumos e ficha para 6 dos 8 itens do cardápio (2 ficam sem ficha, para demonstrar a cobertura do CMV).
+Seed novo (próximo número livre na `main`, ex.: `008_seed_ingredients.sql`): ~10 insumos e ficha para 6 dos 8 itens do cardápio (2 ficam sem ficha, para demonstrar a cobertura do CMV).
 
 ## Contrato da API (todas `manager`)
 
@@ -78,7 +87,7 @@ Erros: `422` validação, `404` inexistente, `403` papel, `409` insumo inativo n
 - [ ] Estoque negativo é permitido e marcado com `belowMin`.
 - [ ] Ajuste grava a diferença e a auditoria; entrada atualiza o custo.
 - [ ] Alterar o custo depois não muda o custo gravado nos movimentos antigos.
-- [ ] `docs/ESPECIFICACAO.md`: RN-15 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
+- [ ] `docs/ESPECIFICACAO.md`: RN-15 na seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
