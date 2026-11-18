@@ -907,3 +907,11 @@ footer span {
   font-size: 12px;
   font-weight: 700;
 }
+.menu-item.unavailable {
+  opacity: 0.55;
+}
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}

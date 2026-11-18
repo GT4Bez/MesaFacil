@@ -7,6 +7,7 @@ import Tables from './pages/Tables'
 import Order from './pages/Order'
 import Cashier from './pages/Cashier'
 import Kitchen from './pages/Kitchen'
+import MenuAdmin from './pages/MenuAdmin'
 import { homeFor, SCREENS } from './utils/access'
 
 export default function App() {
@@ -26,6 +27,9 @@ export default function App() {
         </Route>
         <Route element={<RoleRoute roles={SCREENS.cashier.roles} />}>
           <Route path={SCREENS.cashier.path} element={<Cashier />} />
+        </Route>
+        <Route element={<RoleRoute roles={SCREENS.menuAdmin.roles} />}>
+          <Route path={SCREENS.menuAdmin.path} element={<MenuAdmin />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={home} replace />} />
