@@ -1,17 +1,13 @@
 import { Router } from 'express';
 import { OrderService } from '../services/OrderService.js';
-import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
 import { authenticateToken, requireRole } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 const orderService = new OrderService();
-const menuItemRepository = new MenuItemRepository();
 
 const ok = (res, data, status = 200) => res.status(status).json({ success: true, data });
 
 // Montado na raiz: o token é exigido rota a rota para não afetar caminhos de outros routers.
-router.get('/menu-items', authenticateToken, async (req, res) => ok(res, await menuItemRepository.findAvailable()));
-
 router.post('/orders', authenticateToken, requireRole('waiter', 'manager'), async (req, res) =>
   ok(res, await orderService.create(req.body, req.user), 201));
 
