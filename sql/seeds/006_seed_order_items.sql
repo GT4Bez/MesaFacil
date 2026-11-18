@@ -2,10 +2,12 @@
 -- Mesa 1: 2x Picanha na Chapa + 2x Refrigerante Lata
 -- Mesa 2: 1x Frango Grelhado + 1x Suco Natural + 1x Pudim (cancelado pelo gerente, RN-05)
 -- Mesa 3: 1x Batata Frita + 3x Refrigerante Lata
-INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, notes, status, canceled_by, cancellation_reason)
+-- sent_at: todos os itens do exemplo foram enviados à cozinha logo após a abertura do pedido.
+INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, notes, status, canceled_by, cancellation_reason, sent_at)
 SELECT o.id, m.id, i.quantity, m.price, i.notes, i.status,
        CASE WHEN i.status = 'canceled' THEN g.id END,
-       i.cancellation_reason
+       i.cancellation_reason,
+       o.created_at + INTERVAL '5 minutes'
 FROM (VALUES
     (1, 'Picanha na Chapa', 2, 'ao ponto', 'ready', NULL),
     (1, 'Refrigerante Lata', 2, NULL, 'ready', NULL),

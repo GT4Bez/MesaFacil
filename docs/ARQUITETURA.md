@@ -41,7 +41,7 @@ stateDiagram-v2
 
 ## 🗄️ 2. Modelo Relacional e Camadas
 
-### Entidades no PostgreSQL (`sql/migrations/001..007`)
+### Entidades no PostgreSQL (`sql/migrations/`)
 
 ```mermaid
 flowchart LR
@@ -61,6 +61,7 @@ flowchart LR
 - **`orders` (`005`):** comandas vinculadas a mesa, turno e usuário, protegidas pelo índice único parcial `orders_single_active_per_table_idx`.
 - **`order_items` (`006`):** itens lançados com `unit_price` congelado e constraint `order_items_cancellation_reason_check`.
 - **`payments` (`007`):** registros de pagamento por comanda (`cash`, `card`, `pix`) com `CHECK (amount > 0)`.
+- **`order_items.sent_at` (`008`):** horário de envio à cozinha, usado pelo KDS; `order_items_sent_at_check` garante que item `sent`/`preparing`/`ready` sempre o tenha.
 
 ### Organização do Backend (`backend/src/`)
 
