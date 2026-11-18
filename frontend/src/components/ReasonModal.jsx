@@ -11,12 +11,23 @@ export default function ReasonModal({ title, description, confirmLabel, busy, er
 
   async function handleSubmit(event) {
     event.preventDefault()
-    const reason = new FormData(event.target).get('reason').trim()
-    if (reason && (await onConfirm(reason))) onClose()
+    const field = event.currentTarget.elements.reason
+    const reason = field.value.trim()
+    if (!reason) {
+      field.value = ''
+      field.reportValidity()
+      return
+    }
+    if (await onConfirm(reason)) onClose()
+  }
+
+  function handleCancel(event) {
+    if (busy) event.preventDefault()
+    else onClose()
   }
 
   return (
-    <dialog ref={dialogRef} className="modal" onCancel={onClose} aria-labelledby="reason-modal-title">
+    <dialog ref={dialogRef} className="modal" onCancel={handleCancel} aria-labelledby="reason-modal-title">
       <form onSubmit={handleSubmit}>
         <h2 id="reason-modal-title">{title}</h2>
         {description && <p>{description}</p>}

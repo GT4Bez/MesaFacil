@@ -15,9 +15,19 @@ export default function Order() {
   const [menu, setMenu] = useState([])
   // null, { kind: 'order' } ou { kind: 'item', item }: o que o gerente está cancelando.
   const [cancelTarget, setCancelTarget] = useState(null)
-  const { busy, error, run } = useAction()
+  const { busy, error, clearError, run } = useAction()
   const { user } = useAuth()
   const isManager = user.role === 'manager'
+
+  function openCancel(target) {
+    clearError()
+    setCancelTarget(target)
+  }
+
+  function closeCancel() {
+    clearError()
+    setCancelTarget(null)
+  }
 
   async function loadOrder() {
     setOrder(await api.get(`/orders/${id}`))
@@ -79,7 +89,7 @@ export default function Order() {
             <button
               className="outline-btn"
               disabled={busy}
-              onClick={() => setCancelTarget({ kind: 'order' })}
+              onClick={() => openCancel({ kind: 'order' })}
             >
               Cancelar pedido
             </button>
@@ -118,7 +128,7 @@ export default function Order() {
                 onQuantityChange={(quantity) => setQuantity(item, quantity)}
                 onRemove={() => removeItem(item)}
                 onCancel={
-                  isManager && orderActive ? () => setCancelTarget({ kind: 'item', item }) : null
+                  isManager && orderActive ? () => openCancel({ kind: 'item', item }) : null
                 }
               />
             ))}
@@ -166,7 +176,7 @@ export default function Order() {
           busy={busy}
           error={error}
           onConfirm={confirmCancel}
-          onClose={() => setCancelTarget(null)}
+          onClose={closeCancel}
         />
       )}
     </>
