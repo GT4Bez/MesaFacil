@@ -47,7 +47,8 @@ export default function MenuAdmin() {
   // Item nunca é apagado: sai de linha com available = false (RN-09).
   const toggleAvailable = (item) =>
     run(async () => {
-      await api.patch(`/menu-items/${item.id}`, { available: !item.available })
+      const updated = await api.patch(`/menu-items/${item.id}`, { available: !item.available })
+      setForm((current) => (current.id === item.id ? { ...current, available: updated.available } : current))
       await load()
     })
 

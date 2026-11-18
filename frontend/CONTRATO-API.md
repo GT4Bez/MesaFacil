@@ -37,11 +37,29 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `GET /orders/:id` — `{ id, status, createdAt, table: { number }, items }`, com cada item no
   formato `{ id, name, quantity, unitPrice, notes, status }`.
 - `GET /menu-items` — array de `{ id, name, category, price }` (apenas itens disponíveis).
+
+## Administração do cardápio (gerente)
+
+- `GET /menu-items?all=true` — todos os itens, inclusive fora de linha: `{ id, name, category, price, available }`.
+- `GET /menu-items/categories` — categorias já usadas, em ordem alfabética (`["Bebidas", "Pratos"]`).
+- `POST /menu-items` — body `{ "name": "Moqueca", "category": "Pratos", "price": 79.9, "available": true }`
+  (`available` opcional, padrão `true`). Resposta `201` com o item criado.
+- `PATCH /menu-items/:id` — qualquer subconjunto de `{ name, category, price, available }`.
+  Não existe `DELETE`: o item sai de linha com `available: false` e o preço já lançado em pedidos não muda (RN-09).
+- Erros: `403` papel, `404` item inexistente, `422` validação (nome 1–100, categoria 1–50, preço ≥ 0).
 - `POST /orders/:id/items` — body `{ "menuItemId": 1, "quantity": 2, "notes": "sem cebola" }`.
 - `PATCH /order-items/:id/quantity` — body `{ "quantity": 2 }`; só para item `pending` (RN-04).
 - `PATCH /order-items/:id/status` — body `{ "status": "canceled" }` remove um item `pending`.
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).
+
+## Cozinha (KDS)
+
+- `GET /kitchen/orders` — `kitchen` e `manager`. Itens `sent` e `preparing` de pedidos ativos, agrupados por
+  pedido, do envio mais antigo para o mais novo:
+  `[{ "orderId": "12", "table": { "number": 4 }, "items": [{ "id": "40", "name": "Picanha na Chapa", "quantity": 2, "notes": "ao ponto", "status": "sent", "sentAt": "2026-11-18T19:02:11Z" }] }]`.
+- Transições pela rota existente `PATCH /order-items/:id/status` (`sent → preparing → ready`).
+- `sentAt` é gravado no envio à cozinha (`PATCH /orders/:id/status` com `in_kitchen`) e nunca muda.
 
 ## Caixa
 

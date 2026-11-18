@@ -613,7 +613,8 @@ button:disabled {
   gap: 10px;
   align-items: end;
 }
-.payment-form button {
+.payment-form button,
+.payment-form .button-row {
   grid-column: 1/-1;
 }
 .balance-card {
@@ -858,7 +859,8 @@ footer span {
   .payment-form {
     grid-template-columns: 1fr;
   }
-  .payment-form button {
+  .payment-form button,
+  .payment-form .button-row {
     grid-column: auto;
   }
 }
