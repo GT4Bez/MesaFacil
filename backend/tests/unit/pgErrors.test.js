@@ -32,9 +32,9 @@ describe('translatePgError', () => {
 
 describe('isPgError', () => {
   test('confere SQLSTATE e, se informada, a constraint', () => {
-    const erro = pgError('23505', { constraint: 'shifts_only_one_open_idx' })
+    const erro = pgError('23505', { constraint: 'shifts_single_open_idx' })
     assert.equal(isPgError(erro, '23505'), true)
-    assert.equal(isPgError(erro, '23505', 'shifts_only_one_open_idx'), true)
+    assert.equal(isPgError(erro, '23505', 'shifts_single_open_idx'), true)
     assert.equal(isPgError(erro, '23505', 'outra_constraint'), false)
     assert.equal(isPgError(erro, '23503'), false)
     assert.equal(isPgError(undefined, '23505'), false)

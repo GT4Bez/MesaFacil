@@ -1,5 +1,5 @@
 import './env.js'
-import { readdir } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseConnection } from '../../src/database/DatabaseConnection.js'
@@ -26,7 +26,7 @@ export function setupSchema() {
     await db.query('CREATE SCHEMA public')
     const files = (await readdir(MIGRATIONS_DIR)).filter((file) => file.endsWith('.sql')).sort()
     for (const file of files) {
-      await db.query(await Bun.file(resolve(MIGRATIONS_DIR, file)).text())
+      await db.query(await readFile(resolve(MIGRATIONS_DIR, file), 'utf8'))
     }
   })()
   return schemaReady
