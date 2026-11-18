@@ -11,10 +11,10 @@ RN-10 exige que o faturamento do turno seja derivado do banco, nunca calculado n
 1. Apenas `manager` (`403` para os demais); turno inexistente → `404`.
 2. Disponível com o turno aberto (parcial, `shift.status = "open"`) e fechado.
 3. Todos os valores são calculados por SQL no backend; o frontend só exibe.
-4. `totalShift` = Σ `payments.amount` dos pedidos do turno (`orders.shift_id`).
+4. `totalShift` = Σ `payments.amount` dos pedidos não cancelados do turno (`orders.shift_id`); em turno aberto, pagamentos já lançados compõem o total parcial, enquanto `ordersClosed` e `byMenuItem` consideram apenas pedidos `closed`.
 5. `ordersClosed` = pedidos `closed` do turno; `averageTicket` = `totalShift / ordersClosed` (0 sem pedidos fechados), arredondado em 2 casas.
 6. Vendas por item consideram apenas itens não cancelados de pedidos `closed`, pelo `unit_price` congelado (RN-09).
-7. Pedidos cancelados não entram em faturamento, ticket médio nem vendas por item; aparecem só no bloco de cancelamentos.
+7. Pedidos cancelados não entram em faturamento, ticket médio nem vendas por item; aparecem só no bloco de cancelamentos. `cancellations.items` filtra `canceled_by IS NOT NULL` (cancelamentos gerenciais da RN-05, ignorando itens `pending` removidos pelo garçom).
 
 ## Modelo de dados
 
@@ -33,7 +33,8 @@ Sem migration nova.
   "byPaymentMethod": [{ "method": "cash", "total": 412.5, "count": 7 }],
   "byMenuItem": [{ "menuItemId": "1", "name": "Picanha na Chapa", "quantity": 12, "total": 1078.8 }],
   "cancellations": {
-    "orders": 1,
+    "ordersCount": 1,
+    "orders": [],
     "items": [{ "orderItemId": "40", "name": "Suco Natural", "quantity": 1, "reason": "Sem estoque", "by": "Gerente" }]
   }
 }
@@ -41,7 +42,7 @@ Sem migration nova.
 
 - `byPaymentMethod` traz sempre `cash`, `card` e `pix` (com 0 quando não houver).
 - `byMenuItem` ordenado por `total` decrescente.
-- Quando a spec 005 estiver implementada, `cancellations.orders` passa a ser a lista `{ orderId, reason, by }`.
+- `cancellations.ordersCount` mantém o total numérico e `cancellations.orders` já nasce como array (`[]` na v1), passando a trazer `{ orderId, reason, by }` quando a spec 005 for implementada sem quebrar tipo do contrato.
 
 ## Telas
 
