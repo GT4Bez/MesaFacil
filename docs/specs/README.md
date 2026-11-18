@@ -23,8 +23,11 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 | 007 | [Movimentos de caixa](007-movimentos-de-caixa.md) | Fase 2 | 005, 006 |
 | 008 | [Fechamento com conferência cega](008-conferencia-cega.md) | Fase 2 | 007 |
 | 009 | [Insumos e ficha técnica](009-insumos-e-ficha-tecnica.md) | Fase 2 | 002, 005 |
+| 011 | [Administração de usuários e superadmin](011-usuarios-e-superadmin.md) | Fase 2 | 004, 005 |
 
 **MVP** fecha as regras obrigatórias RN-01 a RN-10 e as telas mínimas. **Fase 2** (pós-MVP) só é retomada depois do MVP entregue e com acordo da equipe; as regras novas são numeradas na ordem de implementação (RN-11 é a da spec 005).
+
+Os números de migration (`sql/migrations/NNN_*.sql`) e de seed (`sql/seeds/NNN_*.sql`) citados nas specs são exemplos: na implementação usa-se o próximo número livre na `main`.
 
 ## Template
 
