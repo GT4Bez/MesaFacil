@@ -129,13 +129,24 @@ O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-c
 
 ### Executando os Testes Automatizados
 
-O backend conta com 6 suítes automatizadas em `backend/tests/` (`node:test`), validando autenticação, RBAC, CORS, tradução de erros do PostgreSQL e o fluxo operacional ponta a ponta (`RN-01` a `RN-09`):
+Os testes rodam com `bun test` e ficam em `backend/tests/`:
+
+- `unit/` — regras isoladas (serviço de autenticação, middleware de RBAC, tradução de erros do PostgreSQL);
+- `integration/` — API completa contra um **PostgreSQL real** (login, CORS e o fluxo `RN-01` a `RN-09`), com o schema recriado a partir de `sql/migrations/` e o banco limpo entre os testes.
+
+Os testes de integração exigem `TEST_DATABASE_URL` apontando para um banco cujo nome termina em `_test` (o schema dele é apagado a cada execução):
 
 ```bash
+docker compose up -d db
+docker compose exec db createdb -U mesafacil mesafacil_test   # só na primeira vez
+
 cd backend
-bun install   # ou npm install
-npm test
+bun install
+TEST_DATABASE_URL=postgresql://mesafacil:mesafacil@localhost:5432/mesafacil_test bun run test
+# ou só uma camada: bun run test:unit | bun run test:integration
 ```
+
+Dentro do container do backend, use o host `db` no lugar de `localhost`. O CI (`.github/workflows/ci.yml`) roda os testes em todo PR e no push para a `main`, junto com o build do frontend.
 
 ---
 

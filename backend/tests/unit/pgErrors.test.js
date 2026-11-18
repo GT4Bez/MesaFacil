@@ -1,8 +1,8 @@
-import './helpers.js'
+import '../support/env.js'
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { isPgError, translatePgError } from '../src/errors/pgErrors.js'
-import { errorMiddleware } from '../src/middlewares/errorMiddleware.js'
+import { isPgError, translatePgError } from '../../src/errors/pgErrors.js'
+import { errorMiddleware } from '../../src/middlewares/errorMiddleware.js'
 
 const pgError = (code, extra = {}) => Object.assign(new Error('detalhe interno do banco'), { code, ...extra })
 

@@ -1,9 +1,9 @@
-import './helpers.js'
+import '../support/env.js'
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import jwt from 'jsonwebtoken'
-import { authenticateToken, requireRole } from '../src/middlewares/authMiddleware.js'
-import { ForbiddenError, UnauthorizedError } from '../src/errors/AppError.js'
+import { authenticateToken, requireRole } from '../../src/middlewares/authMiddleware.js'
+import { ForbiddenError, UnauthorizedError } from '../../src/errors/AppError.js'
 
 const secret = process.env.JWT_SECRET
 const user = { id: '1', name: 'Carlos', email: 'garcom@mesafacil.com', role: 'waiter' }

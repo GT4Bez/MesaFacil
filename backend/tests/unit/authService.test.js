@@ -1,10 +1,10 @@
-import './helpers.js'
+import '../support/env.js'
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { AuthService } from '../src/services/AuthService.js'
-import { BadRequestError, UnauthorizedError } from '../src/errors/AppError.js'
+import { AuthService } from '../../src/services/AuthService.js'
+import { BadRequestError, UnauthorizedError } from '../../src/errors/AppError.js'
 
 const passwordHash = await bcrypt.hash('123', 4)
 const dbUser = {
