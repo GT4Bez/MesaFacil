@@ -78,7 +78,7 @@ Erros: `422` validação, `404` inexistente, `403` papel, `409` insumo inativo n
 - [ ] Estoque negativo é permitido e marcado com `belowMin`.
 - [ ] Ajuste grava a diferença e a auditoria; entrada atualiza o custo.
 - [ ] Alterar o custo depois não muda o custo gravado nos movimentos antigos.
-- [ ] README §6: RN-15.
+- [ ] `docs/ESPECIFICACAO.md`: RN-15 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
