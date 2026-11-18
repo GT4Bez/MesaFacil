@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
+import StatCard from '../components/StatCard'
 
 export default function Tables() {
   const [tables, setTables] = useState(null)
@@ -134,16 +135,6 @@ export default function Tables() {
         </>
       )}
     </>
-  )
-}
-
-function StatCard({ label, value, hint, valueClassName }) {
-  return (
-    <div className="stat-card">
-      <small>{label}</small>
-      <strong className={valueClassName}>{value}</strong>
-      <span>{hint}</span>
-    </div>
   )
 }
 
