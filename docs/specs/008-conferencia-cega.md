@@ -1,15 +1,15 @@
 # 008 — Fechamento de turno com conferência cega
 
-> Status: proposta · Regras: RN-02, **RN-13 (nova)**
+> Status: proposta · Regras: RN-02, **RN-14 (nova)**
 
 ## Contexto
 
 Ao fechar o turno, quem fecha deveria contar o que tem na gaveta e nos comprovantes **sem ver** o valor que o sistema espera — só assim a diferença (quebra de caixa) é honesta. Hoje `PATCH /shifts/:id/close` só muda o status.
 
-## Regras (RN-13)
+## Regras (RN-14)
 
 1. O fechamento recebe os valores **declarados** de `cash`, `card` e `pix` (números ≥ 0, todos obrigatórios → `422`).
-2. O backend calcula o **esperado** de cada forma: dinheiro conforme RN-12 (spec 007); cartão e Pix = Σ `amount` dos pagamentos do turno naquela forma.
+2. O backend calcula o **esperado** de cada forma: dinheiro conforme RN-13 (spec 007); cartão e Pix = Σ `amount` dos pagamentos do turno naquela forma.
 3. `difference = declared − expected` por forma. Se alguma diferença ≠ 0, `reason` é obrigatório (`422`).
 4. O turno fecha mesmo com diferença; o resultado fica gravado e vai para auditoria (`shift.closed` com as diferenças em `details`).
 5. RN-02 continua: com pedido ativo → `409`, e nada é gravado.
@@ -53,11 +53,11 @@ Admin do turno → "Fechar turno": três campos de valor declarado, sem nenhum t
 
 ## Critérios de aceite
 
-- [ ] Fechar sem os três declarados → `422`.
+- [ ] Fechar sem os três declarados → `422` (atualizando as chamadas de `PATCH /shifts/:id/close` nos testes de integração existentes).
 - [ ] Diferença ≠ 0 sem motivo → `422`; com motivo → fecha e grava.
 - [ ] Esperado em dinheiro considera fundo, troco, sangrias e reforços (teste com todos).
 - [ ] Pedido ativo → `409` e nenhuma linha em `shift_closings`.
-- [ ] `docs/ESPECIFICACAO.md`: RN-13 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
+- [ ] `docs/ESPECIFICACAO.md`: RN-14 na seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
