@@ -52,9 +52,11 @@ export class OrderRepository {
   // `lock` trava a linha do pedido até o fim da transação (evita corrida entre ações).
   async findById(id, { lock = false } = {}, db = this.database) {
     const { rows } = await db.query(
-      `SELECT o.id, o.table_id, o.status, o.created_at, t.number AS table_number
+      `SELECT o.id, o.table_id, o.shift_id, o.status, o.created_at, t.number AS table_number,
+              o.cancellation_reason, o.canceled_by, cu.name AS canceled_by_name
        FROM orders o
        JOIN tables t ON t.id = o.table_id
+       LEFT JOIN users cu ON cu.id = o.canceled_by
        WHERE o.id = $1
        ${lock ? 'FOR UPDATE OF o' : ''}`,
       [id]
@@ -63,9 +65,16 @@ export class OrderRepository {
     return row && {
       id: String(row.id),
       tableId: String(row.table_id),
+      shiftId: String(row.shift_id),
       status: row.status,
       createdAt: row.created_at,
-      table: { number: row.table_number }
+      table: { number: row.table_number },
+      cancellation: row.canceled_by
+        ? {
+            reason: row.cancellation_reason,
+            canceledBy: { id: String(row.canceled_by), name: row.canceled_by_name }
+          }
+        : null
     };
   }
 
@@ -119,6 +128,22 @@ export class OrderRepository {
   async cancelItem(id, { canceledBy = null, reason = null } = {}, db = this.database) {
     await db.query(
       `UPDATE order_items
+       SET status = 'canceled', canceled_by = $2, cancellation_reason = $3
+       WHERE id = $1`,
+      [id, canceledBy, reason]
+    );
+  }
+
+  // RN-11: cancela o pedido e todos os itens ainda ativos com o mesmo responsável e motivo.
+  async cancelOrder(id, { canceledBy, reason }, db = this.database) {
+    await db.query(
+      `UPDATE order_items
+       SET status = 'canceled', canceled_by = $2, cancellation_reason = $3
+       WHERE order_id = $1 AND status <> 'canceled'`,
+      [id, canceledBy, reason]
+    );
+    await db.query(
+      `UPDATE orders
        SET status = 'canceled', canceled_by = $2, cancellation_reason = $3
        WHERE id = $1`,
       [id, canceledBy, reason]

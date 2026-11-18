@@ -12,8 +12,12 @@ export class ShiftRepository {
     this.database = database;
   }
 
-  async findActive() {
-    const { rows } = await this.database.query(
+  transaction(callback) {
+    return this.database.withTransaction(callback);
+  }
+
+  async findActive(db = this.database) {
+    const { rows } = await db.query(
       `SELECT id, status, opened_at, closed_at
        FROM shifts
        WHERE status = 'open'
@@ -22,8 +26,8 @@ export class ShiftRepository {
     return toShift(rows[0]) ?? null;
   }
 
-  async open(userId) {
-    const { rows } = await this.database.query(
+  async open(userId, db = this.database) {
+    const { rows } = await db.query(
       `INSERT INTO shifts (opened_by)
        VALUES ($1)
        RETURNING id, status, opened_at, closed_at`,
@@ -33,8 +37,8 @@ export class ShiftRepository {
   }
 
   // Só encerra se o turno estiver aberto e sem pedidos ativos (RN-02).
-  async close(id) {
-    const { rows } = await this.database.query(
+  async close(id, db = this.database) {
+    const { rows } = await db.query(
       `UPDATE shifts
        SET status = 'closed', closed_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND status = 'open'
@@ -48,8 +52,8 @@ export class ShiftRepository {
     return toShift(rows[0]) ?? null;
   }
 
-  async findById(id) {
-    const { rows } = await this.database.query(
+  async findById(id, db = this.database) {
+    const { rows } = await db.query(
       `SELECT id, status, opened_at, closed_at FROM shifts WHERE id = $1`,
       [id]
     );

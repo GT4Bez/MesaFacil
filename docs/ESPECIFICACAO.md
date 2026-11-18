@@ -51,6 +51,11 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
 - **RN-10 · Fechamento financeiro do turno**  
   Consolidação do faturamento do turno derivada diretamente dos pagamentos registrados no banco de dados.
 
+### 3.3 Evoluções da squad (`RN-11` em diante)
+
+- **RN-11 · Cancelamento de pedido com motivo e trilha de auditoria** ([spec 005](specs/005-auditoria-e-cancelamento-de-pedido.md))  
+  Cancelar o pedido inteiro é exclusivo do `manager` e exige motivo (`422`); pedido com pagamento registrado não pode ser cancelado (`409`). Os itens ainda ativos são cancelados com o mesmo responsável e motivo, e a mesa volta a `available`. Ações sensíveis (`order_item.canceled`, `order.canceled`, `shift.opened`, `shift.closed`, `menu_item.price_changed`) gravam uma linha em `audit_logs` na mesma transação da ação.
+
 ---
 
 ## 🧪 4. Matriz de Validação das Regras
@@ -64,3 +69,4 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
 | **RN-05** | Exige `role === 'manager'` (`403`) e `reason` preenchido (`422`). | Solicita justificativa em cancelamentos gerenciais. | Cancelar item enviado com perfil `waiter` (`403`) ou `manager` sem motivo (`422`). |
 | **RN-06** | Verifica se todos os itens estão `ready` ou `canceled` antes de `ready_to_pay` (`409`). | Habilita "Pedir a conta" apenas após conclusão da cozinha. | Tentar pedir a conta com item em `preparing`. |
 | **RN-07** | Soma pagamentos e impede `closed` enquanto restar saldo (`409`). | Exibe saldo devedor atualizado e trava o botão de encerrar comanda. | Registrar pagamento parcial e tentar fechar o pedido. |
+| **RN-11** | Cancelamento de pedido exige `manager` (`403`), motivo (`422`) e nenhum pagamento (`409`); `AuditLogService` grava `audit_logs` na mesma transação. | Botão "Cancelar pedido" (gerente) abre modal com motivo obrigatório. | Cancelar pedido sem motivo, com pagamento, e verificar rollback quando a auditoria falha. |

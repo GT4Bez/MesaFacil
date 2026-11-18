@@ -1,5 +1,6 @@
 import { OrderRepository, ACTIVE_ORDER_STATUSES } from '../repositories/OrderRepository.js';
 import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
+import { AuditLogService } from './AuditLogService.js';
 import {
   BadRequestError,
   ConflictError,
@@ -22,15 +23,18 @@ const ORDER_TRANSITION_ROLES = {
 };
 
 const roundMoney = (value) => Math.round(value * 100) / 100;
+const cleanReason = (reason) => (typeof reason === 'string' ? reason.trim() : '');
 const isPositiveInteger = (value) => Number.isInteger(value) && value > 0 && value <= MAX_PG_INT;
 
 export class OrderService {
   constructor(
     orderRepository = new OrderRepository(),
-    menuItemRepository = new MenuItemRepository()
+    menuItemRepository = new MenuItemRepository(),
+    auditLogService = new AuditLogService()
   ) {
     this.orders = orderRepository;
     this.menuItems = menuItemRepository;
+    this.audit = auditLogService;
   }
 
   // RN-01 e RN-02: só abre pedido com turno aberto e sem outro pedido ativo na mesa.
@@ -61,7 +65,14 @@ export class OrderService {
     const order = await this.orders.findById(id);
     if (!order) throw new NotFoundError('Pedido não encontrado.');
     const items = await this.orders.findItems(id);
-    return { id: order.id, status: order.status, createdAt: order.createdAt, table: order.table, items };
+    return {
+      id: order.id,
+      status: order.status,
+      createdAt: order.createdAt,
+      table: order.table,
+      cancellation: order.cancellation,
+      items
+    };
   }
 
   async addItem(orderId, { menuItemId, quantity = 1, notes } = {}) {
@@ -95,7 +106,7 @@ export class OrderService {
   async updateItemQuantity(itemId, { quantity } = {}) {
     if (!isPositiveInteger(quantity)) throw new DomainValidationError('Quantidade inválida.');
     return this.orders.transaction(async (db) => {
-      const item = await this.#lockItem(itemId, db);
+      const { item } = await this.#lockItem(itemId, db);
       if (item.status !== 'pending') {
         throw new ConflictError('Só é possível alterar itens que ainda não foram enviados.');
       }
@@ -106,7 +117,7 @@ export class OrderService {
 
   async updateItemStatus(itemId, { status, reason } = {}, user) {
     return this.orders.transaction(async (db) => {
-      const item = await this.#lockItem(itemId, db);
+      const { item, order } = await this.#lockItem(itemId, db);
 
       if (status === 'canceled') {
         if (item.status === 'canceled') throw new ConflictError('O item já está cancelado.');
@@ -115,10 +126,20 @@ export class OrderService {
           if (user.role !== 'manager') {
             throw new ForbiddenError('Apenas o gerente pode cancelar itens já enviados.');
           }
-          if (typeof reason !== 'string' || !reason.trim()) {
-            throw new DomainValidationError('Informe o motivo do cancelamento.');
-          }
-          await this.orders.cancelItem(itemId, { canceledBy: user.id, reason: reason.trim() }, db);
+          const cleaned = cleanReason(reason);
+          if (!cleaned) throw new DomainValidationError('Informe o motivo do cancelamento.');
+          await this.orders.cancelItem(itemId, { canceledBy: user.id, reason: cleaned }, db);
+          await this.audit.record(
+            {
+              userId: user.id,
+              shiftId: order.shiftId,
+              action: 'order_item.canceled',
+              entity: 'order_item',
+              entityId: item.id,
+              details: { orderId: order.id, reason: cleaned, previousStatus: item.status }
+            },
+            db
+          );
         } else {
           if (!['waiter', 'manager'].includes(user.role)) {
             throw new ForbiddenError('Apenas o garçom ou gerente pode remover itens pendentes.');
@@ -144,11 +165,16 @@ export class OrderService {
   }
 
   // RN-03: máquina de estados do pedido.
-  async updateStatus(orderId, { status } = {}, user) {
+  async updateStatus(orderId, { status, reason } = {}, user) {
     const allowedRoles = ORDER_TRANSITION_ROLES[status];
     if (!allowedRoles) throw new BadRequestError('Status do pedido inválido.');
     if (!allowedRoles.includes(user.role)) {
       throw new ForbiddenError('Você não possui permissão para alterar para este status.');
+    }
+    // RN-11: cancelar o pedido exige motivo.
+    const cancellationReason = cleanReason(reason);
+    if (status === 'canceled' && !cancellationReason) {
+      throw new DomainValidationError('Informe o motivo do cancelamento.');
     }
 
     return this.orders.transaction(async (db) => {
@@ -185,8 +211,24 @@ export class OrderService {
 
         case 'canceled':
           if (!ACTIVE_ORDER_STATUSES.includes(order.status)) throw this.#invalidTransition();
+          // RN-11: estorno está fora de escopo, então pedido com pagamento não é cancelado.
+          if ((await this.orders.findPayments(orderId, db)).length > 0) {
+            throw new ConflictError('Pedido com pagamento registrado não pode ser cancelado.');
+          }
+          await this.orders.cancelOrder(orderId, { canceledBy: user.id, reason: cancellationReason }, db);
           await this.orders.setTableStatus(order.tableId, 'available', db);
-          break;
+          await this.audit.record(
+            {
+              userId: user.id,
+              shiftId: order.shiftId,
+              action: 'order.canceled',
+              entity: 'order',
+              entityId: order.id,
+              details: { reason: cancellationReason, previousStatus: order.status }
+            },
+            db
+          );
+          return { id: order.id, status };
       }
 
       await this.orders.updateStatus(orderId, status, db);
@@ -266,13 +308,13 @@ export class OrderService {
 
   // Trava o pedido do item para serializar alterações na mesma comanda.
   async #lockItem(itemId, db) {
-    const item = await this.orders.findItemById(itemId, db);
-    if (!item) throw new NotFoundError('Item não encontrado.');
-    const order = await this.#lockOrder(item.orderId, db);
+    const found = await this.orders.findItemById(itemId, db);
+    if (!found) throw new NotFoundError('Item não encontrado.');
+    const order = await this.#lockOrder(found.orderId, db);
     if (!ACTIVE_ORDER_STATUSES.includes(order.status)) {
       throw new ConflictError('O pedido deste item já foi encerrado.');
     }
-    return (await this.orders.findItemById(itemId, db)) ?? item;
+    return { item: (await this.orders.findItemById(itemId, db)) ?? found, order };
   }
 
   #invalidTransition() {

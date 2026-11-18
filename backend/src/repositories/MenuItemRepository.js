@@ -15,6 +15,10 @@ export class MenuItemRepository {
     this.database = database;
   }
 
+  transaction(callback) {
+    return this.database.withTransaction(callback);
+  }
+
   // RN-09: itens com available = false saem das novas listagens.
   async findAvailable() {
     const { rows } = await this.database.query(
@@ -38,8 +42,12 @@ export class MenuItemRepository {
     return rows.map((row) => row.category);
   }
 
-  async findById(id, db = this.database) {
-    const { rows } = await db.query(`SELECT ${COLUMNS} FROM menu_items WHERE id = $1`, [id]);
+  // `lock` trava a linha até o fim da transação (usado ao alterar o item).
+  async findById(id, { lock = false } = {}, db = this.database) {
+    const { rows } = await db.query(
+      `SELECT ${COLUMNS} FROM menu_items WHERE id = $1 ${lock ? 'FOR UPDATE' : ''}`,
+      [id]
+    );
     return toMenuItem(rows[0]) ?? null;
   }
 

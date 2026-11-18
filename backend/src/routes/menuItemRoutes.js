@@ -25,6 +25,6 @@ router.post('/', requireRole('manager'), async (req, res) =>
   ok(res, await menuItemService.create(req.body), 201));
 
 router.patch('/:id', requireRole('manager'), async (req, res) =>
-  ok(res, await menuItemService.update(req.params.id, req.body)));
+  ok(res, await menuItemService.update(req.params.id, req.body, req.user)));
 
 export default router;
