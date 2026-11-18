@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "bun --watch src/server.js",
     "start": "bun src/server.js",
-    "test": "node --test"
+    "test": "bun test",
+    "test:unit": "bun test tests/unit",
+    "test:integration": "bun test tests/integration"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

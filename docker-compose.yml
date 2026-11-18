@@ -31,6 +31,8 @@ services:
     volumes:
       - ./backend:/app
       - backend-node-modules:/app/node_modules
+      # Migrations usadas pelos testes de integração (backend/tests/support/db.js).
+      - ./sql:/sql:ro
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     depends_on:
