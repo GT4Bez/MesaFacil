@@ -1,6 +1,6 @@
 # 006 — Taxa de serviço persistida e troco
 
-> Status: proposta · Regras: RN-07, RN-08, **RN-11 (nova)**
+> Status: proposta · Regras: RN-07, RN-08, **RN-12 (nova)**
 
 ## Contexto
 
@@ -14,7 +14,7 @@ Hoje a taxa de serviço é só um parâmetro de consulta (`GET /orders/:id/bill?
 2. Só `cashier` e `manager` alteram a taxa, e só com o pedido ativo (`409` se encerrado/cancelado).
 3. Desligar a taxa quando o valor já pago ficaria maior que o novo total → `409`.
 
-**Troco (RN-11)**
+**Troco (RN-12)**
 
 4. `payments.amount` é o valor **recebido**; `payments.change_amount` é o troco; o valor efetivo é `amount − change_amount`.
 5. Saldo restante = total (com taxa, se ligada) − Σ valores efetivos.
@@ -52,8 +52,8 @@ Caixa: chave "Taxa de serviço (10%)" que chama a rota nova; após pagamento em 
 - [ ] Fechar pedido com taxa ligada exige que o total com taxa esteja pago (`409` caso contrário).
 - [ ] Dinheiro acima do saldo grava o troco; cartão/Pix acima do saldo → `422`.
 - [ ] Desligar a taxa com pagamento maior que o novo total → `409`.
-- [ ] `frontend/CONTRATO-API.md` atualizado (o `?serviceTax=` deixa de existir).
-- [ ] `docs/ESPECIFICACAO.md`: RN-11 na nova seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
+- [ ] `frontend/CONTRATO-API.md` atualizado (o `?serviceTax=` deixa de existir) e testes existentes em `backend/tests/integration/orders.test.js` ajustados para o novo contrato.
+- [ ] `docs/ESPECIFICACAO.md`: RN-12 na seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
 
 ## Fora de escopo
 
