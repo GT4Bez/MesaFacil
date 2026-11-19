@@ -124,7 +124,7 @@ O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-c
 | **Pedidos** | `POST /orders`, `GET /orders/:id`, `PATCH /orders/:id/status` | Autenticado + RBAC por transição |
 | **Cozinha (KDS)** | `GET /kitchen/orders` | Autenticado (`kitchen` e `manager`) |
 | **Itens da Comanda** | `POST /orders/:id/items`, `PATCH /order-items/:id/quantity`, `PATCH /order-items/:id/status` | Autenticado + RBAC por operação |
-| **Caixa** | `GET /orders/:id/bill?serviceTax=true\|false`, `POST /orders/:id/payments` | Autenticado (`POST` restrito a `cashier` e `manager`) |
+| **Caixa** | `GET /orders/:id/bill`, `PATCH /orders/:id/service-tax`, `POST /orders/:id/payments` | Autenticado (`PATCH` de taxa e `POST` restritos a `cashier` e `manager`) |
 
 > 🔌 **Contrato de Resposta Padronizado:** Todas as rotas retornam o envelope `{ "success": true, "data": ... }` em caso de sucesso ou `{ "success": false, "error": "mensagem" }` em caso de falha, conforme documentado em [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md).
 
