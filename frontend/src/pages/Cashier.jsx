@@ -6,9 +6,9 @@ import { formatMoney, PAYMENT_METHOD_LABELS } from '../utils/format'
 export default function Cashier() {
   const [tables, setTables] = useState([])
   const [orderId, setOrderId] = useState(null)
-  const [serviceTax, setServiceTax] = useState(true)
   const [bill, setBill] = useState(null)
   const [success, setSuccess] = useState('')
+  const [lastChange, setLastChange] = useState(0)
   const { busy, error, run } = useAction()
 
   async function loadTables() {
@@ -17,36 +17,55 @@ export default function Cashier() {
   }
 
   async function loadBill() {
-    setBill(await api.get(`/orders/${orderId}/bill?serviceTax=${serviceTax}`))
+    setBill(await api.get(`/orders/${orderId}/bill`))
   }
 
   useEffect(() => {
     run(loadTables)
   }, [])
 
-  // RN-08: o backend recalcula a conta com ou sem a taxa de serviço.
   useEffect(() => {
     if (orderId) run(loadBill)
     else setBill(null)
-  }, [orderId, serviceTax])
+  }, [orderId])
 
   function selectOrder(id) {
     setSuccess('')
+    setLastChange(0)
     setOrderId(id)
+  }
+
+  async function toggleServiceTax(enabled) {
+    setSuccess('')
+    setLastChange(0)
+    await run(async () => {
+      setBill(await api.patch(`/orders/${orderId}/service-tax`, { enabled }))
+    })
   }
 
   async function registerPayment(payment) {
     setSuccess('')
+    setLastChange(0)
+    let result = null
     const paid = await run(async () => {
-      await api.post(`/orders/${orderId}/payments`, payment)
+      result = await api.post(`/orders/${orderId}/payments`, payment)
       await loadBill()
     })
-    if (paid) setSuccess('Pagamento registrado com sucesso!')
+    if (paid) {
+      const change = result?.changeAmount ?? 0
+      setLastChange(change)
+      setSuccess(
+        change > 0
+          ? `Pagamento registrado com sucesso! Troco: ${formatMoney(change)}`
+          : 'Pagamento registrado com sucesso!',
+      )
+    }
     return paid
   }
 
   async function closeOrder() {
     setSuccess('')
+    setLastChange(0)
     const closed = await run(async () => {
       await api.patch(`/orders/${orderId}/status`, { status: 'closed' })
       await loadTables()
@@ -108,8 +127,8 @@ export default function Cashier() {
             <Bill
               bill={bill}
               busy={busy}
-              serviceTax={serviceTax}
-              onServiceTaxChange={setServiceTax}
+              lastChange={lastChange}
+              onServiceTaxChange={toggleServiceTax}
               onPayment={registerPayment}
               onClose={closeOrder}
             />
@@ -122,19 +141,36 @@ export default function Cashier() {
   )
 }
 
-function Bill({ bill, busy, serviceTax, onServiceTaxChange, onPayment, onClose }) {
+function clampForMethod(rawValue, method, remaining) {
+  if (rawValue === '' || method === 'cash' || remaining <= 0) return rawValue
+  const numeric = Number(rawValue)
+  return Number.isFinite(numeric) && numeric > remaining ? String(remaining) : rawValue
+}
+
+function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }) {
   // RN-07: a comanda só pode ser encerrada com o saldo quitado.
   const paidOff = bill.remainingBalance <= 0
+  const [amount, setAmount] = useState('')
+  const [method, setMethod] = useState('cash')
+
+  useEffect(() => {
+    setAmount('')
+  }, [bill.orderId])
+
+  useEffect(() => {
+    setAmount((current) => clampForMethod(current, method, bill.remainingBalance))
+  }, [bill.remainingBalance, method])
+
+  const parsedAmount = Number(amount)
+  const estimatedChange =
+    method === 'cash' && !paidOff && Number.isFinite(parsedAmount) && parsedAmount > bill.remainingBalance
+      ? Math.round((parsedAmount - bill.remainingBalance) * 100) / 100
+      : 0
 
   async function handleSubmit(event) {
     event.preventDefault()
-    const form = event.target
-    const data = new FormData(form)
-    const paid = await onPayment({
-      amount: Number(data.get('amount')),
-      method: data.get('method'),
-    })
-    if (paid) form.reset()
+    const paid = await onPayment({ amount: Number(amount), method })
+    if (paid) setAmount('')
   }
 
   return (
@@ -142,7 +178,8 @@ function Bill({ bill, busy, serviceTax, onServiceTaxChange, onPayment, onClose }
       <label className="toggle-line">
         <input
           type="checkbox"
-          checked={serviceTax}
+          checked={bill.serviceTax}
+          disabled={busy}
           onChange={(e) => onServiceTaxChange(e.target.checked)}
         />
         Incluir 10% de taxa de serviço
@@ -166,7 +203,7 @@ function Bill({ bill, busy, serviceTax, onServiceTaxChange, onPayment, onClose }
         <span>Subtotal</span>
         <b>{formatMoney(bill.subtotal)}</b>
       </div>
-      {serviceTax && (
+      {bill.serviceTax && (
         <div className="bill-line">
           <span>Taxa de serviço (10%)</span>
           <b>{formatMoney(bill.serviceTaxAmount)}</b>
@@ -186,16 +223,19 @@ function Bill({ bill, busy, serviceTax, onServiceTaxChange, onPayment, onClose }
             type="number"
             min="0.01"
             step="0.01"
-            max={bill.remainingBalance}
+            max={method === 'cash' ? undefined : bill.remainingBalance}
+            value={amount}
+            onChange={(e) => setAmount(clampForMethod(e.target.value, method, bill.remainingBalance))}
+            disabled={busy || paidOff}
             placeholder="0,00"
             required
           />
         </label>
         <label>
           Forma de pagamento
-          <select name="method">
-            {Object.entries(PAYMENT_METHOD_LABELS).map(([method, label]) => (
-              <option key={method} value={method}>
+          <select name="method" value={method} onChange={(e) => setMethod(e.target.value)} disabled={busy || paidOff}>
+            {Object.entries(PAYMENT_METHOD_LABELS).map(([key, label]) => (
+              <option key={key} value={key}>
                 {label}
               </option>
             ))}
@@ -205,6 +245,12 @@ function Bill({ bill, busy, serviceTax, onServiceTaxChange, onPayment, onClose }
           Adicionar pagamento
         </button>
       </form>
+      {estimatedChange > 0 && (
+        <div className="alert warning">Troco estimado: {formatMoney(estimatedChange)}</div>
+      )}
+      {lastChange > 0 && (
+        <div className="alert success">Troco: {formatMoney(lastChange)}</div>
+      )}
 
       <h3 className="subheading">Pagamentos efetuados</h3>
       {bill.payments.map((payment) => (
@@ -213,7 +259,10 @@ function Bill({ bill, busy, serviceTax, onServiceTaxChange, onPayment, onClose }
             {PAYMENT_METHOD_LABELS[payment.method]} ·{' '}
             {new Date(payment.createdAt).toLocaleTimeString('pt-BR', { timeStyle: 'short' })}
           </span>
-          <b>{formatMoney(payment.amount)}</b>
+          <b>
+            {formatMoney(payment.amount)}
+            {payment.changeAmount > 0 && ` (troco ${formatMoney(payment.changeAmount)})`}
+          </b>
         </div>
       ))}
       {!bill.payments.length && <small className="muted">Nenhum pagamento registrado.</small>}
