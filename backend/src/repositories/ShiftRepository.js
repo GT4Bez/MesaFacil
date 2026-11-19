@@ -36,6 +36,16 @@ export class ShiftRepository {
     return toShift(rows[0]);
   }
 
+  async hasActiveOrders(shiftId, db = this.database) {
+    const { rows } = await db.query(
+      `SELECT 1 FROM orders
+       WHERE shift_id = $1 AND status IN ('open', 'in_kitchen', 'ready_to_pay')
+       LIMIT 1`,
+      [shiftId]
+    );
+    return rows.length > 0;
+  }
+
   // Só encerra se o turno estiver aberto e sem pedidos ativos (RN-02).
   async close(id, db = this.database) {
     const { rows } = await db.query(
@@ -52,9 +62,12 @@ export class ShiftRepository {
     return toShift(rows[0]) ?? null;
   }
 
-  async findById(id, db = this.database) {
+  async findById(id, { lock = false } = {}, db = this.database) {
     const { rows } = await db.query(
-      `SELECT id, status, opened_at, closed_at FROM shifts WHERE id = $1`,
+      `SELECT id, status, opened_at, closed_at
+       FROM shifts
+       WHERE id = $1
+       ${lock ? 'FOR UPDATE' : ''}`,
       [id]
     );
     return toShift(rows[0]) ?? null;
