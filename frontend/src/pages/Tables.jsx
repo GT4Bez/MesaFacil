@@ -27,6 +27,7 @@ export default function Tables() {
 
   const shiftOpen = shift?.status === 'open'
   const isManager = user.role === 'manager'
+  const canOpenOrder = ['waiter', 'manager'].includes(user.role)
   const occupiedCount = tables?.filter((table) => table.status === 'occupied').length
 
   function toggleShift() {
@@ -126,8 +127,9 @@ export default function Tables() {
               <TableCard
                 key={table.id}
                 table={table}
-                // RN-02: sem turno aberto, mesa livre não inicia atendimento.
-                disabled={busy || (table.status === 'available' && !shiftOpen)}
+                canOpenOrder={canOpenOrder}
+                // RN-02 e Spec 004: mesa livre só abre com turno ativo e perfil de salão/gerência.
+                disabled={busy || (table.status === 'available' && (!shiftOpen || !canOpenOrder))}
                 onClick={() => openTable(table)}
               />
             ))}
@@ -138,7 +140,7 @@ export default function Tables() {
   )
 }
 
-function TableCard({ table, disabled, onClick }) {
+function TableCard({ table, canOpenOrder, disabled, onClick }) {
   const occupied = table.status === 'occupied'
 
   return (
@@ -148,7 +150,9 @@ function TableCard({ table, disabled, onClick }) {
         <span className="table-status">{occupied ? 'Ocupada' : 'Livre'}</span>
       </span>
       <strong>{table.number}</strong>
-      <small>{occupied ? 'Ver comanda →' : 'Iniciar atendimento +'}</small>
+      <small>
+        {occupied ? 'Ver comanda →' : canOpenOrder ? 'Iniciar atendimento +' : 'Somente visualização'}
+      </small>
     </button>
   )
 }
