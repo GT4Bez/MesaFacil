@@ -145,10 +145,12 @@ describe('Relatório do turno (RN-10)', () => {
     // Itens do pedido cancelado aparecem só no pedido, não na lista de itens.
     assert.equal(afterCancel.cancellations.items.length, 1)
 
-    // Fecha o pedido 3 e o turno: relatório final.
+    // Fecha o pedido 3 usando dinheiro com troco (saldo 69.90, recebido 100, troco 30.10): entra só 69.90 no turno.
     await finishKitchen(third.itemIds)
     await setStatus(third.orderId, 'ready_to_pay')
-    await pay(third.orderId, 69.9, 'pix')
+    const cashRes = await pay(third.orderId, 100, 'cash')
+    assert.equal(cashRes.status, 201)
+    assert.equal(cashRes.json.data.changeAmount, 30.1)
     await setStatus(third.orderId, 'closed', 'cashier')
     assert.equal((await api('PATCH', `/shifts/${shiftId}/close`)).status, 200)
 
@@ -156,6 +158,7 @@ describe('Relatório do turno (RN-10)', () => {
     assert.equal(final.shift.status, 'closed')
     assert.ok(final.shift.closedAt)
     assert.equal(final.totalShift, 299.7)
+    assert.deepEqual(final.byPaymentMethod[0], { method: 'cash', total: 189.9, count: 3 })
     assert.equal(final.ordersClosed, 3)
     assert.equal(final.averageTicket, 99.9)
     assert.deepEqual(final.byMenuItem[0], { menuItemId: menu.picanha, name: 'Picanha', quantity: 3, total: 269.7 })

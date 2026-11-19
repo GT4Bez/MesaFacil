@@ -50,6 +50,7 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
       ['PATCH', '/order-items/1/quantity'],
       ['PATCH', '/order-items/1/status'],
       ['GET', '/orders/1/bill'],
+      ['PATCH', '/orders/1/service-tax'],
       ['POST', '/orders/1/payments'],
     ]
     for (const [method, path] of endpoints) {
@@ -234,24 +235,74 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
     assert.equal((await status('kitchen', 'ready_to_pay')).status, 403)
     assert.equal((await status('waiter', 'ready_to_pay')).status, 200)
 
-    // RN-08: conta ignora o item cancelado.
-    const bill = await api('GET', `/orders/${orderId}/bill?serviceTax=true`, { role: 'cashier' })
-    assert.equal(bill.json.data.subtotal, 89.9)
-    assert.equal(bill.json.data.serviceTaxAmount, 8.99)
+    // RN-08 / RN-12: taxa de serviço persistida ignora o item cancelado e exige quitação do total com taxa.
+    assert.equal((await api('PATCH', `/orders/${orderId}/service-tax`, { role: 'waiter', body: { enabled: true } })).status, 403)
+    const taxedBill = await api('PATCH', `/orders/${orderId}/service-tax`, { role: 'cashier', body: { enabled: true } })
+    assert.equal(taxedBill.status, 200)
+    assert.equal(taxedBill.json.data.serviceTax, true)
+    assert.equal(taxedBill.json.data.subtotal, 89.9)
+    assert.equal(taxedBill.json.data.serviceTaxAmount, 8.99)
+    assert.equal(taxedBill.json.data.total, 98.89)
+
+    const bill = await api('GET', `/orders/${orderId}/bill`, { role: 'cashier' })
+    assert.equal(bill.json.data.serviceTax, true)
     assert.equal(bill.json.data.total, 98.89)
 
-    // RN-07: pagamento parcial + bloqueio de fechamento por garçom/com saldo aberto.
+    // RN-07 / RN-12: pagamento parcial, bloqueio de cartão/Pix acima do saldo (422) e desligar taxa (409).
     const pay = (role, amount, method) => api('POST', `/orders/${orderId}/payments`, { role, body: { amount, method } })
     assert.equal((await pay('waiter', 50, 'pix')).status, 403)
-    assert.equal((await pay('cashier', 50, 'pix')).status, 201)
+    const partial = await pay('cashier', 95, 'pix')
+    assert.equal(partial.status, 201)
+    assert.equal(partial.json.data.changeAmount, 0)
+    assert.equal(partial.json.data.remainingBalance, 3.89)
+
+    assert.equal((await api('PATCH', `/orders/${orderId}/service-tax`, { role: 'cashier', body: { enabled: false } })).status, 409)
+    assert.equal((await pay('cashier', 10, 'pix')).status, 422)
+    assert.equal((await pay('cashier', 10, 'card')).status, 422)
     assert.equal((await status('cashier', 'closed')).status, 409)
 
-    assert.equal((await pay('cashier', 39.9, 'cash')).status, 201)
+    // Dinheiro acima do saldo grava troco automaticamente e zera o saldo restante.
+    const cashWithChange = await pay('cashier', 10, 'cash')
+    assert.equal(cashWithChange.status, 201)
+    assert.equal(cashWithChange.json.data.amount, 10)
+    assert.equal(cashWithChange.json.data.changeAmount, 6.11)
+    assert.equal(cashWithChange.json.data.remainingBalance, 0)
+    assert.equal((await pay('cashier', 1, 'cash')).status, 409)
+
     assert.equal((await status('waiter', 'closed')).status, 403)
     assert.equal((await status('cashier', 'closed')).status, 200)
 
     const tables = await api('GET', '/tables', { role: 'waiter' })
     assert.equal(tables.json.data[0].status, 'available')
     assert.equal(tables.json.data[0].activeOrderId, null)
+  })
+
+  test('RN-12 sob concorrência: fila no backend impede overpayment paralelo em Pix/cartão', async () => {
+    await openShift()
+    const suco28 = await createMenuItem({ name: 'Porção', price: 28 })
+    const orderId = await createOrder()
+    await addItem(orderId, suco28, 1)
+    await api('PATCH', `/orders/${orderId}/status`, { role: 'waiter', body: { status: 'in_kitchen' } })
+
+    const itemRows = (await query(`SELECT id FROM order_items WHERE order_id = $1`, [orderId])).rows
+    await api('PATCH', `/order-items/${itemRows[0].id}/status`, { role: 'kitchen', body: { status: 'preparing' } })
+    await api('PATCH', `/order-items/${itemRows[0].id}/status`, { role: 'kitchen', body: { status: 'ready' } })
+    await api('PATCH', `/orders/${orderId}/status`, { role: 'waiter', body: { status: 'ready_to_pay' } })
+
+    // 6 pagamentos simultâneos de R$ 7 em Pix numa conta de R$ 28: no máximo 4 entram (28 / 7).
+    const responses = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        api('POST', `/orders/${orderId}/payments`, { role: 'cashier', body: { amount: 7, method: 'pix' } }),
+      ),
+    )
+
+    assert.equal(responses.filter((r) => r.status === 201).length, 4)
+    assert.equal(responses.filter((r) => r.status === 409 || r.status === 422).length, 2)
+
+    const bill = await api('GET', `/orders/${orderId}/bill`, { role: 'cashier' })
+    assert.equal(bill.json.data.remainingBalance, 0)
+    const { rows } = await query(`SELECT count(*)::int AS total, sum(amount - change_amount)::float AS net FROM payments WHERE order_id = $1`, [orderId])
+    assert.equal(rows[0].total, 4)
+    assert.equal(rows[0].net, 28)
   })
 })
