@@ -26,7 +26,10 @@ router.patch('/order-items/:id/status', authenticateToken, async (req, res) =>
   ok(res, await orderService.updateItemStatus(req.params.id, req.body, req.user)));
 
 router.get('/orders/:id/bill', authenticateToken, async (req, res) =>
-  ok(res, await orderService.getBill(req.params.id, { serviceTax: req.query.serviceTax === 'true' })));
+  ok(res, await orderService.getBill(req.params.id)));
+
+router.patch('/orders/:id/service-tax', authenticateToken, requireRole('cashier', 'manager'), async (req, res) =>
+  ok(res, await orderService.setServiceTax(req.params.id, req.body)));
 
 router.post('/orders/:id/payments', authenticateToken, requireRole('cashier', 'manager'), async (req, res) =>
   ok(res, await orderService.addPayment(req.params.id, req.body), 201));

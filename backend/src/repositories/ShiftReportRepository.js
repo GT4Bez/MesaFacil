@@ -36,7 +36,7 @@ export class ShiftReportRepository {
   async findTotals(shiftId, db = this.database) {
     const { rows } = await db.query(
       `WITH paid AS (
-         SELECT COALESCE(SUM(p.amount), 0) AS total
+         SELECT COALESCE(SUM(p.amount - p.change_amount), 0) AS total
          FROM payments p
          JOIN orders o ON o.id = p.order_id
          WHERE o.shift_id = $1 AND o.status <> 'canceled'
@@ -62,11 +62,11 @@ export class ShiftReportRepository {
   async findByPaymentMethod(shiftId, db = this.database) {
     const { rows } = await db.query(
       `SELECT m.method,
-              COALESCE(SUM(p.amount), 0) AS total,
+              COALESCE(SUM(p.amount - p.change_amount), 0) AS total,
               COUNT(p.id)::int AS count
        FROM unnest(ARRAY['cash', 'card', 'pix']) WITH ORDINALITY AS m(method, position)
        LEFT JOIN (
-         SELECT p.id, p.amount, p.payment_method
+         SELECT p.id, p.amount, p.change_amount, p.payment_method
          FROM payments p
          JOIN orders o ON o.id = p.order_id
          WHERE o.shift_id = $1 AND o.status <> 'canceled'

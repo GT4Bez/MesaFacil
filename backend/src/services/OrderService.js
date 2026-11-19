@@ -200,9 +200,9 @@ export class OrderService {
 
         case 'closed': {
           if (order.status !== 'ready_to_pay') throw this.#invalidTransition();
-          // RN-07: o saldo (sem a taxa de serviço, que é opcional) precisa estar quitado.
+          // RN-07 e RN-12: o saldo considerando a taxa de serviço persistida precisa estar quitado.
           const payments = await this.orders.findPayments(orderId, db);
-          if (this.#remaining(items, payments, false) > 0) {
+          if (this.#remaining(items, payments, order.serviceTax) > 0) {
             throw new ConflictError('O pedido ainda possui saldo em aberto.');
           }
           await this.orders.setTableStatus(order.tableId, 'available', db);
@@ -236,32 +236,42 @@ export class OrderService {
     });
   }
 
-  // RN-08: taxa de serviço opcional de 10% sobre os itens não cancelados.
-  async getBill(orderId, { serviceTax = false } = {}) {
+  // RN-08 / RN-12: taxa de serviço persistida no pedido e saldo considerando valores líquidos.
+  async getBill(orderId) {
     const order = await this.orders.findById(orderId);
     if (!order) throw new NotFoundError('Pedido não encontrado.');
 
-    const items = (await this.orders.findItems(orderId)).filter(
-      (item) => item.status !== 'canceled'
-    );
+    const items = await this.orders.findItems(orderId);
     const payments = await this.orders.findPayments(orderId);
-    const subtotal = this.#subtotal(items);
-    const serviceTaxAmount = serviceTax ? roundMoney(subtotal * SERVICE_TAX_RATE) : 0;
-    const total = roundMoney(subtotal + serviceTaxAmount);
-
-    return {
-      orderId: order.id,
-      status: order.status,
-      table: order.table,
-      items: items.map(({ id, name, quantity, unitPrice }) => ({ id, name, quantity, unitPrice })),
-      subtotal,
-      serviceTaxAmount,
-      total,
-      remainingBalance: this.#remaining(items, payments, serviceTax),
-      payments
-    };
+    return this.#buildBill(order, items, payments);
   }
 
+  async setServiceTax(orderId, { enabled } = {}) {
+    if (typeof enabled !== 'boolean') {
+      throw new DomainValidationError('Informe se a taxa de serviço está ativa.');
+    }
+
+    return this.orders.transaction(async (db) => {
+      const order = await this.#lockOrder(orderId, db);
+      if (!ACTIVE_ORDER_STATUSES.includes(order.status)) {
+        throw new ConflictError('Não é possível alterar a taxa de um pedido encerrado ou cancelado.');
+      }
+      const items = await this.orders.findItems(orderId, db);
+      const payments = await this.orders.findPayments(orderId, db);
+
+      // RN-12: não desliga a taxa se o total já pago ficaria maior que o novo subtotal.
+      if (!enabled && order.serviceTax && roundMoney(this.#effectivePaid(payments) - this.#subtotal(items)) > 0) {
+        throw new ConflictError('O valor já pago é maior que o total sem a taxa de serviço.');
+      }
+
+      if (order.serviceTax !== enabled) {
+        await this.orders.updateServiceTax(orderId, enabled, db);
+      }
+      return this.#buildBill({ ...order, serviceTax: enabled }, items, payments);
+    });
+  }
+
+  // RN-12: trava o pedido em fila (FOR UPDATE), impede overpayment em cartão/Pix e calcula troco em dinheiro.
   async addPayment(orderId, { amount, method } = {}) {
     const normalizedAmount = typeof amount === 'number' && Number.isFinite(amount)
       ? roundMoney(amount)
@@ -277,12 +287,53 @@ export class OrderService {
       if (!ACTIVE_ORDER_STATUSES.includes(order.status)) {
         throw new ConflictError('Não é possível registrar pagamento neste pedido.');
       }
+      const items = await this.orders.findItems(orderId, db);
+      const payments = await this.orders.findPayments(orderId, db);
+      const remainingBefore = this.#remaining(items, payments, order.serviceTax);
+      if (remainingBefore <= 0) {
+        throw new ConflictError('O pedido já está quitado.');
+      }
+
+      let changeAmount = 0;
+      if (normalizedAmount > remainingBefore) {
+        if (method !== 'cash') {
+          throw new DomainValidationError('Pagamento em cartão ou Pix não pode exceder o saldo restante.');
+        }
+        changeAmount = roundMoney(normalizedAmount - remainingBefore);
+      }
+
       const id = await this.orders.addPayment(
-        { orderId, amount: normalizedAmount, method },
+        { orderId, amount: normalizedAmount, changeAmount, method },
         db
       );
-      return { id };
+      const effectivePaid = roundMoney(normalizedAmount - changeAmount);
+      return {
+        id,
+        amount: normalizedAmount,
+        changeAmount,
+        remainingBalance: roundMoney(remainingBefore - effectivePaid)
+      };
     });
+  }
+
+  #buildBill(order, allItems, payments) {
+    const items = allItems.filter((item) => item.status !== 'canceled');
+    const subtotal = this.#subtotal(items);
+    const serviceTaxAmount = order.serviceTax ? roundMoney(subtotal * SERVICE_TAX_RATE) : 0;
+    const total = roundMoney(subtotal + serviceTaxAmount);
+
+    return {
+      orderId: order.id,
+      status: order.status,
+      table: order.table,
+      serviceTax: order.serviceTax,
+      items: items.map(({ id, name, quantity, unitPrice }) => ({ id, name, quantity, unitPrice })),
+      subtotal,
+      serviceTaxAmount,
+      total,
+      remainingBalance: roundMoney(total - this.#effectivePaid(payments)),
+      payments
+    };
   }
 
   #subtotal(items) {
@@ -293,11 +344,16 @@ export class OrderService {
     );
   }
 
+  #effectivePaid(payments) {
+    return roundMoney(
+      payments.reduce((sum, payment) => sum + (payment.amount - (payment.changeAmount ?? 0)), 0)
+    );
+  }
+
   #remaining(items, payments, serviceTax) {
     const subtotal = this.#subtotal(items);
-    const total = serviceTax ? subtotal + roundMoney(subtotal * SERVICE_TAX_RATE) : subtotal;
-    const paid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    return roundMoney(total - paid);
+    const total = serviceTax ? roundMoney(subtotal + roundMoney(subtotal * SERVICE_TAX_RATE)) : subtotal;
+    return roundMoney(total - this.#effectivePaid(payments));
   }
 
   async #lockOrder(orderId, db) {

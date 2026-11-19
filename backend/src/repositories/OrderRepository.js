@@ -52,7 +52,7 @@ export class OrderRepository {
   // `lock` trava a linha do pedido até o fim da transação (evita corrida entre ações).
   async findById(id, { lock = false } = {}, db = this.database) {
     const { rows } = await db.query(
-      `SELECT o.id, o.table_id, o.shift_id, o.status, o.created_at, t.number AS table_number,
+      `SELECT o.id, o.table_id, o.shift_id, o.status, o.service_tax, o.created_at, t.number AS table_number,
               o.cancellation_reason, o.canceled_by, cu.name AS canceled_by_name
        FROM orders o
        JOIN tables t ON t.id = o.table_id
@@ -67,6 +67,7 @@ export class OrderRepository {
       tableId: String(row.table_id),
       shiftId: String(row.shift_id),
       status: row.status,
+      serviceTax: Boolean(row.service_tax),
       createdAt: row.created_at,
       table: { number: row.table_number },
       cancellation: row.canceled_by
@@ -93,6 +94,10 @@ export class OrderRepository {
 
   async updateStatus(id, status, db = this.database) {
     await db.query(`UPDATE orders SET status = $2 WHERE id = $1`, [id, status]);
+  }
+
+  async updateServiceTax(id, enabled, db = this.database) {
+    await db.query(`UPDATE orders SET service_tax = $2 WHERE id = $1`, [id, enabled]);
   }
 
   async addItem({ orderId, menuItemId, quantity, unitPrice, notes }, db = this.database) {
@@ -161,7 +166,7 @@ export class OrderRepository {
 
   async findPayments(orderId, db = this.database) {
     const { rows } = await db.query(
-      `SELECT id, amount, payment_method, created_at
+      `SELECT id, amount, change_amount, payment_method, created_at
        FROM payments
        WHERE order_id = $1
        ORDER BY id`,
@@ -170,17 +175,18 @@ export class OrderRepository {
     return rows.map((row) => ({
       id: String(row.id),
       amount: Number(row.amount),
+      changeAmount: Number(row.change_amount),
       method: row.payment_method,
       createdAt: row.created_at
     }));
   }
 
-  async addPayment({ orderId, amount, method }, db = this.database) {
+  async addPayment({ orderId, amount, changeAmount = 0, method }, db = this.database) {
     const { rows } = await db.query(
-      `INSERT INTO payments (order_id, amount, payment_method)
-       VALUES ($1, $2, $3)
+      `INSERT INTO payments (order_id, amount, change_amount, payment_method)
+       VALUES ($1, $2, $3, $4)
        RETURNING id`,
-      [orderId, amount, method]
+      [orderId, amount, changeAmount, method]
     );
     return String(rows[0].id);
   }
