@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Prova das regras de negócio direto na API (roteiro de demonstração, docs/ROTEIRO-DEMO.md).
+# Requer banco recém-criado (docker compose down -v && docker compose up --build) e curl.
+# Uso: ./scripts/demo-regras.sh [URL_DA_API]   (padrão: http://localhost:3001)
+set -euo pipefail
+
+API="${1:-http://localhost:3001}"
+
+# Chamada autenticada que imprime a resposta e o status HTTP.
+call() {
+  local method=$1 token=$2 path=$3 body=${4:-}
+  curl -s -X "$method" "$API$path" \
+    -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+    ${body:+-d "$body"} -w ' → HTTP %{http_code}\n'
+}
+
+# Igual a `call`, mas devolve só o "id" da resposta (para encadear os passos).
+id_of() { call "$@" | sed -E 's/.*"id":"?([0-9]+)"?.*/\1/'; }
+
+login() {
+  curl -s "$API/auth/login" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$1@mesafacil.com\",\"password\":\"123\"}" | sed -E 's/.*"token":"([^"]+)".*/\1/'
+}
+
+step() { printf '\n== %s\n' "$1"; }
+
+GERENTE=$(login gerente)
+GARCOM=$(login garcom)
+COZINHA=$(login cozinha)
+CAIXA=$(login caixa)
+
+step 'Erros padronizados: sem token → 401 com { success: false, error, code }'
+curl -s "$API/tables" -w ' → HTTP %{http_code}\n'
+
+step 'RN-02: sem turno aberto, o garçom não abre pedido (409)'
+call POST "$GARCOM" /orders '{"tableId":1}'
+
+step 'RBAC: só o gerente abre turno (garçom → 403, gerente → 201)'
+call POST "$GARCOM" /shifts
+SHIFT=$(id_of POST "$GERENTE" /shifts)
+echo "turno aberto: #$SHIFT"
+
+step 'RN-01: segundo pedido na mesma mesa → 409 (índice único parcial no PostgreSQL)'
+ORDER=$(id_of POST "$GARCOM" /orders '{"tableId":1}')
+echo "pedido aberto: #$ORDER"
+call POST "$GARCOM" /orders '{"tableId":1}'
+
+step 'RN-09: o item lançado guarda o preço do momento (Picanha na Chapa, 89,90)'
+PICANHA=$(id_of POST "$GARCOM" "/orders/$ORDER/items" '{"menuItemId":1,"quantity":1}')
+SUCO=$(id_of POST "$GARCOM" "/orders/$ORDER/items" '{"menuItemId":6,"quantity":2}')
+echo "itens: #$PICANHA (picanha) e #$SUCO (suco x2)"
+
+step 'RN-03: transição inválida open → closed → 409'
+call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
+
+step 'RN-04: depois de enviado à cozinha, o item não muda (409)'
+call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"in_kitchen"}'
+call PATCH "$GARCOM" "/order-items/$PICANHA/quantity" '{"quantity":3}'
+
+step 'RN-05: item enviado só é cancelado pelo gerente (403) e com motivo (422 → 200)'
+call PATCH "$GARCOM" "/order-items/$SUCO/status" '{"status":"canceled","reason":"erro"}'
+call PATCH "$GERENTE" "/order-items/$SUCO/status" '{"status":"canceled","reason":"   "}'
+call PATCH "$GERENTE" "/order-items/$SUCO/status" '{"status":"canceled","reason":"Sem estoque"}'
+
+step 'RN-06: a conta só é pedida com a cozinha concluída (409 → 200)'
+call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"ready_to_pay"}'
+call PATCH "$COZINHA" "/order-items/$PICANHA/status" '{"status":"preparing"}'
+call PATCH "$COZINHA" "/order-items/$PICANHA/status" '{"status":"ready"}'
+call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"ready_to_pay"}'
+
+step 'RN-08: taxa de serviço opcional de 10% sobre os itens não cancelados'
+call GET "$CAIXA" "/orders/$ORDER/bill?serviceTax=true"
+
+step 'RN-07: pagamento parcial e encerramento bloqueado com saldo (409 → 200)'
+call POST "$CAIXA" "/orders/$ORDER/payments" '{"amount":50,"method":"pix"}'
+call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
+call POST "$CAIXA" "/orders/$ORDER/payments" '{"amount":39.9,"method":"cash"}'
+call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
+
+OTHER=$(id_of POST "$GARCOM" /orders '{"tableId":2}')
+step 'RN-02: turno com pedido ativo não pode ser encerrado (409)'
+call PATCH "$GERENTE" "/shifts/$SHIFT/close"
+
+step 'RN-11: cancelar pedido exige gerente (403) e motivo (422 → 200)'
+call PATCH "$GARCOM" "/orders/$OTHER/status" '{"status":"canceled","reason":"desistiu"}'
+call PATCH "$GERENTE" "/orders/$OTHER/status" '{"status":"canceled"}'
+call PATCH "$GERENTE" "/orders/$OTHER/status" '{"status":"canceled","reason":"Cliente desistiu"}'
+
+step 'RN-02: turno sem pedidos ativos pode ser encerrado'
+call PATCH "$GERENTE" "/shifts/$SHIFT/close"
+
+step 'RN-10: relatório do turno derivado do banco (só gerente: caixa → 403)'
+call GET "$CAIXA" "/shifts/$SHIFT/report"
+call GET "$GERENTE" "/shifts/$SHIFT/report"
