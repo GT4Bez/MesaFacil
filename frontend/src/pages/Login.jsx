@@ -5,7 +5,7 @@ import { useAction } from '../hooks/useAction'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const { login } = useAuth()
+  const { login, notice } = useAuth()
   const { busy, error, run } = useAction()
 
   // Após o login, o roteador (App) redireciona para a tela inicial do papel.
@@ -61,6 +61,7 @@ export default function Login() {
             autoComplete="current-password"
           />
 
+          {notice && !error && <div className="alert warning">{notice}</div>}
           {error && <div className="alert error">{error}</div>}
 
           <button className="primary-btn full" disabled={busy}>

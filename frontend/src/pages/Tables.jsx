@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import StatCard from '../components/StatCard'
+import { hasRole } from '../utils/access'
 
 export default function Tables() {
   const [tables, setTables] = useState(null)
@@ -26,8 +27,8 @@ export default function Tables() {
   }, [])
 
   const shiftOpen = shift?.status === 'open'
-  const isManager = user.role === 'manager'
-  const canOpenOrder = ['waiter', 'manager'].includes(user.role)
+  const isManager = hasRole(user, 'manager')
+  const canOpenOrder = hasRole(user, 'waiter', 'manager')
   const occupiedCount = tables?.filter((table) => table.status === 'occupied').length
 
   function toggleShift() {

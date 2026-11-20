@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useAction } from '../hooks/useAction'
 import { useAuth } from '../context/AuthContext'
 import ReasonModal from '../components/ReasonModal'
+import { hasRole } from '../utils/access'
 import { api } from '../services/api'
 import { formatMoney, ITEM_STATUS_LABELS, ORDER_STATUS_LABELS } from '../utils/format'
 
@@ -17,7 +18,7 @@ export default function Order() {
   const [cancelTarget, setCancelTarget] = useState(null)
   const { busy, error, clearError, run } = useAction()
   const { user } = useAuth()
-  const isManager = user.role === 'manager'
+  const isManager = hasRole(user, 'manager')
 
   function openCancel(target) {
     clearError()

@@ -9,6 +9,8 @@ import Cashier from './pages/Cashier'
 import Kitchen from './pages/Kitchen'
 import MenuAdmin from './pages/MenuAdmin'
 import ShiftAdmin from './pages/ShiftAdmin'
+import Users from './pages/Users'
+import Account from './pages/Account'
 import { homeFor, SCREENS } from './utils/access'
 
 export default function App() {
@@ -34,6 +36,12 @@ export default function App() {
         </Route>
         <Route element={<RoleRoute roles={SCREENS.shiftAdmin.roles} />}>
           <Route path={SCREENS.shiftAdmin.path} element={<ShiftAdmin />} />
+        </Route>
+        <Route element={<RoleRoute roles={SCREENS.users.roles} />}>
+          <Route path={SCREENS.users.path} element={<Users />} />
+        </Route>
+        <Route element={<RoleRoute roles={SCREENS.account.roles} />}>
+          <Route path={SCREENS.account.path} element={<Account />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={home} replace />} />
