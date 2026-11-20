@@ -18,7 +18,8 @@ export class AuthService {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await this.userRepository.findByEmail(normalizedEmail);
 
-    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    // RN-16: usuário desativado recebe a mesma resposta de credencial inválida.
+    if (!user || !user.active || !(await bcrypt.compare(password, user.password_hash))) {
       throw new UnauthorizedError('E-mail ou senha inválidos.');
     }
 
@@ -29,7 +30,8 @@ export class AuthService {
       role: user.role
     };
 
-    const token = jwt.sign(safeUser, env.jwtSecret, {
+    // tokenVersion permite revogar o token (desativação, troca de senha) sem esperar expirar.
+    const token = jwt.sign({ ...safeUser, tokenVersion: user.token_version }, env.jwtSecret, {
       expiresIn: env.jwtExpiresIn
     });
 

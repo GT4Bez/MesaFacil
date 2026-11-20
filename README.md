@@ -28,6 +28,7 @@ flowchart LR
 | `kitchen` (Cozinha) | Recebe itens enviados e atualiza o status de preparo (`sent` -> `preparing` -> `ready`) |
 | `cashier` (Caixa) | Consulta extratos com ou sem taxa de 10%, registra pagamentos parciais e encerra pedidos quitados |
 | `manager` (Gerente) | Abre e encerra turnos, cancela itens já enviados com justificativa e possui acesso completo à operação |
+| `admin` (Administrador) | Superadmin: acesso a todas as telas e ações e único responsável por criar, editar, desativar e redefinir a senha de usuários (RN-16) |
 
 ---
 
@@ -103,7 +104,7 @@ cd frontend && bun install && bun run dev
 
 ## 🔑 Credenciais de Demonstração
 
-O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-cadastrados para testar cada perfil da operação:
+Os seeds (`sql/seeds/001_seed_users.sql` e `sql/seeds/008_seed_admin.sql`) disponibilizam 5 usuários pré-cadastrados para testar cada perfil. A senha `123` vale **apenas** para desenvolvimento e testes locais; usuários novos exigem senha de 8 a 72 caracteres:
 
 | Perfil | E-mail | Senha | Papel (`role`) |
 | :--- | :--- | :--- | :--- |
@@ -111,6 +112,7 @@ O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-c
 | **Cozinha** | `cozinha@mesafacil.com` | `123` | `kitchen` |
 | **Caixa** | `caixa@mesafacil.com` | `123` | `cashier` |
 | **Gerente** | `gerente@mesafacil.com` | `123` | `manager` |
+| **Administrador** | `admin@mesafacil.com` | `123` | `admin` |
 
 ---
 
@@ -119,6 +121,8 @@ O seed inicial (`sql/seeds/001_seed_users.sql`) disponibiliza 4 usuários pré-c
 | Recurso | Endpoints | Controle de Acesso |
 | :--- | :--- | :--- |
 | **Autenticação** | `POST /auth/login` | Público |
+| **Usuários** | `GET /users`, `POST /users`, `PATCH /users/:id`, `PUT /users/:id/password` | Autenticado (só `admin`) |
+| **Minha conta** | `GET /me`, `PATCH /me/password` | Autenticado (todos os papéis) |
 | **Mesas e Turnos** | `GET /tables`, `GET /shifts/active`, `POST /shifts`, `PATCH /shifts/:id/close`, `GET /shifts/:id/report` | Autenticado (`POST`, `PATCH` e relatório restritos a `manager`) |
 | **Cardápio** | `GET /menu-items`, `GET /menu-items/categories`, `GET /menu-items?all=true`, `POST /menu-items`, `PATCH /menu-items/:id` | Autenticado (`?all=true`, `POST` e `PATCH` restritos a `manager`) |
 | **Pedidos** | `POST /orders`, `GET /orders/:id`, `PATCH /orders/:id/status` | Autenticado + RBAC por transição |

@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken'
 import { TEST_PASSWORD } from './env.js'
 import { query } from './db.js'
 
-const ROLE_NAMES = { waiter: 'Garçom', kitchen: 'Cozinha', cashier: 'Caixa', manager: 'Gerente' }
-const ROLE_EMAILS = { waiter: 'garcom', kitchen: 'cozinha', cashier: 'caixa', manager: 'gerente' }
+const ROLE_NAMES = { admin: 'Administrador', waiter: 'Garçom', kitchen: 'Cozinha', cashier: 'Caixa', manager: 'Gerente' }
+const ROLE_EMAILS = { admin: 'admin', waiter: 'garcom', kitchen: 'cozinha', cashier: 'caixa', manager: 'gerente' }
 
 let passwordHash
 
@@ -13,7 +13,7 @@ export async function createUser(role, overrides = {}) {
   const { rows } = await query(
     `INSERT INTO users (name, email, password_hash, role)
      VALUES ($1, $2, $3, $4)
-     RETURNING id, name, email, role`,
+     RETURNING id, name, email, role, token_version`,
     [
       overrides.name ?? ROLE_NAMES[role],
       overrides.email ?? `${ROLE_EMAILS[role]}@mesafacil.com`,
@@ -24,8 +24,12 @@ export async function createUser(role, overrides = {}) {
   return { ...rows[0], id: String(rows[0].id) }
 }
 
-export const tokenFor = (user) =>
-  jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role }, process.env.JWT_SECRET)
+// tokenVersion precisa bater com users.token_version (RN-16); o padrão do banco é 1.
+export const tokenFor = (user, tokenVersion = user.token_version ?? 1) =>
+  jwt.sign(
+    { id: user.id, name: user.name, email: user.email, role: user.role, tokenVersion },
+    process.env.JWT_SECRET,
+  )
 
 // Um usuário por papel, com token pronto para as chamadas HTTP.
 export async function createStaff() {

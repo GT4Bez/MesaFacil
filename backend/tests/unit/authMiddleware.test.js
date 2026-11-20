@@ -41,12 +41,7 @@ describe('authenticateToken', () => {
     assert.ok(run(authenticateToken, req) instanceof UnauthorizedError)
   })
 
-  test('token válido preenche req.user e chama next sem erro', () => {
-    const token = jwt.sign(user, secret)
-    const req = { headers: { authorization: `Bearer ${token}` } }
-    assert.equal(run(authenticateToken, req), undefined)
-    assert.deepEqual(req.user, user)
-  })
+  // Token válido consulta o banco (active/token_version): coberto em tests/integration/users.test.js.
 })
 
 describe('requireRole', () => {
@@ -62,5 +57,9 @@ describe('requireRole', () => {
 
   test('papel permitido → segue sem erro', () => {
     assert.equal(run(requireRole('manager', 'waiter'), { user }), undefined)
+  })
+
+  test('admin passa em qualquer checagem de papel (RN-16)', () => {
+    assert.equal(run(requireRole('kitchen'), { user: { ...user, role: 'admin' } }), undefined)
   })
 })

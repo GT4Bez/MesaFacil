@@ -13,6 +13,8 @@ const dbUser = {
   email: 'gerente@mesafacil.com',
   password_hash: passwordHash,
   role: 'manager',
+  active: true,
+  token_version: 3,
 }
 
 function makeService(user = dbUser) {
@@ -42,7 +44,15 @@ describe('AuthService.login', () => {
     const payload = jwt.verify(result.token, process.env.JWT_SECRET)
     assert.equal(payload.role, 'manager')
     assert.equal(payload.id, '7')
+    assert.equal(payload.tokenVersion, 3)
     assert.ok(payload.exp > payload.iat)
+  })
+
+  test('usuário desativado → mesmo 401 da credencial inválida (RN-16)', async () => {
+    const { service } = makeService({ ...dbUser, active: false })
+    const error = await service.login({ email: 'gerente@mesafacil.com', password: '123' }).catch((e) => e)
+    assert.ok(error instanceof UnauthorizedError)
+    assert.equal(error.message, 'E-mail ou senha inválidos.')
   })
 
   test('normaliza o e-mail (trim + minúsculas) antes de consultar o banco', async () => {

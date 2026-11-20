@@ -22,6 +22,21 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
   Resposta: `{ "token": "jwt", "user": { "id": "1", "name": "Nome", "email": "...", "role": "waiter" } }`.
   Papéis: `waiter`, `kitchen`, `cashier`, `manager`.
 
+## Usuários e conta (RN-16)
+
+- O token JWT é conferido no banco a cada requisição. `401` com usuário desativado, removido ou
+  token revogado (desativação, rebaixamento de admin, troca ou redefinição de senha): o frontend volta ao login.
+- O papel `admin` passa em todas as checagens de papel.
+- Usuário: `{ id, name, email, role, active, createdAt }` (nunca devolve hash de senha).
+- `GET /users?role=waiter&active=true` — só `admin`; filtros opcionais; ordenado por nome.
+- `POST /users` — `{ name, email, role, password }` → `201` com o usuário. E-mail é gravado em minúsculas.
+- `PATCH /users/:id` — subconjunto de `{ name, email, role, active }`. Não existe `DELETE`.
+- `PUT /users/:id/password` — `{ password }` → `{ id }`.
+- `GET /me` — usuário logado (todos os papéis).
+- `PATCH /me/password` — `{ currentPassword, newPassword }` → `{ id }`; revoga o token atual (novo login).
+- Erros: `403` papel; `404` usuário inexistente; `409` e-mail repetido, último admin ativo ou
+  autodesativação/autorrebaixamento; `422` validação (nome 1–100, e-mail válido, senha 8–72) ou senha atual errada.
+
 ## Turno e mesas
 
 - `GET /shifts/active` — `{ id, status: "open" }` ou `null` quando não há turno aberto.

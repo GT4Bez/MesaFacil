@@ -1,6 +1,7 @@
 import { OrderRepository, ACTIVE_ORDER_STATUSES } from '../repositories/OrderRepository.js';
 import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
 import { AuditLogService } from './AuditLogService.js';
+import { hasRole } from '../auth/roles.js';
 import {
   BadRequestError,
   ConflictError,
@@ -123,7 +124,7 @@ export class OrderService {
         if (item.status === 'canceled') throw new ConflictError('O item já está cancelado.');
         if (item.status !== 'pending') {
           // RN-05: item enviado só é cancelado por gerente, com motivo.
-          if (user.role !== 'manager') {
+          if (!hasRole(user, 'manager')) {
             throw new ForbiddenError('Apenas o gerente pode cancelar itens já enviados.');
           }
           const cleaned = cleanReason(reason);
@@ -141,7 +142,7 @@ export class OrderService {
             db
           );
         } else {
-          if (!['waiter', 'manager'].includes(user.role)) {
+          if (!hasRole(user, 'waiter', 'manager')) {
             throw new ForbiddenError('Apenas o garçom ou gerente pode remover itens pendentes.');
           }
           await this.orders.cancelItem(itemId, {}, db);
@@ -150,7 +151,7 @@ export class OrderService {
       }
 
       if (status === 'preparing' || status === 'ready') {
-        if (!['kitchen', 'manager'].includes(user.role)) {
+        if (!hasRole(user, 'kitchen', 'manager')) {
           throw new ForbiddenError('Apenas a cozinha pode atualizar o preparo.');
         }
         if (KITCHEN_FLOW[item.status] !== status) {
@@ -168,7 +169,7 @@ export class OrderService {
   async updateStatus(orderId, { status, reason } = {}, user) {
     const allowedRoles = ORDER_TRANSITION_ROLES[status];
     if (!allowedRoles) throw new BadRequestError('Status do pedido inválido.');
-    if (!allowedRoles.includes(user.role)) {
+    if (!hasRole(user, ...allowedRoles)) {
       throw new ForbiddenError('Você não possui permissão para alterar para este status.');
     }
     // RN-11: cancelar o pedido exige motivo.
