@@ -37,16 +37,19 @@ export class ShiftService {
 
   async close(id, user) {
     return this.shifts.transaction(async (db) => {
-      const closed = await this.shifts.close(id, db);
-      if (closed) {
-        await this.#record(user, closed, 'shift.closed', db);
-        return closed;
-      }
-
-      const shift = await this.shifts.findById(id, db);
+      // RN-02: trava o turno com FOR UPDATE antes de checar pedidos ativos para aguardar
+      // o commit de eventuais POST /orders concorrentes (que mantêm FOR SHARE no turno).
+      const shift = await this.shifts.findById(id, { lock: true }, db);
       if (!shift) throw new NotFoundError('Turno não encontrado.');
       if (shift.status === 'closed') throw new ConflictError('O turno já está encerrado.');
-      throw new ConflictError('Não é possível encerrar o turno com pedidos ativos.');
+      if (await this.shifts.hasActiveOrders(id, db)) {
+        throw new ConflictError('Não é possível encerrar o turno com pedidos ativos.');
+      }
+
+      const closed = await this.shifts.close(id, db);
+      if (!closed) throw new ConflictError('Não é possível encerrar o turno com pedidos ativos.');
+      await this.#record(user, closed, 'shift.closed', db);
+      return closed;
     });
   }
 

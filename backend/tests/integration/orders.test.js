@@ -87,6 +87,40 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
     assert.equal((await api('PATCH', '/shifts/999/close')).status, 404)
   })
 
+  test('RN-02 sob concorrência: fechar turno e abrir pedidos em paralelo preserva consistência', async () => {
+    for (let round = 0; round < 10; round++) {
+      await resetDb()
+      staff = await createStaff()
+      tableIds = await createTables(3)
+      const shiftId = (await openShift()).json.data.id
+
+      const [closeRes, ...orderResults] = await Promise.all([
+        api('PATCH', `/shifts/${shiftId}/close`),
+        ...tableIds.map((tableId) => api('POST', '/orders', { role: 'waiter', body: { tableId } })),
+      ])
+
+      for (const res of orderResults) {
+        assert.ok([201, 409].includes(res.status), `status inesperado em POST /orders: ${res.status}`)
+      }
+      assert.ok([200, 409].includes(closeRes.status), `status inesperado em close: ${closeRes.status}`)
+
+      const { rows } = await query(
+        `SELECT s.status,
+                (SELECT count(*)::int FROM orders o
+                 WHERE o.shift_id = s.id AND o.status IN ('open', 'in_kitchen', 'ready_to_pay')) AS active_orders
+         FROM shifts s WHERE s.id = $1`,
+        [shiftId],
+      )
+      if (rows[0].status === 'closed') {
+        assert.equal(rows[0].active_orders, 0)
+        assert.equal(closeRes.status, 200)
+      } else {
+        assert.ok(rows[0].active_orders >= 1)
+        assert.equal(closeRes.status, 409)
+      }
+    }
+  })
+
   test('mesas e abertura de pedido (RN-01, RN-02 e RBAC)', async () => {
     assert.equal((await api('POST', '/orders', { role: 'waiter', body: { tableId: tableIds[0] } })).status, 409)
     await openShift()
