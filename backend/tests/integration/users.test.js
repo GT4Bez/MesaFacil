@@ -206,11 +206,12 @@ describe('Usuários e superadmin (RN-16)', () => {
     assert.equal((await api('PATCH', `/order-items/${itemId}/status`, { body: { status: 'preparing' } })).status, 200)
     assert.equal((await api('GET', '/kitchen/orders')).status, 200)
     assert.equal((await api('GET', '/menu-items?all=true')).status, 200)
+    // Paga antes de cancelar: depois do cancelamento o pedido ficaria quitado (RN-12 → 409).
+    assert.equal((await api('POST', `/orders/${orderId}/payments`, { body: { amount: 5, method: 'pix' } })).status, 201)
     assert.equal(
       (await api('PATCH', `/order-items/${itemId}/status`, { body: { status: 'canceled', reason: 'Teste' } })).status,
       200,
     )
-    assert.equal((await api('POST', `/orders/${orderId}/payments`, { body: { amount: 5, method: 'pix' } })).status, 201)
 
     const [log] = await auditLogs('order_item.canceled')
     assert.equal(String(log.user_id), staff.admin.id)
