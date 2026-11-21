@@ -950,6 +950,10 @@ footer span {
   .stats-grid {
     gap: 7px;
   }
+  /* Valores em reais não cabem em três colunas no celular. */
+  .money-stats {
+    grid-template-columns: 1fr;
+  }
   .stat-card {
     padding: 12px;
   }
