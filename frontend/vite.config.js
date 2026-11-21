@@ -11,4 +11,9 @@ export default defineConfig({
     // Necessário para o hot reload funcionar com volume montado no Docker
     watch: { usePolling: true },
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./tests/support/setup.js'],
+    include: ['tests/unit/**/*.test.{js,jsx}'],
+  },
 })
