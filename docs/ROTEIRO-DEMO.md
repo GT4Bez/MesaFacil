@@ -28,9 +28,9 @@ docker compose up --build
 | 7 | Gerente | Na comanda, "×" no Suco Natural já enviado | Modal exige motivo; o item fica "Cancelado" | RN-05 |
 | 8 | Cozinha | **Iniciar preparo** → **Pronto ✓** na picanha | Cartão some do KDS quando tudo fica pronto | RN-06 |
 | 9 | Garçom | **Pedir a conta** | Botão só habilita depois da cozinha | RN-06 |
-| 10 | Caixa | **Frente de caixa** → mesa 1; marcar e desmarcar "Incluir 10% de taxa de serviço" | Total recalculado pelo backend, sem o suco cancelado | RN-08 |
-| 11 | Caixa | Pagar R$ 50,00 em Pix | "Finalizar pedido e liberar mesa" bloqueado enquanto há saldo devedor | RN-07 |
-| 12 | Caixa | Pagar o saldo em dinheiro e finalizar | Mesa 1 volta a "Livre" no salão | RN-07 |
+| 10 | Caixa | **Frente de caixa** → mesa 1; marcar "Incluir 10% de taxa de serviço" | A taxa começa desligada e, marcada, fica gravada no pedido; total de R$ 98,89 sem o suco cancelado | RN-08, RN-12 |
+| 11 | Caixa | Pagar R$ 50,00 em Pix; depois digitar R$ 60,00 ainda em Pix | "Finalizar pedido e liberar mesa" bloqueado com saldo devedor; em cartão/Pix o valor é limitado ao saldo | RN-07, RN-12 |
+| 12 | Caixa | Trocar para Dinheiro, pagar R$ 60,00 e finalizar | "Troco: R$ 11,11"; o histórico mostra recebido e troco; mesa 1 volta a "Livre" | RN-07, RN-12 |
 | 13 | Gerente | **Admin do cardápio**: mudar o preço da picanha e tirar o Pudim de linha | Pudim some do cardápio do garçom; pedidos antigos mantêm o preço | RN-09 |
 | 14 | Garçom + Gerente | Abrir a mesa 2 com um item; gerente usa **Cancelar pedido** com motivo | Mesa liberada; comanda mostra quem cancelou e por quê | RN-11 |
 | 15 | Gerente | **Turno e relatório** → **Encerrar turno** | Relatório fechado: total, ticket médio, formas de pagamento, itens e cancelamentos | RN-02, RN-10 |
@@ -57,7 +57,8 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-05 | Garçom cancelando item enviado; gerente sem motivo | `403`, `422` |
 | RN-06 | Pedir a conta com item em preparo | `409` |
 | RN-07 | Encerrar com saldo em aberto | `409` |
-| RN-08 | Conta com `serviceTax=true` | `98,89` = `89,90` + 10%, sem o item cancelado |
+| RN-08 | Garçom ligando a taxa; caixa ligando a taxa | `403`; conta de `98,89` = `89,90` + 10%, sem o item cancelado |
+| RN-12 | Pix acima do saldo; dinheiro acima do saldo; pagar pedido quitado; desligar a taxa já paga | `422`; `201` com `changeAmount: 11.11`; `409`; `409` |
 | RN-11 | Garçom cancelando pedido; gerente sem motivo | `403`, `422` |
 | RN-10 | Caixa pedindo o relatório; gerente pedindo o relatório | `403`, `200` com totais por SQL |
 
@@ -74,9 +75,10 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-05 | `OrderService.updateItemStatus` | `order_items_cancellation_reason_check` | `orders.test.js`, `audit.test.js` |
 | RN-06 | `OrderService.updateStatus` (`ready_to_pay`) | — | `orders.test.js` |
 | RN-07 | `OrderService.updateStatus` (`closed`) | trava `FOR UPDATE` no pedido | `orders.test.js` |
-| RN-08 | `OrderService.getBill` | — | `orders.test.js` |
+| RN-08 | `OrderService.getBill`, `OrderService.setServiceTax` | `orders.service_tax` | `orders.test.js` |
 | RN-09 | `OrderService.addItem`, `MenuItemService` | `order_items.unit_price` | `orders.test.js`, `menuItems.test.js` |
 | RN-10 | `ShiftService.getReport` | agregações SQL em `REPEATABLE READ` | `shiftReport.test.js` |
 | RN-11 | `OrderService.updateStatus` (`canceled`), `AuditLogService` | `orders_cancellation_reason_check`, `audit_logs_action_check` | `audit.test.js` |
+| RN-12 | `OrderService.addPayment` (fila com `FOR UPDATE`) | `payments_change_amount_check`, `payments_change_only_cash_check` | `orders.test.js`, `shiftReport.test.js` |
 
 Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Executando os Testes Automatizados" no [README](../README.md).

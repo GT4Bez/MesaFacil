@@ -68,13 +68,23 @@ call PATCH "$COZINHA" "/order-items/$PICANHA/status" '{"status":"preparing"}'
 call PATCH "$COZINHA" "/order-items/$PICANHA/status" '{"status":"ready"}'
 call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"ready_to_pay"}'
 
-step 'RN-08: taxa de serviço opcional de 10% sobre os itens não cancelados'
-call GET "$CAIXA" "/orders/$ORDER/bill?serviceTax=true"
+step 'RN-08/RN-12: taxa de 10% gravada no pedido, só caixa/gerente (garçom → 403; total 98,89 sem o item cancelado)'
+call PATCH "$GARCOM" "/orders/$ORDER/service-tax" '{"enabled":true}'
+call PATCH "$CAIXA" "/orders/$ORDER/service-tax" '{"enabled":true}'
 
-step 'RN-07: pagamento parcial e encerramento bloqueado com saldo (409 → 200)'
+step 'RN-07: pagamento parcial e encerramento bloqueado com saldo (409)'
 call POST "$CAIXA" "/orders/$ORDER/payments" '{"amount":50,"method":"pix"}'
 call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
-call POST "$CAIXA" "/orders/$ORDER/payments" '{"amount":39.9,"method":"cash"}'
+
+step 'RN-12: Pix acima do saldo → 422; dinheiro acima do saldo grava o troco (60,00 → troco 11,11)'
+call POST "$CAIXA" "/orders/$ORDER/payments" '{"amount":60,"method":"pix"}'
+call POST "$CAIXA" "/orders/$ORDER/payments" '{"amount":60,"method":"cash"}'
+
+step 'RN-12: pedido quitado não recebe pagamento (409) nem desliga a taxa já paga (409)'
+call POST "$CAIXA" "/orders/$ORDER/payments" '{"amount":1,"method":"cash"}'
+call PATCH "$CAIXA" "/orders/$ORDER/service-tax" '{"enabled":false}'
+
+step 'RN-07: saldo quitado → pedido encerrado e mesa liberada'
 call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
 
 OTHER=$(id_of POST "$GARCOM" /orders '{"tableId":2}')
