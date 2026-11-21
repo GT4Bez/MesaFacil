@@ -2,6 +2,9 @@ FROM oven/bun:1
 
 WORKDIR /app
 
+# Evita baixar o binário do Cypress (~811 MB) na imagem de desenvolvimento
+ENV CYPRESS_INSTALL_BINARY=0
+
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
 
