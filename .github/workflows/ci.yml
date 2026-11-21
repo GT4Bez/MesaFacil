@@ -13,6 +13,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  guardrails:
+    name: Guardrails (JS ESM, higiene e LF)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Bloquear arquivos TypeScript e tsconfig
+        run: |
+          ts_files=$(git ls-files '*.ts' '*.tsx' '*.mts' '*.cts' '*tsconfig*.json')
+          if [ -n "$ts_files" ]; then
+            echo "::error::Arquivos TypeScript/tsconfig não são permitidos (stack 100% JS ESM):"
+            echo "$ts_files"
+            exit 1
+          fi
+      - name: Bloquear segredos (.env) e pastas de agentes/IDE
+        run: |
+          forbidden=$(git ls-files | grep -E '(^|/)\.env($|\.(local|development|production|test)$)|(^|/)\.(claude|cursor|devin|agents)/' || true)
+          if [ -n "$forbidden" ]; then
+            echo "::error::Arquivos sensíveis ou resíduos de agentes não devem ser versionados:"
+            echo "$forbidden"
+            exit 1
+          fi
+      - name: Validar fim de linha LF em scripts shell (*.sh)
+        run: |
+          crlf=$(git ls-files -z '*.sh' | xargs -0 -r grep -Il $'\r' || true)
+          if [ -n "$crlf" ]; then
+            echo "::error::Scripts shell precisam usar LF (evita /bin/sh^M no Linux/Docker):"
+            echo "$crlf"
+            exit 1
+          fi
+
   backend:
     name: Backend (testes unitários e de integração)
     runs-on: ubuntu-latest
