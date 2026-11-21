@@ -11,9 +11,8 @@ dist/
 build/
 coverage/
 .vite/
-test-results/
-playwright-report/
-blob-report/
+frontend/cypress/screenshots/
+frontend/cypress/videos/
 
 # Sistema e IDEs
 .DS_Store
