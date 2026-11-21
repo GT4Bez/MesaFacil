@@ -119,5 +119,5 @@ curl -s "$API/auth/login" -H 'Content-Type: application/json' \
   -d '{"email":"ana@mesafacil.com","password":"senha-forte-1"}' -w ' → HTTP %{http_code}\n'
 
 step 'RN-16: o sistema nunca fica sem admin (o admin não desativa a si mesmo → 409)'
-ADMIN_ID=$(call GET "$ADMIN" /me | sed -E 's/.*"id":"?([0-9]+)"?.*/\1/')
+ADMIN_ID=$(id_of GET "$ADMIN" /me)
 call PATCH "$ADMIN" "/users/$ADMIN_ID" '{"active":false}'
