@@ -73,10 +73,10 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 
 ## Caixa
 
-- `GET /orders/:id/bill?serviceTax=true|false` — resposta:
-  `{ "items": [{ "id": 1, "name": "Prato", "quantity": 2, "unitPrice": 25 }], "subtotal": 50, "serviceTaxAmount": 5, "total": 55, "remainingBalance": 55, "payments": [{ "id": 1, "amount": 20, "method": "cash", "createdAt": "..." }] }`.
-  O backend calcula todos os valores, com ou sem a taxa de serviço (RN-08).
-- `POST /orders/:id/payments` — body `{ "amount": 20, "method": "cash" }`.
-  Métodos: `cash`, `card`, `pix`.
-- Encerramento: `PATCH /orders/:id/status` com `{ "status": "closed" }`; `409` se restar saldo
-  (RN-07). O frontend só habilita o botão quando `remainingBalance <= 0`.
+- `GET /orders/:id/bill` — resposta:
+  `{ "orderId": "1", "status": "ready_to_pay", "serviceTax": false, "items": [{ "id": 1, "name": "Prato", "quantity": 2, "unitPrice": 25 }], "subtotal": 50, "serviceTaxAmount": 0, "total": 50, "remainingBalance": 50, "payments": [{ "id": 1, "amount": 20, "changeAmount": 0, "method": "cash", "createdAt": "..." }] }`.
+  O backend calcula todos os valores com base em `orders.service_tax` e desconta `changeAmount` do saldo (RN-08, RN-12).
+- `PATCH /orders/:id/service-tax` (`cashier` e `manager`) — body `{ "enabled": true }` → devolve a conta atualizada (`409` se encerrado/cancelado ou se desligar com valor já pago acima do subtotal).
+- `POST /orders/:id/payments` — body `{ "amount": 20, "method": "cash" }`; resposta `{ "id": "1", "amount": 20, "changeAmount": 0, "remainingBalance": 30 }`.
+  Métodos: `cash`, `card`, `pix`. Dinheiro acima do saldo calcula `changeAmount`; cartão/Pix acima do saldo retornam `422`; pedido já quitado retorna `409`.
+- Encerramento: `PATCH /orders/:id/status` com `{ "status": "closed" }`; `409` se restar saldo considerando a taxa persistida (RN-07, RN-12). O frontend só habilita o botão quando `remainingBalance <= 0`.
