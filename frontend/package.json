@@ -9,18 +9,22 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "env -u ELECTRON_RUN_AS_NODE cypress run",
+    "test:e2e:open": "env -u ELECTRON_RUN_AS_NODE cypress open"
   },
+  "trustedDependencies": [
+    "cypress"
+  ],
   "dependencies": {
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.1",
     "@testing-library/jest-dom": "^8.0.0",
     "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^6.3.0",
+    "cypress": "^16.3.0",
     "jsdom": "^31.0.1",
     "vite": "^8.3.7",
     "vitest": "^5.1.1"
