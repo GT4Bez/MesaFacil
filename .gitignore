@@ -11,6 +11,9 @@ dist/
 build/
 coverage/
 .vite/
+test-results/
+playwright-report/
+blob-report/
 
 # Sistema e IDEs
 .DS_Store
