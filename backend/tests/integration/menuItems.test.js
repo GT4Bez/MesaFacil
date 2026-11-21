@@ -118,4 +118,26 @@ describe('Administração do cardápio (spec 002)', () => {
     const res = await api('GET', '/menu-items/categories', { role: 'waiter' })
     assert.deepEqual(res.json.data, ['Bebidas', 'Pratos'])
   })
+
+  test('aceita preço zero, reativa item fora de linha e rejeita identificador inválido', async () => {
+    const [tableId] = await createTables(1)
+    const created = await api('POST', '/menu-items', {
+      body: { name: 'Água Cortesia', category: 'Bebidas', price: 0, available: false },
+    })
+    assert.equal(created.status, 201)
+    assert.equal(created.json.data.price, 0)
+
+    const id = created.json.data.id
+    const reactivated = await api('PATCH', `/menu-items/${id}`, { body: { available: true } })
+    assert.equal(reactivated.status, 200)
+    assert.equal(reactivated.json.data.available, true)
+
+    await api('POST', '/shifts')
+    const orderId = (await api('POST', '/orders', { role: 'waiter', body: { tableId } })).json.data.id
+    assert.equal(
+      (await api('POST', `/orders/${orderId}/items`, { role: 'waiter', body: { menuItemId: id } })).status,
+      201,
+    )
+    assert.equal((await api('PATCH', '/menu-items/abc', { body: { price: 5 } })).status, 400)
+  })
 })
