@@ -1,6 +1,6 @@
 # 🎬 Roteiro de Demonstração — MesaFácil
 
-Guia para apresentar as regras de negócio na prática, em cerca de 15 minutos: primeiro pela interface, contando a história de um atendimento, depois provando pela API que o backend bloqueia o que a tela já esconde.
+Guia para apresentar as regras de negócio na prática, em cerca de 20 minutos: primeiro pela interface, contando a história de um atendimento, depois provando pela API que o backend bloqueia o que a tela já esconde.
 
 ## 1. Preparação (antes da banca)
 
@@ -11,8 +11,8 @@ docker compose up --build
 ```
 
 - Frontend: `http://localhost:5173` · API: `http://localhost:3001`
-- Usuários (senha `123`, só para ambiente local): `gerente@`, `garcom@`, `cozinha@` e `caixa@mesafacil.com`.
-- Deixe quatro janelas anônimas abertas, uma por perfil, para alternar sem logout.
+- Usuários (senha `123`, só para ambiente local): `admin@`, `gerente@`, `garcom@`, `cozinha@` e `caixa@mesafacil.com`.
+- Deixe cinco janelas anônimas abertas, uma por perfil, para alternar sem logout.
 - O seed já traz um turno **encerrado** e três pedidos fechados (histórico); a demo começa com o turno fechado.
 
 ## 2. Roteiro pela interface
@@ -34,6 +34,12 @@ docker compose up --build
 | 13 | Gerente | **Admin do cardápio**: mudar o preço da picanha e tirar o Pudim de linha | Pudim some do cardápio do garçom; pedidos antigos mantêm o preço | RN-09 |
 | 14 | Garçom + Gerente | Abrir a mesa 2 com um item; gerente usa **Cancelar pedido** com motivo | Mesa liberada; comanda mostra quem cancelou e por quê | RN-11 |
 | 15 | Gerente | **Turno e relatório** → **Encerrar turno** | Relatório fechado: total, ticket médio, formas de pagamento, itens e cancelamentos | RN-02, RN-10 |
+| 16 | Admin | Entrar como `admin@` | A home é **Usuários**; o menu tem todas as telas; o admin pode abrir turno, cancelar e receber como qualquer papel | RN-16 |
+| 17 | Admin | Cadastrar "Ana", e-mail `Ana@MesaFacil.com`, papel Garçom, senha de 8+ caracteres | E-mail gravado em minúsculas; senha curta é recusada | RN-16 |
+| 18 | Admin + Garçom | Admin desativa o Garçom; o garçom clica em qualquer tela | A sessão cai na hora: volta ao login com "Sua sessão foi encerrada"; o login dele é recusado | RN-16 |
+| 19 | Admin | Na própria linha, não há "Desativar"; **Redefinir senha** do Caixa | O admin não remove a si mesmo; a senha nova encerra as sessões abertas do caixa | RN-16 |
+| 20 | Cozinha | **Minha conta** → trocar a senha (errar a atual primeiro) | "Senha atual incorreta"; com a certa, volta ao login para entrar com a senha nova | RN-16 |
+| 21 | Gerente | Abrir `/admin/users` na barra de endereço | Volta para a tela inicial: só o admin administra usuários | RN-16 |
 
 > Dica: no passo 14, se o caixa registrar um pagamento antes, o cancelamento é recusado (`409`): pedido pago não é cancelado.
 
@@ -61,6 +67,7 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-12 | Pix acima do saldo; dinheiro acima do saldo; pagar pedido quitado; desligar a taxa já paga | `422`; `201` com `changeAmount: 11.11`; `409`; `409` |
 | RN-11 | Garçom cancelando pedido; gerente sem motivo | `403`, `422` |
 | RN-10 | Caixa pedindo o relatório; gerente pedindo o relatório | `403`, `200` com totais por SQL |
+| RN-16 | Gerente listando usuários; admin cria "Ana" e a desativa; Ana usa o token antigo e tenta logar; admin desativa a si mesmo | `403`; `201`; `401` e `401`; `409` |
 
 Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do PostgreSQL passam por `translatePgError` e chegam como mensagem de negócio.
 
@@ -80,5 +87,6 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-10 | `ShiftService.getReport` | agregações SQL em `REPEATABLE READ` | `shiftReport.test.js` |
 | RN-11 | `OrderService.updateStatus` (`canceled`), `AuditLogService` | `orders_cancellation_reason_check`, `audit_logs_action_check` | `audit.test.js` |
 | RN-12 | `OrderService.addPayment` (fila com `FOR UPDATE`) | `payments_change_amount_check`, `payments_change_only_cash_check` | `orders.test.js`, `shiftReport.test.js` |
+| RN-16 | `hasRole`, `authenticateToken` (confere `active`/`token_version`), `UserService` | `users_role_check`, `users_email_normalized_check`, trava `FOR UPDATE` nos admins ativos | `users.test.js` |
 
 Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Executando os Testes Automatizados" no [README](../README.md).
