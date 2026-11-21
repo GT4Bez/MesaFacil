@@ -7,6 +7,8 @@ import shiftRoutes from './routes/shiftRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import kitchenRoutes from './routes/kitchenRoutes.js';
 import menuItemRoutes from './routes/menuItemRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import meRoutes from './routes/meRoutes.js';
 import { errorMiddleware } from './middlewares/errorMiddleware.js';
 
 const app = express();
@@ -18,6 +20,8 @@ app.use('/tables', tableRoutes);
 app.use('/shifts', shiftRoutes);
 app.use('/kitchen', kitchenRoutes);
 app.use('/menu-items', menuItemRoutes);
+app.use('/users', userRoutes);
+app.use('/me', meRoutes);
 app.use(orderRoutes);
 app.use(errorMiddleware);
 

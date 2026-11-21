@@ -20,6 +20,7 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
 | `kitchen` | **Cozinha** | Visualizar itens enviados, iniciar preparo (`preparing`) e concluir preparo (`ready`) |
 | `cashier` | **Caixa** | Consultar extrato da conta (com ou sem taxa de 10%), registrar pagamentos parciais e encerrar pedidos quitados |
 | `manager` | **Gerente** | Abrir e fechar turnos, cancelar itens enviados mediante justificativa, gerir cardápio e relatórios |
+| `admin` | **Administrador** | Superadmin (RN-16): passa em toda checagem de papel e é o único que cria, edita, desativa e redefine a senha de usuários |
 
 ---
 
@@ -57,6 +58,8 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
   Cancelar o pedido inteiro é exclusivo do `manager` e exige motivo (`422`); pedido com pagamento registrado não pode ser cancelado (`409`). Os itens ainda ativos são cancelados com o mesmo responsável e motivo, e a mesa volta a `available`. Ações sensíveis (`order_item.canceled`, `order.canceled`, `shift.opened`, `shift.closed`, `menu_item.price_changed`) gravam uma linha em `audit_logs` na mesma transação da ação.
 - **RN-12 · Taxa de serviço persistida, trava anti-overpayment e troco** ([spec 006](specs/006-taxa-de-servico-e-troco.md))  
   `orders.service_tax` é a fonte única de verdade da taxa de 10% (`PATCH /orders/:id/service-tax`); desligar a taxa com valor pago acima do novo subtotal retorna `409`. Na fila transacional de pagamentos, pedido já quitado retorna `409`, cartão/Pix acima do saldo retornam `422`, e dinheiro acima do saldo grava `change_amount = amount - saldo`, contabilizando no turno apenas o valor líquido (`amount - change_amount`).
+- **RN-16 · Administração de usuários e superadmin** ([spec 011](specs/011-usuarios-e-superadmin.md))  
+  O papel `admin` passa em toda checagem de papel (regra central `hasRole`) e é o único que administra usuários (`403` para os demais, inclusive `manager`). Usuário nunca é apagado (`active = false`); inativo não faz login e perde o acesso na hora, porque o middleware confere `active`, `role` e `token_version` no banco a cada requisição. Desativação, rebaixamento de admin e troca/redefinição de senha incrementam `token_version`, revogando os tokens anteriores. O sistema nunca fica sem admin ativo nem permite que o admin desative ou rebaixe a si mesmo (`409`). Eventos de usuário e senha ficam em `audit_logs`.
 
 ---
 
@@ -74,3 +77,4 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
 | **RN-10** | `GET /shifts/:id/report` (só `manager`) agrega pagamentos líquidos (`amount - change_amount`), pedidos e itens por SQL num snapshot `REPEATABLE READ`; pedido cancelado fica fora do faturamento ([spec 010](specs/010-relatorio-do-turno.md)). | Tela "Turno" mostra o relatório (parcial com turno aberto) sem calcular nada no cliente. | Comparar `totalShift` com `SUM(amount - change_amount)` do turno, com pagamento parcial, troco e pedido cancelado. |
 | **RN-11** | Cancelamento de pedido exige `manager` (`403`), motivo (`422`) e nenhum pagamento (`409`); `AuditLogService` grava `audit_logs` na mesma transação. | Botão "Cancelar pedido" (gerente) abre modal com motivo obrigatório. | Cancelar pedido sem motivo, com pagamento, e verificar rollback quando a auditoria falha. |
 | **RN-12** | `orders.service_tax` persiste a taxa; `OrderService.addPayment` trava o pedido com `FOR UPDATE`, rejeita cartão/Pix > saldo (`422`) e quitado (`409`), e calcula `change_amount` em dinheiro ([spec 006](specs/006-taxa-de-servico-e-troco.md)). | Caixa persiste taxa na API, ajusta automaticamente valores acima do saldo para cartão/Pix e exibe troco para dinheiro. | Tentar cartão/Pix acima do saldo (`422`), concorrente em Pix, dinheiro com troco e desligar taxa com pago > subtotal (`409`). |
+| **RN-16** | `requireRole`/`hasRole` liberam o `admin`; `/users` só `admin` (`403`); middleware recusa usuário inativo ou `token_version` diferente (`401`); trava `FOR UPDATE` nos admins ativos protege o último (`409`). | Telas "Usuários" (admin) e "Minha conta" (todos); token revogado leva ao login. | Desativar usuário e repetir a requisição com o token antigo (`401`); tentar rebaixar o último admin (`409`). |
