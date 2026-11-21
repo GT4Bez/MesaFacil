@@ -151,6 +151,16 @@ Dentro do container do backend, use o host `db` no lugar de `localhost`. O CI (`
 
 ---
 
+## 🎬 Roteiro de Demonstração
+
+O passo a passo para apresentar as regras na prática está em [`docs/ROTEIRO-DEMO.md`](docs/ROTEIRO-DEMO.md):
+
+- história de um atendimento pela interface, perfil por perfil;
+- tabela de onde cada regra é garantida (serviço, constraint e teste);
+- o script [`scripts/demo-regras.sh`](scripts/demo-regras.sh), que prova pela API, com `curl`, que o backend bloqueia cada violação (`401`, `403`, `409`, `422`).
+
+---
+
 ## 👥 Equipe e Gestão Ágil
 
 | Integrante | GitHub | Atuação Principal |
