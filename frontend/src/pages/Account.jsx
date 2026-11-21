@@ -9,7 +9,7 @@ export default function Account() {
   const { logout } = useAuth()
   const [account, setAccount] = useState(null)
   const [mismatch, setMismatch] = useState(false)
-  const { busy, error, run } = useAction()
+  const { busy, error, clearError, run } = useAction()
 
   useEffect(() => {
     run(async () => setAccount(await api.get('/me')))
@@ -19,6 +19,7 @@ export default function Account() {
     event.preventDefault()
     const fields = event.currentTarget.elements
     if (fields.newPassword.value !== fields.confirmPassword.value) {
+      clearError()
       setMismatch(true)
       return
     }

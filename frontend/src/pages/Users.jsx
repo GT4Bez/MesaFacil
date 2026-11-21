@@ -86,7 +86,7 @@ export default function Users() {
           <div className="panel-heading">
             <div>
               <h2>Equipe</h2>
-              <p>{users ? `${users.length} usuário(s)` : 'Carregando...'}</p>
+              <p>{users ? `${users.length} usuário(s)` : !error && 'Carregando...'}</p>
             </div>
           </div>
 
@@ -162,7 +162,7 @@ export default function Users() {
             </label>
             <label>
               Papel
-              <select value={form.role} onChange={setField('role')}>
+              <select value={form.role} onChange={setField('role')} disabled={editing && form.id === me.id}>
                 {ROLE_OPTIONS.map(([role, label]) => (
                   <option key={role} value={role}>
                     {label}
