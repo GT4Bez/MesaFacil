@@ -34,7 +34,7 @@ export default function Layout() {
               <small>{ROLE_LABELS[user.role]}</small>
             </div>
           </div>
-          <button className="logout" onClick={logout}>
+          <button className="logout" onClick={() => logout()}>
             ↪ Sair da conta
           </button>
         </div>

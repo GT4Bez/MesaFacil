@@ -2,6 +2,7 @@ export const formatMoney = (value) =>
   Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export const ROLE_LABELS = {
+  admin: 'Administrador',
   waiter: 'Garçom',
   kitchen: 'Cozinha',
   cashier: 'Caixa',
