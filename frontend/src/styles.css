@@ -489,6 +489,7 @@ button:disabled {
 }
 .button-row {
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 .item-status {
   display: inline-block;
@@ -614,8 +615,12 @@ button:disabled {
   align-items: end;
 }
 .payment-form button,
-.payment-form .button-row {
+.payment-form .button-row,
+.payment-form .alert {
   grid-column: 1/-1;
+}
+.payment-form .alert {
+  margin: 0;
 }
 .balance-card {
   margin-top: 15px;
@@ -811,14 +816,18 @@ footer span {
 }
 .filters-row {
   margin: 0 0 14px;
+  flex-wrap: wrap;
 }
 .filters-row label {
-  flex: 1;
+  flex: 1 1 120px;
+  min-width: 0;
 }
 .filters-row select {
   border: 1px solid #e6dede;
   border-radius: 7px;
   padding: 9px;
+  min-width: 0;
+  width: 100%;
   background: #fff;
 }
 .user-list {
@@ -997,7 +1006,8 @@ footer span {
     grid-template-columns: 1fr;
   }
   .payment-form button,
-  .payment-form .button-row {
+  .payment-form .button-row,
+  .payment-form .alert {
     grid-column: auto;
   }
 }
