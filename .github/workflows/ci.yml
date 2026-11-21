@@ -110,7 +110,7 @@ jobs:
       - run: bun run build
 
   e2e:
-    name: E2E (Playwright Chromium)
+    name: E2E (Cypress)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -156,13 +156,12 @@ jobs:
             }
             await client.end();
           '
-      - name: Instalar Chromium do Playwright
-        run: cd frontend && bunx playwright install chromium --with-deps
-      - name: Subir API e executar suíte E2E
+      - name: Garantir binário do Cypress e subir API + Vite para E2E
         run: |
           (cd backend && bun src/server.js &)
+          (cd frontend && bun run dev -- --port 5173 &)
           for i in $(seq 1 30); do
-            if curl -s -o /dev/null http://localhost:3001/menu-items; then break; fi
+            if curl -s -o /dev/null http://localhost:3001/menu-items && curl -sf http://localhost:5173 >/dev/null; then break; fi
             sleep 1
           done
-          cd frontend && bun run test:e2e
+          cd frontend && bun run test:e2e -- --browser chrome
