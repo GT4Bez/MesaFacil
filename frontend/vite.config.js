@@ -13,6 +13,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    pool: 'threads',
     setupFiles: ['./tests/support/setup.js'],
     include: ['tests/unit/**/*.test.{js,jsx}'],
   },

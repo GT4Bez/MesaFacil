@@ -119,17 +119,21 @@ describe('Telas Operacionais (KDS, Comanda e Caixa)', () => {
       ),
     )
 
-    // Pix acima do saldo (100) faz clamp automático no input
+    // Pix acima do saldo (100) faz clamp automático no input e exibe aviso
     fireEvent.change(screen.getByLabelText(/Forma de pagamento/i), { target: { value: 'pix' } })
     const amountInput = screen.getByLabelText(/Valor \(R\$\)/i)
     fireEvent.change(amountInput, { target: { value: '150' } })
     expect(amountInput).toHaveValue(100)
+    expect(screen.getByText(/Cartão e Pix aceitam no máximo o saldo devedor/i)).toBeInTheDocument()
 
-    // Dinheiro acima do saldo mostra troco estimado e confirma troco devolvido
+    // Dinheiro limpa o aviso de limite, mostra troco estimado e confirma sem repetir troco na mensagem de sucesso
     fireEvent.change(screen.getByLabelText(/Forma de pagamento/i), { target: { value: 'cash' } })
+    expect(screen.queryByText(/Cartão e Pix aceitam no máximo o saldo devedor/i)).not.toBeInTheDocument()
     fireEvent.change(amountInput, { target: { value: '120' } })
     expect(screen.getByText(/Troco estimado: R\$\s*20,00/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar pagamento' }))
-    expect(await screen.findByText(/Pagamento registrado com sucesso! Troco: R\$\s*20,00/)).toBeInTheDocument()
+    expect(await screen.findByText('Pagamento registrado com sucesso!')).toBeInTheDocument()
+    expect(screen.getByText(/Troco: R\$\s*20,00/)).toBeInTheDocument()
+    expect(screen.queryByText(/Pagamento registrado com sucesso! Troco:/)).not.toBeInTheDocument()
   })
 })
