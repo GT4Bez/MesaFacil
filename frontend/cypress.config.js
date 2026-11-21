@@ -5,6 +5,9 @@ export default defineConfig({
   screenshotOnRunFailure: false,
   e2e: {
     baseUrl: process.env.E2E_BASE_URL || 'http://localhost:5173',
+    expose: {
+      API_URL: process.env.E2E_API_URL || 'http://localhost:3001',
+    },
     specPattern: 'cypress/e2e/**/*.cy.js',
     supportFile: false,
     defaultCommandTimeout: 8000,

@@ -1,15 +1,15 @@
-const API_URL = 'http://localhost:3001'
-
 function garantirTurnoAberto() {
-  cy.request('POST', `${API_URL}/auth/login`, {
+  const apiUrl = Cypress.expose('API_URL') || 'http://localhost:3001'
+
+  cy.request('POST', `${apiUrl}/auth/login`, {
     email: 'gerente@mesafacil.com',
     password: '123',
   }).then(({ body }) => {
     const headers = { Authorization: `Bearer ${body.data.token}` }
 
-    cy.request({ url: `${API_URL}/shifts/active`, headers }).then(({ body: active }) => {
+    cy.request({ url: `${apiUrl}/shifts/active`, headers }).then(({ body: active }) => {
       if (active.data?.status !== 'open') {
-        cy.request({ method: 'POST', url: `${API_URL}/shifts`, headers })
+        cy.request({ method: 'POST', url: `${apiUrl}/shifts`, headers })
       }
     })
   })
@@ -83,7 +83,8 @@ function pagarEFecharNoCaixa(orderId) {
   cy.get('input[name="amount"]').type('500')
   cy.contains(/Troco estimado:/).should('be.visible')
   cy.contains('button', 'Adicionar pagamento').click()
-  cy.contains(/Pagamento registrado com sucesso! Troco: R\$/).should('be.visible')
+  cy.contains('Pagamento registrado com sucesso!').should('be.visible')
+  cy.contains(/^Troco: R\$/).should('be.visible')
 
   cy.contains('button', 'Finalizar pedido e liberar mesa').should('be.enabled').click()
   cy.contains('Pedido finalizado e mesa liberada com sucesso!').should('be.visible')
@@ -98,6 +99,7 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.url().should('include', '/cashier')
     cy.visit('/kitchen')
     cy.url().should('include', '/cashier')
+    cy.contains('h1', 'Frente de caixa').should('be.visible')
     sair()
 
     cy.viewport(375, 812)
