@@ -54,11 +54,8 @@ export default function Cashier() {
     if (paid) {
       const change = result?.changeAmount ?? 0
       setLastChange(change)
-      setSuccess(
-        change > 0
-          ? `Pagamento registrado com sucesso! Troco: ${formatMoney(change)}`
-          : 'Pagamento registrado com sucesso!',
-      )
+      // O troco aparece num destaque próprio no extrato, sem repetir aqui.
+      setSuccess('Pagamento registrado com sucesso!')
     }
     return paid
   }
@@ -125,6 +122,7 @@ export default function Cashier() {
 
           {bill ? (
             <Bill
+              key={bill.orderId}
               bill={bill}
               busy={busy}
               lastChange={lastChange}
@@ -152,13 +150,23 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
   const paidOff = bill.remainingBalance <= 0
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('cash')
+  // RN-12: cartão/Pix não passam do saldo; avisa quando o valor digitado foi limitado.
+  const [limited, setLimited] = useState(false)
+
+  function changeAmount(raw) {
+    const next = clampForMethod(raw, method, bill.remainingBalance)
+    setLimited(next !== raw)
+    setAmount(next)
+  }
 
   useEffect(() => {
-    setAmount('')
-  }, [bill.orderId])
-
-  useEffect(() => {
-    setAmount((current) => clampForMethod(current, method, bill.remainingBalance))
+    const next = clampForMethod(amount, method, bill.remainingBalance)
+    if (next !== amount) {
+      setAmount(next)
+      setLimited(true)
+    } else {
+      setLimited(false)
+    }
   }, [bill.remainingBalance, method])
 
   const parsedAmount = Number(amount)
@@ -170,7 +178,10 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
   async function handleSubmit(event) {
     event.preventDefault()
     const paid = await onPayment({ amount: Number(amount), method })
-    if (paid) setAmount('')
+    if (paid) {
+      setAmount('')
+      setLimited(false)
+    }
   }
 
   return (
@@ -225,7 +236,7 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
             step="0.01"
             max={method === 'cash' ? undefined : bill.remainingBalance}
             value={amount}
-            onChange={(e) => setAmount(clampForMethod(e.target.value, method, bill.remainingBalance))}
+            onChange={(e) => changeAmount(e.target.value)}
             disabled={busy || paidOff}
             placeholder="0,00"
             required
@@ -245,6 +256,12 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
           Adicionar pagamento
         </button>
       </form>
+      {limited && method !== 'cash' && !paidOff && (
+        <div className="alert warning">
+          Cartão e Pix aceitam no máximo o saldo devedor ({formatMoney(bill.remainingBalance)}). Para
+          receber a mais, use Dinheiro: o troco é calculado.
+        </div>
+      )}
       {estimatedChange > 0 && (
         <div className="alert warning">Troco estimado: {formatMoney(estimatedChange)}</div>
       )}
