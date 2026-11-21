@@ -149,7 +149,7 @@ function ShiftReport({ report }) {
         </div>
       )}
 
-      <div className="stats-grid">
+      <div className="stats-grid money-stats">
         <StatCard label="Total do turno" value={formatMoney(report.totalShift)} hint="pagamentos registrados" valueClassName="green-text" />
         <StatCard label="Pedidos encerrados" value={report.ordersClosed} hint="comandas pagas" />
         <StatCard label="Ticket médio" value={formatMoney(report.averageTicket)} hint="total ÷ pedidos encerrados" />
