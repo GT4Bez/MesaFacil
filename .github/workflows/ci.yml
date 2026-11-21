@@ -95,6 +95,8 @@ jobs:
   frontend:
     name: Frontend (testes unitários e build)
     runs-on: ubuntu-latest
+    env:
+      CYPRESS_INSTALL_BINARY: 0
     defaults:
       run:
         working-directory: frontend
