@@ -11,6 +11,8 @@ dist/
 build/
 coverage/
 .vite/
+frontend/cypress/screenshots/
+frontend/cypress/videos/
 
 # Sistema e IDEs
 .DS_Store

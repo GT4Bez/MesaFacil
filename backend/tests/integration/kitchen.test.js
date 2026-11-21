@@ -111,4 +111,32 @@ describe('KDS da cozinha (spec 003)', () => {
       (error) => error.constraint === 'order_items_sent_at_check',
     )
   })
+
+  test('reenvio no mesmo pedido preserva sent_at dos itens antigos e ordena fila pelo mais antigo', async () => {
+    const first = await orderWithItems(tableIds[0], [[menu.picanha, 1]])
+    await sendToKitchen(first.orderId)
+    await query(`UPDATE order_items SET sent_at = now() - interval '15 minutes' WHERE id = $1`, [first.itemIds[0]])
+    const [{ sent_at: originalSentAt }] = (
+      await query('SELECT sent_at FROM order_items WHERE id = $1', [first.itemIds[0]])
+    ).rows
+
+    const second = await orderWithItems(tableIds[1], [[menu.suco, 1]])
+    await sendToKitchen(second.orderId)
+    await query(`UPDATE order_items SET sent_at = now() - interval '5 minutes' WHERE id = $1`, [second.itemIds[0]])
+
+    const extra = await api('POST', `/orders/${first.orderId}/items`, {
+      role: 'waiter',
+      body: { menuItemId: menu.suco, quantity: 1 },
+    })
+    assert.equal((await sendToKitchen(first.orderId)).status, 200)
+
+    const [{ sent_at: preservedSentAt }] = (
+      await query('SELECT sent_at FROM order_items WHERE id = $1', [first.itemIds[0]])
+    ).rows
+    assert.equal(preservedSentAt.getTime(), originalSentAt.getTime())
+
+    const currentQueue = await queue()
+    assert.deepEqual(currentQueue.map((order) => order.orderId), [first.orderId, second.orderId])
+    assert.equal(currentQueue[0].items.map((item) => item.id).includes(extra.json.data.id), true)
+  })
 })

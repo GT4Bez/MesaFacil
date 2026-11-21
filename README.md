@@ -151,7 +151,18 @@ TEST_DATABASE_URL=postgresql://mesafacil:mesafacil@localhost:5432/mesafacil_test
 # ou só uma camada: bun run test:unit | bun run test:integration
 ```
 
-Dentro do container do backend, use o host `db` no lugar de `localhost`. O CI (`.github/workflows/ci.yml`) roda os testes em todo PR e no push para a `main`, junto com o build do frontend.
+Dentro do container do backend, use o host `db` no lugar de `localhost`.
+
+No **frontend**, as suítes ficam em `frontend/tests/` (Vitest) e `frontend/cypress/e2e/` (Cypress):
+
+```bash
+cd frontend
+bun install
+bun run test:unit   # unitários e componentes (Vitest + jsdom)
+bun run test:e2e    # fluxo completo E2E em Cypress (requer API + Vite no ar, ex.: docker compose up -d)
+```
+
+O CI (`.github/workflows/ci.yml`) executa backend (`bun test`), validação SQL, unitários + build do frontend e a suíte E2E em todo PR e push para a `main`.
 
 ---
 
