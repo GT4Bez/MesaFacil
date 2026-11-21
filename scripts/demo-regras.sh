@@ -28,6 +28,7 @@ GERENTE=$(login gerente)
 GARCOM=$(login garcom)
 COZINHA=$(login cozinha)
 CAIXA=$(login caixa)
+ADMIN=$(login admin)
 
 step 'Erros padronizados: sem token → 401 com { success: false, error, code }'
 curl -s "$API/tables" -w ' → HTTP %{http_code}\n'
@@ -102,3 +103,21 @@ call PATCH "$GERENTE" "/shifts/$SHIFT/close"
 step 'RN-10: relatório do turno derivado do banco (só gerente: caixa → 403)'
 call GET "$CAIXA" "/shifts/$SHIFT/report"
 call GET "$GERENTE" "/shifts/$SHIFT/report"
+
+step 'RN-16: só o admin administra usuários (gerente → 403); e-mail gravado em minúsculas'
+call GET "$GERENTE" /users
+NOVO=$(id_of POST "$ADMIN" /users '{"name":"Ana","email":"Ana@MesaFacil.com","role":"waiter","password":"senha-forte-1"}')
+echo "usuária criada: #$NOVO"
+NOVO_TOKEN=$(curl -s "$API/auth/login" -H 'Content-Type: application/json' \
+  -d '{"email":"ana@mesafacil.com","password":"senha-forte-1"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+call GET "$NOVO_TOKEN" /me
+
+step 'RN-16: desativar revoga o token na hora (401) e bloqueia o login'
+call PATCH "$ADMIN" "/users/$NOVO" '{"active":false}'
+call GET "$NOVO_TOKEN" /tables
+curl -s "$API/auth/login" -H 'Content-Type: application/json' \
+  -d '{"email":"ana@mesafacil.com","password":"senha-forte-1"}' -w ' → HTTP %{http_code}\n'
+
+step 'RN-16: o sistema nunca fica sem admin (o admin não desativa a si mesmo → 409)'
+ADMIN_ID=$(call GET "$ADMIN" /me | sed -E 's/.*"id":"?([0-9]+)"?.*/\1/')
+call PATCH "$ADMIN" "/users/$ADMIN_ID" '{"active":false}'
