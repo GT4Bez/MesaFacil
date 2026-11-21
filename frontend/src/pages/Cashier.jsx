@@ -122,6 +122,7 @@ export default function Cashier() {
 
           {bill ? (
             <Bill
+              key={bill.orderId}
               bill={bill}
               busy={busy}
               lastChange={lastChange}
@@ -159,15 +160,12 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
   }
 
   useEffect(() => {
-    setAmount('')
-    setLimited(false)
-  }, [bill.orderId])
-
-  useEffect(() => {
     const next = clampForMethod(amount, method, bill.remainingBalance)
     if (next !== amount) {
       setAmount(next)
       setLimited(true)
+    } else {
+      setLimited(false)
     }
   }, [bill.remainingBalance, method])
 
