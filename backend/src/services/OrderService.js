@@ -192,6 +192,9 @@ export class OrderService {
           break;
 
         case 'ready_to_pay':
+          if (order.status === 'open') {
+            throw new ConflictError('Envie os itens para a cozinha antes de pedir a conta.');
+          }
           if (order.status !== 'in_kitchen') throw this.#invalidTransition();
           // RN-06: a cozinha precisa ter terminado todos os itens.
           if (!items.every((item) => ['ready', 'canceled'].includes(item.status))) {
@@ -200,6 +203,10 @@ export class OrderService {
           break;
 
         case 'closed': {
+          // RN-03: só encerra depois que a conta foi pedida (ready_to_pay).
+          if (['open', 'in_kitchen'].includes(order.status)) {
+            throw new ConflictError('O pedido só pode ser encerrado depois que a conta for pedida.');
+          }
           if (order.status !== 'ready_to_pay') throw this.#invalidTransition();
           // RN-07 e RN-12: o saldo considerando a taxa de serviço persistida precisa estar quitado.
           const payments = await this.orders.findPayments(orderId, db);

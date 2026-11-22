@@ -211,7 +211,13 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
 
     assert.equal((await quantity(item2, 0)).status, 422)
     assert.equal((await quantity(item2, 1)).status, 200)
-    assert.equal((await status('waiter', 'ready_to_pay')).status, 409)
+    // Mensagens dizem o que falta (issue #106), sem mudar o código HTTP.
+    const earlyBill = await status('waiter', 'ready_to_pay')
+    assert.equal(earlyBill.status, 409)
+    assert.equal(earlyBill.json.error, 'Envie os itens para a cozinha antes de pedir a conta.')
+    const earlyClose = await status('cashier', 'closed')
+    assert.equal(earlyClose.status, 409)
+    assert.equal(earlyClose.json.error, 'O pedido só pode ser encerrado depois que a conta for pedida.')
 
     assert.equal((await status('waiter', 'in_kitchen')).status, 200)
     assert.equal((await quantity(item1, 3)).status, 409)
@@ -230,6 +236,8 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
 
     // RN-06: bloqueia ready_to_pay enquanto há item em preparo.
     assert.equal((await status('waiter', 'ready_to_pay')).status, 409)
+    // RN-03: mesmo com o pedido na cozinha, o caixa ainda não encerra.
+    assert.equal((await status('cashier', 'closed')).json.error, 'O pedido só pode ser encerrado depois que a conta for pedida.')
 
     assert.equal((await itemStatus(item1, 'kitchen', { status: 'ready' })).status, 200)
     assert.equal((await status('kitchen', 'ready_to_pay')).status, 403)
