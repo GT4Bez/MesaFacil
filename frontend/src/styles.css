@@ -1229,7 +1229,7 @@ footer span {
   font-size: 22px;
   font-weight: 700;
 }
-.stepper output {
+.stepper-value {
   min-width: 34px;
   text-align: center;
   font: 800 var(--fs-md) Manrope;

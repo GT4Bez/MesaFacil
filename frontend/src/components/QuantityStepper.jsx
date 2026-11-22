@@ -10,7 +10,7 @@ export default function QuantityStepper({ value, onChange, min = 1, max = 99, di
       >
         −
       </button>
-      <output aria-live="polite">{value}</output>
+      <span className="stepper-value" aria-live="polite">{value}</span>
       <button
         type="button"
         aria-label={`Aumentar ${label.toLowerCase()}`}
