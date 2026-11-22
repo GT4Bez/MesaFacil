@@ -305,22 +305,25 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('Enviado').should('be.visible')
     sair()
 
+    // Limpeza logo depois do envio (a baixa já aconteceu e cancelar não devolve estoque): assim a
+    // mesa é liberada mesmo se a conferência abaixo falhar.
+    const apiUrl = Cypress.expose('API_URL') || 'http://localhost:3001'
+    cy.request('POST', `${apiUrl}/auth/login`, { email: 'gerente@mesafacil.com', password: '123' }).then(({ body }) => {
+      cy.get('@orderId').then((orderId) => {
+        cy.request({
+          method: 'PATCH',
+          url: `${apiUrl}/orders/${orderId}/status`,
+          headers: { Authorization: `Bearer ${body.data.token}` },
+          body: { status: 'canceled', reason: 'Limpeza do teste E2E' },
+        })
+      })
+    })
+
     fazerLogin('gerente@mesafacil.com')
     cy.visit('/admin/ingredients')
     cy.get('@antes').then((antes) => {
       // A ficha do seed usa 0,400 kg de picanha por prato.
       estoquePicanha().should('be.closeTo', antes - 0.4, 0.0001)
     })
-
-    // Limpeza: o gerente cancela o pedido para liberar a mesa (o estoque baixado vira perda).
-    cy.get('@orderId').then((orderId) => {
-      cy.visit(`/orders/${orderId}`)
-      cy.contains('button', 'Cancelar pedido').click()
-      cy.get('dialog[open]').within(() => {
-        cy.get('textarea[name="reason"]').type('Limpeza do teste E2E')
-        cy.contains('button', 'Cancelar pedido').click()
-      })
-    })
-    cy.contains(/cancelado/i).should('be.visible')
   })
 })

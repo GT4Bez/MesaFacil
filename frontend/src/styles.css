@@ -1522,3 +1522,11 @@ footer span {
     grid-template-columns: 1fr 96px var(--touch);
   }
 }
+.recipe-warning {
+  grid-column: 1 / -1;
+  color: var(--warning);
+  font-size: var(--fs-xs);
+}
+.recipe-row.inactive-row select {
+  border-color: var(--warning);
+}

@@ -136,4 +136,51 @@ describe('Insumos, ficha técnica e CMV (RN-15)', () => {
     expect(panel).toHaveTextContent(/Margem bruta\s*R\$\s*59,83 \(66,6 %\)/)
     expect(panel).toHaveTextContent(/Perdas \(itens enviados e cancelados\)\s*R\$\s*4,67/)
   })
+
+  it('entrada gravada fecha o modal mesmo se o recarregamento da lista falhar (sem envio duplicado)', async () => {
+    let gets = 0
+    mockFetch(
+      {
+        'GET /ingredients': () => {
+          gets += 1
+          return gets === 1
+            ? jsonResponse({ success: true, data: [ingredient('1', 'Picanha')] })
+            : jsonResponse({ success: false, error: 'Falha temporária.' }, 500)
+        },
+        'POST /ingredients/1/purchases': () =>
+          jsonResponse({ success: true, data: ingredient('1', 'Picanha', { stockQuantity: 15 }) }, 201),
+      },
+      manager,
+    )
+    renderWithAuth(<Ingredients />, { user: manager, route: '/admin/ingredients', path: '/admin/ingredients' })
+    fireEvent.click(within(await screen.findByRole('article', { name: 'Picanha' })).getByRole('button', { name: 'Entrada' }))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Quantidade comprada (kg)'), { target: { value: '5' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Registrar entrada' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Entrada registrada: Picanha agora com 15 kg')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByText('Falha temporária.')).toBeInTheDocument()
+  })
+
+  it('ficha técnica destaca insumo inativo que já estava nela', async () => {
+    const item = { id: '1', name: 'Pudim', category: 'Sobremesas', price: 14, available: true }
+    mockFetch(
+      {
+        'GET /menu-items': [item],
+        'GET /menu-items/categories': ['Sobremesas'],
+        'GET /ingredients': [ingredient('9', 'Ovo', { unit: 'un', active: false, unitCost: 0.8 })],
+        'GET /menu-items/1/recipe': {
+          menuItemId: '1', price: 14, cost: 0.4, margin: 13.6, marginPercent: 97.1,
+          items: [{ ingredientId: '9', name: 'Ovo', unit: 'un', quantity: 0.5, unitCost: 0.8, cost: 0.4, active: false }],
+        },
+      },
+      manager,
+    )
+    renderWithAuth(<MenuAdmin />, { user: manager, route: '/admin/menu', path: '/admin/menu' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Ficha técnica' }))
+    const dialog = screen.getByRole('dialog')
+    expect(await within(dialog).findByText(/Ovo está inativo: continua na ficha/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Custo atual calculado pelo sistema/)).toBeInTheDocument()
+  })
 })

@@ -61,11 +61,13 @@ export default function Ingredients() {
         })
         message = `Estoque de ${ingredient.name} ajustado`
       }
-      await load()
     })
+    // A lista recarrega à parte: se só o recarregamento falhar, o modal já fechou e a entrada
+    // (ou o ajuste) não fica pronta para ser enviada de novo em duplicidade.
     if (saved) {
       setDialog(null)
       showToast(message)
+      run(load)
     }
   }
 
@@ -95,7 +97,7 @@ export default function Ingredients() {
         <div className="panel-heading">
           <div>
             <h2>Estoque</h2>
-            <p>{ingredients ? `${ingredients.length} insumo(s)` : 'Carregando...'}</p>
+            <p>{ingredients ? `${ingredients.length} insumo(s)` : error ? 'Lista indisponível' : 'Carregando...'}</p>
           </div>
         </div>
         <div className="ingredient-list">
@@ -152,6 +154,14 @@ export default function Ingredients() {
           ))}
         </div>
         {ingredients?.length === 0 && <div className="empty-state">Nenhum insumo cadastrado.</div>}
+        {!ingredients && error && !dialog && (
+          <div className="empty-state">
+            Não foi possível carregar os insumos.{' '}
+            <button className="outline-btn" disabled={busy} onClick={() => run(load)}>
+              Tentar de novo
+            </button>
+          </div>
+        )}
       </section>
 
       {dialog && (
@@ -196,11 +206,28 @@ function IngredientDialog({ dialog, busy, error, onChange, onSubmit, onClose }) 
             </label>
             <label>
               Estoque mínimo ({unit})
-              <input type="number" min="0" step="0.001" value={values.minStock} onChange={onChange('minStock')} placeholder="0" />
+              <input
+                type="number"
+                min="0"
+                step="0.001"
+                value={values.minStock}
+                onChange={onChange('minStock')}
+                placeholder="0"
+                required={Boolean(ingredient)}
+              />
             </label>
             <label>
               Custo por {unit} (R$)
-              <input type="number" min="0" step="0.01" value={values.unitCost} onChange={onChange('unitCost')} placeholder="0,00" />
+              {/* Na edição, campo vazio não vira 0 sem querer (zeraria o custo das fichas). */}
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={values.unitCost}
+                onChange={onChange('unitCost')}
+                placeholder="0,00"
+                required={Boolean(ingredient)}
+              />
             </label>
             {ingredient && (
               <label className="checkbox-label">

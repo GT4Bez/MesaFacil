@@ -6,16 +6,18 @@ import { formatMoney, UNIT_LABELS } from '../utils/format'
 
 const round = (value, places) => Math.round(value * 10 ** places) / 10 ** places
 
-// RN-15 (spec 009): ficha técnica do item do cardápio. A estimativa de custo na tela é só para
-// orientar; o custo e a margem gravados vêm do backend depois de salvar.
+// RN-15 (spec 009): ficha técnica do item do cardápio. A estimativa na tela é só para orientar;
+// o backend recalcula custo e margem pelo custo atual de cada insumo (não há custo gravado na ficha).
 export default function RecipeModal({ item, onSaved, onClose }) {
   const [ingredients, setIngredients] = useState([])
   const [rows, setRows] = useState(null)
   const [saved, setSaved] = useState(null)
+  // Carregar e salvar têm estados separados: durante o carregamento o modal continua fechável.
+  const loader = useAction()
   const { busy, error, run } = useAction()
 
   useEffect(() => {
-    run(async () => {
+    loader.run(async () => {
       const [recipe, all] = await Promise.all([api.get(`/menu-items/${item.id}/recipe`), api.get('/ingredients')])
       setIngredients(all)
       setSaved(recipe)
@@ -56,16 +58,16 @@ export default function RecipeModal({ item, onSaved, onClose }) {
       onClose={onClose}
     >
       <form className="modal-form" onSubmit={handleSubmit}>
-        {error && <div className="alert error">{error}</div>}
+        {(error || loader.error) && <div className="alert error">{error || loader.error}</div>}
         {rows === null ? (
-          !error && <div className="empty-state">Carregando ficha...</div>
+          !loader.error && <div className="empty-state">Carregando ficha...</div>
         ) : (
           <>
             {rows.length === 0 && <div className="empty-state">Item sem ficha: vende normalmente, sem baixa de estoque.</div>}
             {rows.map((row, index) => {
               const ingredient = byId[row.ingredientId]
               return (
-                <div className="recipe-row" key={index}>
+                <div className={`recipe-row ${ingredient && !ingredient.active ? 'inactive-row' : ''}`} key={index}>
                   <label>
                     Insumo
                     <select value={row.ingredientId} onChange={updateRow(index, 'ingredientId')} required>
@@ -99,6 +101,11 @@ export default function RecipeModal({ item, onSaved, onClose }) {
                   >
                     ×
                   </button>
+                  {ingredient && !ingredient.active && (
+                    <small className="recipe-warning">
+                      {ingredient.name} está inativo: continua na ficha e dando baixa. Troque ou remova quando puder.
+                    </small>
+                  )}
                 </div>
               )
             })}
@@ -122,7 +129,7 @@ export default function RecipeModal({ item, onSaved, onClose }) {
                 </b>
               </div>
               {saved && saved.items.length > 0 && (
-                <small className="muted">Custo gravado na última versão: {formatMoney(saved.cost)}.</small>
+                <small className="muted">Custo atual calculado pelo sistema: {formatMoney(saved.cost)}.</small>
               )}
             </div>
           </>
