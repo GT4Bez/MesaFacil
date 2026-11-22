@@ -9,6 +9,7 @@ import Cashier from './pages/Cashier'
 import Kitchen from './pages/Kitchen'
 import MenuAdmin from './pages/MenuAdmin'
 import ShiftAdmin from './pages/ShiftAdmin'
+import Ingredients from './pages/Ingredients'
 import Users from './pages/Users'
 import Account from './pages/Account'
 import { homeFor, SCREENS } from './utils/access'
@@ -33,6 +34,9 @@ export default function App() {
         </Route>
         <Route element={<RoleRoute roles={SCREENS.menuAdmin.roles} />}>
           <Route path={SCREENS.menuAdmin.path} element={<MenuAdmin />} />
+        </Route>
+        <Route element={<RoleRoute roles={SCREENS.ingredients.roles} />}>
+          <Route path={SCREENS.ingredients.path} element={<Ingredients />} />
         </Route>
         <Route element={<RoleRoute roles={SCREENS.shiftAdmin.roles} />}>
           <Route path={SCREENS.shiftAdmin.path} element={<ShiftAdmin />} />

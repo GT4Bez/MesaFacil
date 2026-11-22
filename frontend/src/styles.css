@@ -1409,3 +1409,93 @@ footer span {
   background: #fff7e6;
   color: #8a5a00;
 }
+/* RN-15 (spec 009): insumos, ficha técnica e CMV. */
+.ingredient-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.ingredient-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ingredient-card.below-min {
+  border-color: var(--brand);
+  background: var(--brand-softer);
+}
+.ingredient-card.inactive {
+  opacity: 0.7;
+}
+.ingredient-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.ingredient-stock {
+  font: 800 22px Manrope;
+}
+.ingredient-card small {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.ingredient-card .item-controls {
+  flex-wrap: wrap;
+}
+.badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--divider);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge.alert-badge {
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+.recipe-row {
+  display: grid;
+  grid-template-columns: 1fr 140px var(--touch);
+  align-items: end;
+  gap: 8px;
+}
+.recipe-summary {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--divider);
+}
+.recipe-row > label {
+  min-width: 0;
+}
+.recipe-row select,
+.recipe-row input {
+  width: 100%;
+  min-width: 0;
+}
+.recipe-margin b {
+  font-size: var(--fs-md);
+}
+.recipe-summary .diff-negative {
+  color: var(--brand);
+}
+.recipe-summary .diff-zero {
+  color: var(--success);
+}
+.cmv-panel {
+  margin: 18px 0;
+}
+.cmv-losses span {
+  color: var(--text-secondary);
+}
+@media (max-width: 650px) {
+  .recipe-row {
+    grid-template-columns: 1fr 96px var(--touch);
+  }
+}
