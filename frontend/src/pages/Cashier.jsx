@@ -3,6 +3,7 @@ import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../utils/format'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
+import { ShiftCountForm } from '../components/ShiftClosing'
 
 export default function Cashier() {
   const [tables, setTables] = useState([])
@@ -172,6 +173,13 @@ function CashDrawer() {
         <>
           <CashMovementForm shiftId={shift.id} onRegistered={load} />
           <CashMovementTable movements={movements} />
+          {/* RN-14: contagem cega no fim do turno, sem nenhum valor esperado na tela. */}
+          <h3 className="subheading">Contagem de fechamento</h3>
+          <p className="muted">
+            Conte o dinheiro da gaveta e os comprovantes de cartão e Pix e informe os valores. O gerente confere e
+            encerra o turno.
+          </p>
+          <ShiftCountForm shift={shift} onCounted={load} />
         </>
       )}
     </section>

@@ -3,6 +3,7 @@ import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import StatCard from '../components/StatCard'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
+import { ShiftClosingPanel } from '../components/ShiftClosing'
 import { formatMoney, PAYMENT_METHOD_LABELS } from '../utils/format'
 
 const formatDateTime = (value) => (value ? new Date(value).toLocaleString('pt-BR') : '—')
@@ -39,10 +40,11 @@ export default function ShiftAdmin() {
     })
   }
 
+  // RN-14: encerra depois da contagem cega do caixa; o motivo só vai quando há diferença.
   // Depois de encerrar, o relatório continua na tela, agora como fechamento do turno.
-  const closeShift = () =>
+  const closeShift = (reason) =>
     run(async () => {
-      const closed = await api.patch(`/shifts/${activeShift.id}/close`)
+      const closed = await api.patch(`/shifts/${activeShift.id}/close`, reason ? { reason } : {})
       setSelectedId(closed.id)
       await load(closed.id)
     })
@@ -89,15 +91,15 @@ export default function ShiftAdmin() {
                 <b>{activeShift ? `Turno #${activeShift.id} aberto` : 'Nenhum turno aberto'}</b>
                 <p>
                   {activeShift
-                    ? `Aberto em ${formatDateTime(activeShift.openedAt)}. Só encerra sem pedidos ativos.`
+                    ? `Aberto em ${formatDateTime(activeShift.openedAt)}. Encerra pela Conferência, depois da contagem do caixa.`
                     : 'Abra um turno para liberar os atendimentos no salão.'}
                 </p>
               </div>
             </div>
             {activeShift ? (
-              <button className="dark-btn" disabled={busy} onClick={closeShift}>
-                Encerrar turno
-              </button>
+              <a className="dark-btn" href="#closing-title">
+                Conferência ↓
+              </a>
             ) : (
               <form className="shift-lookup open-shift" onSubmit={openShift}>
                 <label>
@@ -129,6 +131,8 @@ export default function ShiftAdmin() {
           {report ? (
             <ShiftReport
               report={report}
+              busy={busy}
+              onClose={closeShift}
               cashForm={
                 activeShift?.id === report.shift.id && (
                   <CashMovementForm shiftId={activeShift.id} onRegistered={() => load()} />
@@ -144,8 +148,8 @@ export default function ShiftAdmin() {
   )
 }
 
-function ShiftReport({ report, cashForm }) {
-  const { shift, cancellations, cash } = report
+function ShiftReport({ report, cashForm, busy, onClose }) {
+  const { shift, cancellations, cash, closing } = report
   const partial = shift.status === 'open'
 
   return (
@@ -168,6 +172,8 @@ function ShiftReport({ report, cashForm }) {
           item contam só os pedidos encerrados.
         </div>
       )}
+
+      <ShiftClosingPanel shift={shift} closing={closing} busy={busy} onClose={onClose} />
 
       <div className="stats-grid money-stats">
         <StatCard label="Total do turno" value={formatMoney(report.totalShift)} hint="pagamentos registrados" valueClassName="green-text" />
