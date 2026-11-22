@@ -106,8 +106,16 @@ call PATCH "$GARCOM" "/orders/$OTHER/status" '{"status":"canceled","reason":"des
 call PATCH "$GERENTE" "/orders/$OTHER/status" '{"status":"canceled"}'
 call PATCH "$GERENTE" "/orders/$OTHER/status" '{"status":"canceled","reason":"Cliente desistiu"}'
 
-step 'RN-02: turno sem pedidos ativos pode ser encerrado'
+step 'RN-14: encerrar sem a contagem do caixa → 409'
 call PATCH "$GERENTE" "/shifts/$SHIFT/close"
+
+step 'RN-14: contagem cega do caixa (dinheiro 68,00, cartão 0, Pix 50,00) → 200 sem o esperado; gerente contando → 403'
+call PUT "$GERENTE" "/shifts/$SHIFT/count" '{"declared":{"cash":68,"card":0,"pix":50}}'
+call PUT "$CAIXA" "/shifts/$SHIFT/count" '{"declared":{"cash":68,"card":0,"pix":50}}'
+
+step 'RN-02/RN-14: com diferença de −0,89 no dinheiro, encerrar exige motivo (422 → 200 com as diferenças)'
+call PATCH "$GERENTE" "/shifts/$SHIFT/close"
+call PATCH "$GERENTE" "/shifts/$SHIFT/close" '{"reason":"Faltaram 0,89 de troco"}'
 
 step 'RN-10: relatório do turno derivado do banco (só gerente: caixa → 403); bloco cash com expected 68.89'
 call GET "$CAIXA" "/shifts/$SHIFT/report"

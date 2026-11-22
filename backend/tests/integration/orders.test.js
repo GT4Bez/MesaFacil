@@ -41,6 +41,7 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
       ['GET', '/tables'],
       ['GET', '/shifts/active'],
       ['POST', '/shifts'],
+      ['PUT', '/shifts/1/count'],
       ['PATCH', '/shifts/1/close'],
       ['GET', '/menu-items'],
       ['POST', '/orders'],
@@ -80,6 +81,9 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
     assert.equal((await api('PATCH', `/shifts/${shiftId}/close`)).status, 409)
 
     await api('PATCH', `/orders/${orderId}/status`, { body: { status: 'canceled', reason: 'Cliente desistiu' } })
+    // RN-14: o fechamento exige a contagem cega do caixa.
+    assert.equal((await api('PATCH', `/shifts/${shiftId}/close`)).status, 409)
+    await api('PUT', `/shifts/${shiftId}/count`, { role: 'cashier', body: { declared: { cash: 0, card: 0, pix: 0 } } })
     const closed = await api('PATCH', `/shifts/${shiftId}/close`)
     assert.equal(closed.status, 200)
     assert.equal(closed.json.data.status, 'closed')
@@ -94,6 +98,7 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
       staff = await createStaff()
       tableIds = await createTables(3)
       const shiftId = (await openShift()).json.data.id
+      await api('PUT', `/shifts/${shiftId}/count`, { role: 'cashier', body: { declared: { cash: 0, card: 0, pix: 0 } } })
 
       const [closeRes, ...orderResults] = await Promise.all([
         api('PATCH', `/shifts/${shiftId}/close`),

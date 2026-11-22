@@ -33,13 +33,14 @@ docker compose up --build
 | 12 | Caixa | Trocar para Dinheiro, pagar R$ 60,00 e finalizar | "Troco: R$ 11,11"; o histórico mostra recebido e troco; mesa 1 volta a "Livre" | RN-07, RN-12 |
 | 13 | Gerente | **Admin do cardápio**: mudar o preço da picanha e tirar o Pudim de linha | Pudim some do cardápio do garçom; pedidos antigos mantêm o preço | RN-09 |
 | 14 | Garçom + Gerente | Abrir a mesa 2 com um item; gerente usa **Cancelar pedido** com motivo | Mesa liberada; comanda mostra quem cancelou e por quê | RN-11 |
-| 15 | Gerente | **Turno e relatório** → **Encerrar turno** | Relatório fechado: total, ticket médio, formas de pagamento, itens, cancelamentos e o dinheiro esperado na gaveta (fundo + dinheiro líquido de troco) | RN-02, RN-10, RN-13 |
-| 16 | Admin | Entrar como `admin@` | A home é **Usuários**; o menu tem todas as telas; o admin pode abrir turno, cancelar e receber como qualquer papel | RN-16 |
-| 17 | Admin | Cadastrar "Ana", e-mail `Ana@MesaFacil.com`, papel Garçom, senha de 8+ caracteres | E-mail gravado em minúsculas; senha curta é recusada | RN-16 |
-| 18 | Admin + Garçom | Admin desativa o Garçom; o garçom clica em qualquer tela | A sessão cai na hora: volta ao login com "Sua sessão foi encerrada"; o login dele é recusado | RN-16 |
-| 19 | Admin | Na própria linha, não há "Desativar"; **Redefinir senha** do Caixa | O admin não remove a si mesmo; a senha nova encerra as sessões abertas do caixa | RN-16 |
-| 20 | Cozinha | **Minha conta** → trocar a senha (errar a atual primeiro) | "Senha atual incorreta"; com a certa, volta ao login para entrar com a senha nova | RN-16 |
-| 21 | Gerente | Abrir `/admin/users` na barra de endereço | Volta para a tela inicial: só o admin administra usuários | RN-16 |
+| 15 | Caixa | **Frente de caixa** → **Contagem de fechamento**: dinheiro, cartão e Pix contados | Nenhum valor esperado na tela; a contagem fica registrada com o horário | RN-14 |
+| 16 | Gerente | **Turno e relatório** → **Conferência** → **Encerrar turno** | Declarado × esperado × diferença por forma; com diferença, o motivo é obrigatório. Relatório fechado: total, ticket médio, formas de pagamento, itens, cancelamentos, dinheiro esperado na gaveta e a conferência | RN-02, RN-10, RN-13, RN-14 |
+| 17 | Admin | Entrar como `admin@` | A home é **Usuários**; o menu tem todas as telas; o admin pode abrir turno, cancelar e receber como qualquer papel | RN-16 |
+| 18 | Admin | Cadastrar "Ana", e-mail `Ana@MesaFacil.com`, papel Garçom, senha de 8+ caracteres | E-mail gravado em minúsculas; senha curta é recusada | RN-16 |
+| 19 | Admin + Garçom | Admin desativa o Garçom; o garçom clica em qualquer tela | A sessão cai na hora: volta ao login com "Sua sessão foi encerrada"; o login dele é recusado | RN-16 |
+| 20 | Admin | Na própria linha, não há "Desativar"; **Redefinir senha** do Caixa | O admin não remove a si mesmo; a senha nova encerra as sessões abertas do caixa | RN-16 |
+| 21 | Cozinha | **Minha conta** → trocar a senha (errar a atual primeiro) | "Senha atual incorreta"; com a certa, volta ao login para entrar com a senha nova | RN-16 |
+| 22 | Gerente | Abrir `/admin/users` na barra de endereço | Volta para a tela inicial: só o admin administra usuários | RN-16 |
 
 > Dica: no passo 14, se o caixa registrar um pagamento antes, o cancelamento é recusado (`409`): pedido pago não é cancelado.
 
@@ -68,6 +69,7 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-11 | Garçom cancelando pedido; gerente sem motivo | `403`, `422` |
 | RN-13 | Abrir turno sem fundo; sangria acima da gaveta; garçom sangrando; caixa sangra 100; gerente reforça 20 | `422`; `422` sem revelar o valor; `403`; `201` sem `expectedCash`; `201` com `expectedCash: 68.89` |
 | RN-10 | Caixa pedindo o relatório; gerente pedindo o relatório | `403`, `200` com totais por SQL e o bloco `cash` (`expected: 68.89`) |
+| RN-14 | Encerrar sem contagem; gerente contando; caixa conta dinheiro 68,00 / Pix 50,00; encerrar sem motivo; com motivo | `409`; `403`; `200` sem `expected`; `422`; `200` com diferença de `-0.89` |
 | RN-16 | Gerente listando usuários; admin cria "Ana" e a desativa; Ana usa o token antigo e tenta logar; admin desativa a si mesmo | `403`; `201`; `401` e `401`; `409` |
 
 Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do PostgreSQL passam por `translatePgError` e chegam como mensagem de negócio.
@@ -89,6 +91,7 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-11 | `OrderService.updateStatus` (`canceled`), `AuditLogService` | `orders_cancellation_reason_check`, `audit_logs_action_check` | `audit.test.js` |
 | RN-12 | `OrderService.addPayment` (fila com `FOR UPDATE`) | `payments_change_amount_check`, `payments_change_only_cash_check` | `orders.test.js`, `shiftReport.test.js` |
 | RN-13 | `ShiftService.open`, `ShiftService.addCashMovement` (trava `FOR UPDATE` no turno), `CashMovementRepository.findCashSummary` | `cash_movements_amount_check`, `cash_movements_reason_check`, `cash_movements_single_float_idx` | `cashMovements.test.js` |
+| RN-14 | `ShiftService.count`, `ShiftService.close` (trava `FOR UPDATE` no turno; contagem desatualizada → `409`) | `shift_counts_declared_check`, `shift_counts_unique`, coluna gerada `difference` | `shiftClosing.test.js` |
 | RN-16 | `hasRole`, `authenticateToken` (confere `active`/`token_version`), `UserService` | `users_role_check`, `users_email_normalized_check`, trava `FOR UPDATE` nos admins ativos | `users.test.js` |
 
 Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Executando os Testes Automatizados" no [README](../README.md).

@@ -39,13 +39,18 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 
 ## Turno e mesas
 
-- `GET /shifts/active` — `{ id, status: "open" }` ou `null` quando não há turno aberto.
+- `GET /shifts/active` — `{ id, status: "open", countedAt }` ou `null` quando não há turno aberto. `countedAt` é o horário da contagem cega (ou `null`), sem valores (RN-14).
 - `POST /shifts` — abre o turno (gerente). Body `{ "openingFloat": 100 }` (fundo de troco, `≥ 0`; ausente/inválido → `422`, RN-13).
 - `POST /shifts/:id/cash-movements` — sangria/reforço (caixa e gerente). Body `{ "type": "withdrawal" | "reinforcement", "amount": 50, "reason": "Cofre" }`.
   Resposta `201` `{ id, type, amount, reason, createdAt }`; só para gerente/admin vem também `expectedCash`.
   `422` sem motivo, valor inválido ou sangria maior que a gaveta (a mensagem não revela o valor); `409` turno encerrado.
 - `GET /shifts/:id/cash-movements` — `[{ id, type, amount, reason, by, createdAt }]` (caixa e gerente), o fundo primeiro; nunca traz o esperado.
-- `PATCH /shifts/:id/close` — encerra o turno; `409` se houver pedido ativo (RN-02).
+- `PUT /shifts/:id/count` — contagem cega do caixa (`cashier`; gerente → `403`). Body
+  `{ "declared": { "cash": 412.5, "card": 980, "pix": 310 }, "note": "opcional" }`. Resposta `{ shiftId, countedAt, declared, note }`,
+  **sem o esperado**. `422` declarado ausente/negativo; `409` turno encerrado ou com pedido ativo. Recontar substitui (RN-14).
+- `PATCH /shifts/:id/close` — encerra o turno (gerente). Body opcional `{ "reason": "..." }`. `409` com pedido ativo (RN-02),
+  sem contagem ou com contagem desatualizada (houve pagamento/movimento depois dela); `422` sem motivo quando há diferença.
+  Resposta: o turno com `closing: { countedBy, countedAt, note, reason, methods: [{ method, declared, expected, difference }] }` (RN-14).
 - `GET /shifts/:id/report` — relatório do turno (gerente; `404` se não existir), parcial enquanto aberto (RN-10):
   `{ shift: { id, status, openedAt, closedAt, openedBy }, totalShift, ordersClosed, averageTicket,
   byPaymentMethod: [{ method, total, count }], byMenuItem: [{ menuItemId, name, quantity, total }],

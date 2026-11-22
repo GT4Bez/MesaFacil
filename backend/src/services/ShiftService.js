@@ -1,12 +1,14 @@
 import { ShiftRepository } from '../repositories/ShiftRepository.js';
 import { ShiftReportRepository } from '../repositories/ShiftReportRepository.js';
 import { CashMovementRepository } from '../repositories/CashMovementRepository.js';
+import { COUNT_METHODS, ShiftCountRepository } from '../repositories/ShiftCountRepository.js';
 import { AuditLogService } from './AuditLogService.js';
 import { hasRole } from '../auth/roles.js';
 import { ConflictError, DomainValidationError, NotFoundError } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
-import { MAX_PG_MONEY, toMoney } from '../domain/money.js';
+import { MAX_PG_MONEY, roundMoney, toMoney } from '../domain/money.js';
 
+const cleanText = (value) => (typeof value === 'string' ? value.trim() : '');
 const MOVEMENT_ACTIONS = { withdrawal: 'cash.withdrawal', reinforcement: 'cash.reinforcement' };
 
 export class ShiftService {
@@ -14,12 +16,14 @@ export class ShiftService {
     shiftRepository = new ShiftRepository(),
     auditLogService = new AuditLogService(),
     shiftReportRepository = new ShiftReportRepository(),
-    cashMovementRepository = new CashMovementRepository()
+    cashMovementRepository = new CashMovementRepository(),
+    shiftCountRepository = new ShiftCountRepository()
   ) {
     this.shifts = shiftRepository;
     this.audit = auditLogService;
     this.reports = shiftReportRepository;
     this.cash = cashMovementRepository;
+    this.counts = shiftCountRepository;
   }
 
   findActive() {
@@ -48,21 +52,60 @@ export class ShiftService {
     }
   }
 
-  async close(id, user) {
+  // RN-14: contagem cega. O caixa declara o que contou; o esperado é calculado e congelado aqui,
+  // mas nunca volta na resposta. Recontar substitui a contagem anterior.
+  async count(id, { declared, note } = {}, user) {
+    const values = {};
+    for (const method of COUNT_METHODS) {
+      const value = toMoney(declared?.[method]);
+      if (value === null || value < 0 || value > MAX_PG_MONEY) {
+        throw new DomainValidationError('Informe os valores contados de dinheiro, cartão e Pix (0 ou mais).');
+      }
+      values[method] = value;
+    }
+    const cleanedNote = cleanText(note) || null;
+
+    return this.shifts.transaction(async (db) => {
+      const shift = await this.#lockOpenShift(id, db);
+      if (await this.shifts.hasActiveOrders(shift.id, db)) {
+        throw new ConflictError('Feche as comandas abertas antes da contagem.');
+      }
+      const expected = await this.#expectedByMethod(shift.id, db);
+      const countedAt = await this.counts.replace(
+        { shiftId: shift.id, userId: user.id, declared: values, expected, note: cleanedNote },
+        db
+      );
+      await this.#record(user, shift, 'shift.counted', db, { declared: values, note: cleanedNote });
+      return { shiftId: shift.id, countedAt, declared: values, note: cleanedNote };
+    });
+  }
+
+  // RN-02 + RN-14: o gerente encerra depois da contagem do caixa; diferença exige motivo.
+  async close(id, user, { reason } = {}) {
     return this.shifts.transaction(async (db) => {
       // RN-02: trava o turno com FOR UPDATE antes de checar pedidos ativos para aguardar
       // o commit de eventuais POST /orders concorrentes (que mantêm FOR SHARE no turno).
-      const shift = await this.shifts.findById(id, { lock: true }, db);
-      if (!shift) throw new NotFoundError('Turno não encontrado.');
-      if (shift.status === 'closed') throw new ConflictError('O turno já está encerrado.');
+      const shift = await this.#lockOpenShift(id, db);
       if (await this.shifts.hasActiveOrders(id, db)) {
         throw new ConflictError('Não é possível encerrar o turno com pedidos ativos.');
       }
 
-      const closed = await this.shifts.close(id, db);
+      const count = await this.counts.findByShift(shift.id, db);
+      if (!count) throw new ConflictError('O caixa ainda não fez a contagem de fechamento.');
+      if (await this.#isStale(count, shift.id, db)) {
+        throw new ConflictError(
+          'Houve pagamento ou movimento de caixa depois da contagem. Peça ao caixa uma nova contagem.'
+        );
+      }
+      const note = cleanText(reason) || null;
+      if (count.methods.some((item) => item.difference !== 0) && !note) {
+        throw new DomainValidationError('Há diferença na conferência: informe o motivo.');
+      }
+
+      const closed = await this.shifts.close(id, { closedBy: user.id, note }, db);
       if (!closed) throw new ConflictError('Não é possível encerrar o turno com pedidos ativos.');
-      await this.#record(user, closed, 'shift.closed', db);
-      return closed;
+      await this.#record(user, closed, 'shift.closed', db, { closing: count.methods, reason: note });
+      return { ...closed, closing: { ...count, reason: note } };
     });
   }
 
@@ -128,16 +171,45 @@ export class ShiftService {
       const items = await this.reports.findCanceledItems(id, db);
       const cashSummary = await this.cash.findCashSummary(id, db);
       const movements = await this.cash.findByShift(id, db);
+      const count = await this.counts.findByShift(id, db);
+      const { closingNote, ...shiftData } = shift;
 
       return {
-        shift,
+        shift: shiftData,
         ...totals,
         byPaymentMethod,
         byMenuItem,
         cancellations: { ordersCount: orders.length, orders, items },
-        cash: { ...cashSummary, movements }
+        cash: { ...cashSummary, movements },
+        // RN-14: conferência cega; `stale` indica contagem desatualizada com o turno aberto.
+        closing: count && {
+          ...count,
+          reason: closingNote,
+          stale: shift.status === 'open' && (await this.#isStale(count, id, db))
+        }
       };
     });
+  }
+
+  async #lockOpenShift(id, db) {
+    const shift = await this.shifts.findById(id, { lock: true }, db);
+    if (!shift) throw new NotFoundError('Turno não encontrado.');
+    if (shift.status === 'closed') throw new ConflictError('O turno já está encerrado.');
+    return shift;
+  }
+
+  // Esperado por forma: dinheiro pela RN-13 (fundo, troco, sangria e reforço); cartão e Pix líquidos.
+  async #expectedByMethod(shiftId, db) {
+    const byMethod = await this.reports.findByPaymentMethod(shiftId, db);
+    const expected = Object.fromEntries(byMethod.map(({ method, total }) => [method, roundMoney(total)]));
+    expected.cash = roundMoney((await this.cash.findCashSummary(shiftId, db)).expected);
+    return expected;
+  }
+
+  // A contagem vale enquanto o esperado de cada forma for o mesmo de quando ela foi feita.
+  async #isStale(count, shiftId, db) {
+    const current = await this.#expectedByMethod(shiftId, db);
+    return count.methods.some((item) => roundMoney(item.expected) !== current[item.method]);
   }
 
   // RN-11: abertura e fechamento de turno ficam na trilha de auditoria.

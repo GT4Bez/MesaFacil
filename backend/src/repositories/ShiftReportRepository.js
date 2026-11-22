@@ -16,9 +16,11 @@ export class ShiftReportRepository {
 
   async findShift(id, db = this.database) {
     const { rows } = await db.query(
-      `SELECT s.id, s.status, s.opened_at, s.closed_at, u.name AS opened_by
+      `SELECT s.id, s.status, s.opened_at, s.closed_at, u.name AS opened_by,
+              c.name AS closed_by, s.closing_note
        FROM shifts s
        JOIN users u ON u.id = s.opened_by
+       LEFT JOIN users c ON c.id = s.closed_by
        WHERE s.id = $1`,
       [id]
     );
@@ -28,7 +30,9 @@ export class ShiftReportRepository {
       status: row.status,
       openedAt: row.opened_at,
       closedAt: row.closed_at,
-      openedBy: row.opened_by
+      openedBy: row.opened_by,
+      closedBy: row.closed_by,
+      closingNote: row.closing_note
     };
   }
 
