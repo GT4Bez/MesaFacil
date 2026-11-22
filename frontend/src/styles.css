@@ -89,7 +89,7 @@ button:disabled {
 .brand small {
   display: block;
   color: var(--text-muted);
-  font: 11px 'DM Sans';
+  font: var(--fs-xs) 'DM Sans';
   margin-top: 2px;
 }
 .side-label,
@@ -1313,4 +1313,32 @@ footer span {
   font-weight: 600;
   box-shadow: var(--shadow-lg);
   animation: modal-in 160ms ease-out;
+}
+/* RN-13: fundo de troco ao abrir o turno, dentro do banner */
+.shift-lookup.open-shift {
+  margin: 0;
+}
+@media (max-width: 650px) {
+  .shift-banner:has(.open-shift) {
+    flex-wrap: wrap;
+  }
+}
+/* RN-13: sangria e reforço */
+.payment-form .full-row {
+  grid-column: 1/-1;
+}
+.cash-movement-table td small {
+  margin-top: 2px;
+}
+.cash-summary .bill-total {
+  margin-top: 4px;
+}
+.cash-movement-form {
+  margin-bottom: 14px;
+}
+.cash-drawer {
+  margin-top: 18px;
+}
+.cash-movement-table td:last-child {
+  white-space: nowrap;
 }

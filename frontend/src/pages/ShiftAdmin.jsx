@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import StatCard from '../components/StatCard'
+import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
 import { formatMoney, PAYMENT_METHOD_LABELS } from '../utils/format'
 
 const formatDateTime = (value) => (value ? new Date(value).toLocaleString('pt-BR') : '—')
@@ -27,12 +28,16 @@ export default function ShiftAdmin() {
     run(() => load())
   }, [])
 
-  const openShift = () =>
+  // RN-13: o turno abre com o fundo de troco (pode ser 0); a validação é do backend.
+  function openShift(event) {
+    event.preventDefault()
+    const raw = new FormData(event.target).get('openingFloat')
     run(async () => {
-      await api.post('/shifts')
+      await api.post('/shifts', { openingFloat: raw === '' ? null : Number(raw) })
       setSelectedId(null)
       await load(null)
     })
+  }
 
   // Depois de encerrar, o relatório continua na tela, agora como fechamento do turno.
   const closeShift = () =>
@@ -89,13 +94,21 @@ export default function ShiftAdmin() {
                 </p>
               </div>
             </div>
-            <button
-              className={activeShift ? 'dark-btn' : 'primary-btn'}
-              disabled={busy}
-              onClick={activeShift ? closeShift : openShift}
-            >
-              {activeShift ? 'Encerrar turno' : 'Abrir turno'}
-            </button>
+            {activeShift ? (
+              <button className="dark-btn" disabled={busy} onClick={closeShift}>
+                Encerrar turno
+              </button>
+            ) : (
+              <form className="shift-lookup open-shift" onSubmit={openShift}>
+                <label>
+                  Fundo de troco (R$)
+                  <input name="openingFloat" type="number" min="0" step="0.01" placeholder="0,00" required />
+                </label>
+                <button className="primary-btn" disabled={busy}>
+                  Abrir turno
+                </button>
+              </form>
+            )}
           </section>
 
           <form className="shift-lookup" onSubmit={showShift}>
@@ -114,7 +127,14 @@ export default function ShiftAdmin() {
           </form>
 
           {report ? (
-            <ShiftReport report={report} />
+            <ShiftReport
+              report={report}
+              cashForm={
+                activeShift?.id === report.shift.id && (
+                  <CashMovementForm shiftId={activeShift.id} onRegistered={() => load()} />
+                )
+              }
+            />
           ) : (
             <div className="empty-state">Nenhum relatório para exibir.</div>
           )}
@@ -124,8 +144,8 @@ export default function ShiftAdmin() {
   )
 }
 
-function ShiftReport({ report }) {
-  const { shift, cancellations } = report
+function ShiftReport({ report, cashForm }) {
+  const { shift, cancellations, cash } = report
   const partial = shift.status === 'open'
 
   return (
@@ -156,6 +176,45 @@ function ShiftReport({ report }) {
       </div>
 
       <div className="report-grid">
+        <section className="panel cash-summary">
+          <div className="panel-heading">
+            <div>
+              <h2>Dinheiro na gaveta</h2>
+              <p>Só o gerente vê o valor esperado (RN-13).</p>
+            </div>
+          </div>
+          <div className="bill-line">
+            <span>Fundo de troco</span>
+            <b>{formatMoney(cash.openingFloat)}</b>
+          </div>
+          <div className="bill-line">
+            <span>+ Pagamentos em dinheiro (sem o troco)</span>
+            <b>{formatMoney(cash.cashPayments)}</b>
+          </div>
+          <div className="bill-line">
+            <span>− Sangrias</span>
+            <b>{formatMoney(cash.withdrawals)}</b>
+          </div>
+          <div className="bill-line">
+            <span>+ Reforços</span>
+            <b>{formatMoney(cash.reinforcements)}</b>
+          </div>
+          <div className="bill-total">
+            <span>Dinheiro esperado</span>
+            <strong>{formatMoney(cash.expected)}</strong>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>Movimentos de caixa</h2>
+          </div>
+          {cashForm}
+          <CashMovementTable movements={cash.movements} />
+        </section>
+      </div>
+
+      <div className="report-grid report-cancellations">
         <section className="panel">
           <div className="panel-heading">
             <h2>Por forma de pagamento</h2>

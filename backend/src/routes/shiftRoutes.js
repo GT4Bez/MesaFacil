@@ -12,7 +12,19 @@ router.get('/active', async (req, res) => {
 });
 
 router.post('/', requireRole('manager'), async (req, res) => {
-  res.status(201).json({ success: true, data: await shiftService.open(req.user) });
+  res.status(201).json({ success: true, data: await shiftService.open(req.user, req.body) });
+});
+
+// RN-13: sangria e reforço (spec 007).
+router.get('/:id/cash-movements', requireRole('cashier', 'manager'), async (req, res) => {
+  res.json({ success: true, data: await shiftService.listCashMovements(req.params.id) });
+});
+
+router.post('/:id/cash-movements', requireRole('cashier', 'manager'), async (req, res) => {
+  res.status(201).json({
+    success: true,
+    data: await shiftService.addCashMovement(req.params.id, req.body, req.user)
+  });
 });
 
 router.get('/:id/report', requireRole('manager'), async (req, res) => {
