@@ -89,7 +89,7 @@ button:disabled {
 .brand small {
   display: block;
   color: var(--text-muted);
-  font: 11px 'DM Sans';
+  font: var(--fs-xs) 'DM Sans';
   margin-top: 2px;
 }
 .side-label,
