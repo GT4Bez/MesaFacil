@@ -52,13 +52,17 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
   sem contagem ou com contagem desatualizada (houve pagamento/movimento depois dela); `422` sem motivo quando há diferença.
   Resposta: o turno com `closing: { countedBy, countedAt, note, reason, methods: [{ method, declared, expected, difference }] }` (RN-14).
 - `GET /shifts/:id/report` — relatório do turno (gerente; `404` se não existir), parcial enquanto aberto (RN-10):
-  `{ shift: { id, status, openedAt, closedAt, openedBy }, totalShift, ordersClosed, averageTicket,
+  `{ shift: { id, status, openedAt, closedAt, openedBy, closedBy }, totalShift, ordersClosed, averageTicket,
   byPaymentMethod: [{ method, total, count }], byMenuItem: [{ menuItemId, name, quantity, total }],
   cancellations: { ordersCount, orders: [{ orderId, reason, by }], items: [{ orderItemId, name, quantity, reason, by }] },
   cash: { openingFloat, cashPayments, withdrawals, reinforcements, expected, movements: [{ id, type, amount, reason, by, createdAt }] } }`.
   `cash.expected` = fundo + dinheiro líquido de troco − sangrias + reforços (RN-13).
   `byPaymentMethod` sempre traz `cash`, `card` e `pix`; `byMenuItem` vem do maior para o menor total;
   `cancellations.items` lista só cancelamentos gerenciais de pedidos não cancelados.
+  RN-14: `closing` é `null` sem contagem; senão `{ countedBy, countedAt, note, reason, stale,
+  methods: [{ method, declared, expected, difference }] }` (`methods` sempre em `cash`, `card`, `pix`;
+  `reason` é o motivo do gerente no encerramento; `stale` só faz sentido com o turno aberto e indica que
+  houve pagamento ou movimento depois da contagem).
 - `GET /tables` — array de `{ id, number, status, activeOrderId }`, com `status` igual a
   `available` ou `occupied` e `activeOrderId` preenchido nas mesas ocupadas.
 - `POST /orders` — body `{ "tableId": 1 }`; resposta `{ "id": 123 }`. `409` se a mesa já tiver

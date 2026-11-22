@@ -11,8 +11,8 @@ No fechamento do turno, quem conta a gaveta e os comprovantes deveria fazer isso
 ## Regras (RN-14)
 
 1. **Contagem (caixa):** `PUT /shifts/:id/count` recebe os valores **declarados** de `cash`, `card` e `pix`.
-   - Os três são obrigatórios, numéricos e ≥ 0 (senão `422`); a nota é opcional.
-   - Só `cashier` faz a contagem (o `admin` passa pelo `hasRole`; `manager` → `403`).
+   - Os três são obrigatórios, numéricos e ≥ 0 (senão `422`); a nota é opcional e, se vier, precisa ser texto (`422`).
+   - Só `cashier` faz a contagem (`manager` → `403`). O `admin` passa pelo `hasRole`, como em todo o sistema (RN-16); como ele também vê o relatório, a contagem feita por ele não é cega. Fica registrada com o nome dele em `countedBy` e na auditoria.
 2. A contagem só acontece com o turno aberto (`409` se encerrado, `404` se não existe) e **sem pedidos ativos** (`409` "Feche as comandas abertas antes da contagem.").
 3. O backend calcula e **congela** o esperado de cada forma no momento da contagem:
    - dinheiro: o mesmo cálculo da RN-13 (`CashMovementRepository.findCashSummary`: fundo + dinheiro líquido de troco − sangrias + reforços);
@@ -97,3 +97,4 @@ O relatório retorna `closing` no mesmo formato, mais o campo `stale`; `shift.cl
 
 - Contagem por cédula, reabertura de turno, segundo conferente.
 - Tolerância de diferença (qualquer centavo exige motivo).
+- **Limitação conhecida (anterior a esta spec):** a sangria recusa valores acima do dinheiro esperado (RN-13). Um caixa que tente várias sangrias e desfaça as aceitas com reforços consegue descobrir o esperado por tentativa. Mitigação possível numa spec futura: sangria acima de um limite exigir a autorização do gerente (como na RN-17), ou auditar as sangrias recusadas.

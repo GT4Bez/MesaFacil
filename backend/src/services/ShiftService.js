@@ -63,6 +63,9 @@ export class ShiftService {
       }
       values[method] = value;
     }
+    if (note !== undefined && note !== null && typeof note !== 'string') {
+      throw new DomainValidationError('A observação da contagem deve ser um texto.');
+    }
     const cleanedNote = cleanText(note) || null;
 
     return this.shifts.transaction(async (db) => {
