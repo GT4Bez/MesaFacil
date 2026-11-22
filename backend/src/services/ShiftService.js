@@ -128,6 +128,7 @@ export class ShiftService {
       const items = await this.reports.findCanceledItems(id, db);
       const cashSummary = await this.cash.findCashSummary(id, db);
       const movements = await this.cash.findByShift(id, db);
+      const cmv = await this.reports.findCmv(id, db);
 
       return {
         shift,
@@ -135,7 +136,8 @@ export class ShiftService {
         byPaymentMethod,
         byMenuItem,
         cancellations: { ordersCount: orders.length, orders, items },
-        cash: { ...cashSummary, movements }
+        cash: { ...cashSummary, movements },
+        cmv
       };
     });
   }

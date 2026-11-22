@@ -136,4 +136,51 @@ export class ShiftReportRepository {
       by: row.canceled_by
     }));
   }
+
+  // RN-15 (spec 009): CMV dos itens vendidos (pedidos encerrados), pelo custo gravado em cada baixa.
+  // Itens enviados e depois cancelados (item ou pedido) não são venda: entram como perda.
+  async findCmv(shiftId, db = this.database) {
+    const { rows } = await db.query(
+      `WITH costs AS (
+         SELECT sm.order_item_id, SUM(-sm.quantity * sm.unit_cost) AS cost
+         FROM stock_movements sm
+         WHERE sm.type = 'sale' AND sm.shift_id = $1
+         GROUP BY sm.order_item_id
+       ),
+       sold AS (
+         SELECT oi.id, oi.quantity * oi.unit_price AS revenue
+         FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+         WHERE o.shift_id = $1 AND o.status = 'closed' AND oi.status <> 'canceled'
+       ),
+       lost AS (
+         SELECT COALESCE(SUM(c.cost), 0) AS losses
+         FROM costs c
+         JOIN order_items oi ON oi.id = c.order_item_id
+         JOIN orders o ON o.id = oi.order_id
+         WHERE oi.status = 'canceled' OR o.status = 'canceled'
+       )
+       SELECT COALESCE(SUM(s.revenue), 0) AS revenue,
+              ROUND(COALESCE(SUM(c.cost), 0), 2) AS cost,
+              COUNT(s.id)::int AS sold_items,
+              COUNT(c.order_item_id)::int AS items_with_recipe,
+              ROUND((SELECT losses FROM lost), 2) AS losses
+       FROM sold s
+       LEFT JOIN costs c ON c.order_item_id = s.id`,
+      [shiftId]
+    );
+    const row = rows[0];
+    const revenue = Number(row.revenue);
+    const cost = Number(row.cost);
+    const grossMargin = Math.round((revenue - cost) * 100) / 100;
+    return {
+      revenue,
+      cost,
+      grossMargin,
+      marginPercent: revenue > 0 ? Math.round((grossMargin / revenue) * 1000) / 10 : null,
+      losses: Number(row.losses),
+      soldItems: row.sold_items,
+      itemsWithRecipe: row.items_with_recipe
+    };
+  }
 }

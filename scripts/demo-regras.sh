@@ -64,6 +64,14 @@ call PATCH "$GARCOM" "/order-items/$SUCO/status" '{"status":"canceled","reason":
 call PATCH "$GERENTE" "/order-items/$SUCO/status" '{"status":"canceled","reason":"   "}'
 call PATCH "$GERENTE" "/order-items/$SUCO/status" '{"status":"canceled","reason":"Sem estoque"}'
 
+step 'RN-15: o envio à cozinha baixou a ficha técnica (Picanha 12,000 → 11,600 kg; Laranja 15,000 → 14,000 kg); o suco cancelado não devolve estoque'
+call GET "$GERENTE" /ingredients | grep -oE '"name":"(Picanha|Laranja)","unit":"kg","stockQuantity":[0-9.-]+'
+
+step 'RN-15: ajuste de estoque só do gerente (garçom → 403), com motivo (422 → 201, auditado)'
+call POST "$GARCOM" /ingredients/3/adjustments '{"countedQuantity":24,"reason":"Contagem"}'
+call POST "$GERENTE" /ingredients/3/adjustments '{"countedQuantity":24}'
+call POST "$GERENTE" /ingredients/3/adjustments '{"countedQuantity":24,"reason":"Contagem da câmara fria"}'
+
 step 'RN-06: a conta só é pedida com a cozinha concluída (409 → 200)'
 call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"ready_to_pay"}'
 call PATCH "$COZINHA" "/order-items/$PICANHA/status" '{"status":"preparing"}'
@@ -109,7 +117,7 @@ call PATCH "$GERENTE" "/orders/$OTHER/status" '{"status":"canceled","reason":"Cl
 step 'RN-02: turno sem pedidos ativos pode ser encerrado'
 call PATCH "$GERENTE" "/shifts/$SHIFT/close"
 
-step 'RN-10: relatório do turno derivado do banco (só gerente: caixa → 403); bloco cash com expected 68.89'
+step 'RN-10: relatório do turno derivado do banco (só gerente: caixa → 403); bloco cash com expected 68.89 e cmv (RN-15)'
 call GET "$CAIXA" "/shifts/$SHIFT/report"
 call GET "$GERENTE" "/shifts/$SHIFT/report"
 
