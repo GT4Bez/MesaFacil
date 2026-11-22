@@ -9,6 +9,7 @@ export const SCREENS = {
   kitchen: { path: '/kitchen', label: 'Cozinha (KDS)', short: 'Cozinha', icon: '♨', roles: ['kitchen', 'manager'] },
   cashier: { path: '/cashier', label: 'Caixa', short: 'Caixa', icon: '▤', roles: ['cashier', 'manager'] },
   menuAdmin: { path: '/admin/menu', label: 'Admin do cardápio', short: 'Cardápio', icon: '☰', roles: ['manager'] },
+  ingredients: { path: '/admin/ingredients', label: 'Insumos', short: 'Insumos', icon: '⚖', roles: ['manager'] },
   shiftAdmin: { path: '/admin/shift', label: 'Turno e relatório', short: 'Turno', icon: '◷', roles: ['manager'] },
   account: { path: '/account', label: 'Minha conta', short: 'Conta', icon: '⚙', roles: ALL_ROLES },
 }

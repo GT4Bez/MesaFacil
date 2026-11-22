@@ -3,6 +3,7 @@ import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import Modal from '../components/Modal'
 import Toast, { useToast } from '../components/Toast'
+import RecipeModal from '../components/RecipeModal'
 import { formatMoney } from '../utils/format'
 
 const EMPTY_FORM = { id: null, name: '', category: '', price: '', available: true }
@@ -15,6 +16,8 @@ export default function MenuAdmin() {
   // null = modal fechado; com objeto = modal aberto (novo quando id é null).
   const [form, setForm] = useState(null)
   const { showToast, toastProps } = useToast()
+  // RN-15: item com a ficha técnica aberta.
+  const [recipeItem, setRecipeItem] = useState(null)
   const { busy, error, clearError, run } = useAction()
 
   async function load() {
@@ -113,6 +116,9 @@ export default function MenuAdmin() {
                     <button className="outline-btn" disabled={busy} onClick={() => openForm({ ...item, price: String(item.price) })}>
                       Editar
                     </button>
+                    <button className="outline-btn" disabled={busy} onClick={() => setRecipeItem(item)}>
+                      Ficha técnica
+                    </button>
                     <button className="outline-btn" disabled={busy} onClick={() => toggleAvailable(item)}>
                       {item.available ? 'Tirar de linha' : 'Reativar'}
                     </button>
@@ -165,6 +171,16 @@ export default function MenuAdmin() {
             </div>
           </form>
         </Modal>
+      )}
+      {recipeItem && (
+        <RecipeModal
+          item={recipeItem}
+          onClose={() => setRecipeItem(null)}
+          onSaved={(recipe) => {
+            setRecipeItem(null)
+            showToast(`Ficha de ${recipeItem.name} salva · custo ${formatMoney(recipe.cost)}`)
+          }}
+        />
       )}
       <Toast {...toastProps} />
     </>

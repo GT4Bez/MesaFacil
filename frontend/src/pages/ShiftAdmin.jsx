@@ -188,6 +188,8 @@ function ShiftReport({ report, cashForm, busy, error, onClose }) {
         <StatCard label="Ticket médio" value={formatMoney(report.averageTicket)} hint="total ÷ pedidos encerrados" />
       </div>
 
+      {report.cmv && <CmvPanel cmv={report.cmv} />}
+
       <div className="report-grid">
         <section className="panel cash-summary">
           <div className="panel-heading">
@@ -324,5 +326,42 @@ function ShiftReport({ report, cashForm, busy, error, onClose }) {
         )}
       </section>
     </>
+  )
+}
+
+// RN-15 (spec 009): CMV dos itens vendidos (pedidos encerrados), calculado pelo backend.
+function CmvPanel({ cmv }) {
+  return (
+    <section className="panel cmv-panel" aria-labelledby="cmv-title">
+      <div className="panel-heading">
+        <div>
+          <h2 id="cmv-title">CMV (custo dos produtos vendidos)</h2>
+          <p>
+            {cmv.itemsWithRecipe} de {cmv.soldItems} item(ns) vendido(s) com ficha técnica; itens sem ficha não entram no
+            custo.
+          </p>
+        </div>
+      </div>
+      <div className="bill-line">
+        <span>Vendas dos itens (sem taxa de serviço)</span>
+        <b>{formatMoney(cmv.revenue)}</b>
+      </div>
+      <div className="bill-line">
+        <span>− CMV</span>
+        <b>{formatMoney(cmv.cost)}</b>
+      </div>
+      {/* Margem positiva em verde, negativa em vermelho: o estilo de "total" (vermelho) parecia prejuízo. */}
+      <div className="bill-line cmv-margin">
+        <span>Margem bruta</span>
+        <b className={cmv.grossMargin < 0 ? 'diff-negative' : 'diff-zero'}>
+          {formatMoney(cmv.grossMargin)}
+          {cmv.marginPercent !== null && ` (${cmv.marginPercent.toLocaleString('pt-BR')} %)`}
+        </b>
+      </div>
+      <div className="bill-line cmv-losses">
+        <span>Perdas (itens enviados e cancelados)</span>
+        <b>{formatMoney(cmv.losses)}</b>
+      </div>
+    </section>
   )
 }

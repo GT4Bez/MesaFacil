@@ -36,3 +36,9 @@ export const CASH_MOVEMENT_LABELS = {
   withdrawal: 'Sangria',
   reinforcement: 'Reforço',
 }
+
+// RN-15: insumos em un, kg ou l, com até 3 casas.
+export const UNIT_LABELS = { un: 'un', kg: 'kg', l: 'L' }
+
+export const formatQuantity = (value, unit) =>
+  `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${UNIT_LABELS[unit] ?? unit}`

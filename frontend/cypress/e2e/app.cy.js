@@ -266,6 +266,67 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     })
   })
 
+  it('insumos: entrada, ficha técnica e baixa automática no envio à cozinha (RN-15)', () => {
+    garantirTurnoAberto()
+    const estoquePicanha = () =>
+      cy
+        .get('article[aria-label="Picanha"] .ingredient-stock')
+        .invoke('text')
+        .then((text) => Number(text.replace(/[^0-9,-]/g, '').replace(',', '.')))
+
+    fazerLogin('gerente@mesafacil.com')
+    cy.visit('/admin/ingredients')
+    cy.get('article[aria-label="Picanha"]').within(() => cy.contains('button', 'Entrada').click())
+    cy.get('dialog[open]').within(() => {
+      cy.get('input[type="number"]').first().type('1')
+      cy.contains('button', 'Registrar entrada').click()
+    })
+    cy.contains('[role="status"]', 'Entrada registrada: Picanha').should('be.visible')
+    estoquePicanha().as('antes')
+
+    cy.visit('/admin/menu')
+    cy.contains('.menu-item', 'Picanha na Chapa').contains('button', 'Ficha técnica').click()
+    cy.get('dialog[open]').within(() => {
+      cy.contains('Custo estimado').should('be.visible')
+      cy.get('select').should('have.length.at.least', 1)
+      cy.contains('button', 'Cancelar').click()
+    })
+    sair()
+
+    fazerLogin('garcom@mesafacil.com')
+    abrirPrimeiraMesaLivre()
+    cy.url()
+      .then((url) => url.split('/').pop())
+      .as('orderId')
+    cy.contains('.menu-pick', 'Picanha na Chapa').click()
+    cy.get('dialog[open]').contains('button', 'Adicionar à comanda').click()
+    cy.get('dialog[open]').should('not.exist')
+    cy.contains('button', /Enviar para a cozinha/i).click()
+    cy.contains('Enviado').should('be.visible')
+    sair()
+
+    // Limpeza logo depois do envio (a baixa já aconteceu e cancelar não devolve estoque): assim a
+    // mesa é liberada mesmo se a conferência abaixo falhar.
+    const apiUrl = Cypress.expose('API_URL') || 'http://localhost:3001'
+    cy.request('POST', `${apiUrl}/auth/login`, { email: 'gerente@mesafacil.com', password: '123' }).then(({ body }) => {
+      cy.get('@orderId').then((orderId) => {
+        cy.request({
+          method: 'PATCH',
+          url: `${apiUrl}/orders/${orderId}/status`,
+          headers: { Authorization: `Bearer ${body.data.token}` },
+          body: { status: 'canceled', reason: 'Limpeza do teste E2E' },
+        })
+      })
+    })
+
+    fazerLogin('gerente@mesafacil.com')
+    cy.visit('/admin/ingredients')
+    cy.get('@antes').then((antes) => {
+      // A ficha do seed usa 0,400 kg de picanha por prato.
+      estoquePicanha().should('be.closeTo', antes - 0.4, 0.0001)
+    })
+  })
+
   it('fechamento com conferência cega: caixa conta, gerente confere e encerra (RN-14)', () => {
     garantirTurnoAberto()
 
