@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAction } from '../hooks/useAction'
 import { useAuth } from '../context/AuthContext'
+import Modal from '../components/Modal'
+import QuantityStepper from '../components/QuantityStepper'
 import ReasonModal from '../components/ReasonModal'
+import Toast from '../components/Toast'
 import { hasRole } from '../utils/access'
 import { api } from '../services/api'
 import { formatMoney, ITEM_STATUS_LABELS, ORDER_STATUS_LABELS } from '../utils/format'
@@ -16,6 +19,9 @@ export default function Order() {
   const [menu, setMenu] = useState([])
   // null, { kind: 'order' } ou { kind: 'item', item }: o que o gerente está cancelando.
   const [cancelTarget, setCancelTarget] = useState(null)
+  // Item do cardápio sendo adicionado (modal de quantidade e observação, spec 012).
+  const [addTarget, setAddTarget] = useState(null)
+  const [toast, setToast] = useState('')
   const { busy, error, clearError, run } = useAction()
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
@@ -44,7 +50,25 @@ export default function Order() {
       await loadOrder()
     })
 
-  const addItem = (item) => change(() => api.post(`/orders/${id}/items`, item))
+  function openAdd(menuItem) {
+    clearError()
+    setAddTarget(menuItem)
+  }
+
+  function closeAdd() {
+    clearError()
+    setAddTarget(null)
+  }
+
+  async function addItem({ quantity, notes }) {
+    const added = await change(() =>
+      api.post(`/orders/${id}/items`, { menuItemId: addTarget.id, quantity, notes }),
+    )
+    if (added) {
+      setToast(`${quantity}× ${addTarget.name} adicionado à comanda`)
+      setAddTarget(null)
+    }
+  }
   const setQuantity = (item, quantity) =>
     change(() => api.patch(`/order-items/${item.id}/quantity`, { quantity }))
   const removeItem = (item) =>
@@ -73,6 +97,7 @@ export default function Order() {
   const kitchenDone =
     order.status === 'in_kitchen' && activeItems.every((item) => item.status === 'ready')
   const orderActive = ACTIVE_ORDER_STATUSES.includes(order.status)
+  const billHint = nextStepHint(order.status, activeItems)
 
   return (
     <>
@@ -107,10 +132,10 @@ export default function Order() {
           {order.cancellation.reason}
         </div>
       )}
-      {error && !cancelTarget && <div className="alert error">{error}</div>}
+      {error && !cancelTarget && !addTarget && <div className="alert error">{error}</div>}
 
       <div className="order-layout">
-        <Menu menu={menu} busy={busy} onAdd={addItem} />
+        <Menu menu={menu} onPick={openAdd} />
 
         <section className="panel">
           <div className="panel-heading">
@@ -158,8 +183,14 @@ export default function Order() {
               Pedir a conta
             </button>
           </div>
+          {billHint && <small className="hint">{billHint}</small>}
         </section>
       </div>
+
+      {addTarget && (
+        <AddItemModal item={addTarget} busy={busy} error={error} onConfirm={addItem} onClose={closeAdd} />
+      )}
+      <Toast message={toast} onDone={() => setToast('')} />
 
       {cancelTarget && (
         <ReasonModal
@@ -184,31 +215,34 @@ export default function Order() {
   )
 }
 
-function Menu({ menu, busy, onAdd }) {
+// Diz o que falta para a conta ser pedida (RN-06) ou onde ela segue (RN-03), antes do clique.
+function nextStepHint(status, activeItems) {
+  const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
+  const pending = activeItems.filter((item) => item.status === 'pending').length
+  const inKitchen = activeItems.filter((item) => ['sent', 'preparing'].includes(item.status)).length
+  if (status === 'ready_to_pay') return 'Conta pedida: o pagamento e o encerramento são feitos no caixa.'
+  if (!ACTIVE_ORDER_STATUSES.includes(status)) return null
+  if (!activeItems.length) return 'Adicione itens do cardápio à comanda.'
+  if (pending) return `Envie ${plural(pending, 'item pendente', 'itens pendentes')} para a cozinha antes de pedir a conta.`
+  if (inKitchen) {
+    return `Aguardando a cozinha: ${plural(inKitchen, 'item ainda não está pronto', 'itens ainda não estão prontos')}.`
+  }
+  return null
+}
+
+function Menu({ menu, onPick }) {
   const [category, setCategory] = useState(ALL_CATEGORIES)
-  const [selected, setSelected] = useState(null)
 
   const categories = [ALL_CATEGORIES, ...new Set(menu.map((item) => item.category))]
   const visibleItems =
     category === ALL_CATEGORIES ? menu : menu.filter((item) => item.category === category)
-
-  async function handleSubmit(event) {
-    event.preventDefault()
-    const form = new FormData(event.target)
-    const added = await onAdd({
-      menuItemId: selected.id,
-      quantity: Number(form.get('quantity')),
-      notes: form.get('notes'),
-    })
-    if (added) setSelected(null)
-  }
 
   return (
     <section className="panel">
       <div className="panel-heading">
         <div>
           <h2>Cardápio</h2>
-          <p>Escolha os produtos para adicionar à comanda.</p>
+          <p>Toque no produto para escolher a quantidade e a observação.</p>
         </div>
       </div>
 
@@ -217,6 +251,7 @@ function Menu({ menu, busy, onAdd }) {
           <button
             key={name}
             className={name === category ? 'category active' : 'category'}
+            aria-pressed={name === category}
             onClick={() => setCategory(name)}
           >
             {name}
@@ -224,61 +259,67 @@ function Menu({ menu, busy, onAdd }) {
         ))}
       </div>
 
+      {/* Spec 012: o card inteiro abre o modal de adicionar. */}
       <div className="menu-list">
         {visibleItems.map((item) => (
-          <div className="menu-item" key={item.id}>
-            <div>
+          <button className="menu-pick" key={item.id} onClick={() => onPick(item)}>
+            <span>
               <b>{item.name}</b>
               <small>{item.category}</small>
               <strong>{formatMoney(item.price)}</strong>
-            </div>
-            <button
-              className="add-btn"
-              aria-label={`Adicionar ${item.name}`}
-              onClick={() => setSelected(item)}
-            >
+            </span>
+            <span className="add-btn" aria-hidden="true">
               +
-            </button>
-          </div>
+            </span>
+          </button>
         ))}
       </div>
-
-      {selected && (
-        // A key reinicia os campos ao trocar o item selecionado.
-        <form className="add-form" key={selected.id} onSubmit={handleSubmit}>
-          <b>Adicionar: {selected.name}</b>
-          <div className="form-row">
-            <label>
-              Quantidade
-              <input name="quantity" type="number" min="1" defaultValue="1" required />
-            </label>
-            <label className="grow">
-              Observação
-              <input name="notes" placeholder="Ex.: sem cebola, bem passado" />
-            </label>
-          </div>
-          <div className="button-row">
-            <button type="button" className="outline-btn" onClick={() => setSelected(null)}>
-              Cancelar
-            </button>
-            <button className="primary-btn" disabled={busy}>
-              Adicionar à comanda
-            </button>
-          </div>
-        </form>
-      )}
     </section>
+  )
+}
+
+// O total é só uma prévia: o preço vale o do momento do lançamento, congelado no backend (RN-09).
+function AddItemModal({ item, busy, error, onConfirm, onClose }) {
+  const [quantity, setQuantity] = useState(1)
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    onConfirm({ quantity, notes: new FormData(event.target).get('notes') })
+  }
+
+  return (
+    <Modal
+      title={item.name}
+      description={`${item.category} · ${formatMoney(item.price)} cada`}
+      busy={busy}
+      onClose={onClose}
+    >
+      <form className="modal-form" onSubmit={handleSubmit}>
+        {error && <div className="alert error">{error}</div>}
+        <div className="quantity-field">
+          <span>Quantidade</span>
+          <QuantityStepper value={quantity} onChange={setQuantity} disabled={busy} />
+        </div>
+        <label>
+          Observação
+          <textarea name="notes" rows="2" maxLength={255} placeholder="Ex.: sem cebola, bem passado" />
+        </label>
+        <div className="modal-actions">
+          <button type="button" className="outline-btn" onClick={onClose} disabled={busy}>
+            Cancelar
+          </button>
+          <button className="primary-btn" disabled={busy}>
+            Adicionar à comanda · {formatMoney(item.price * quantity)}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
 function OrderItem({ item, busy, onQuantityChange, onRemove, onCancel }) {
   // RN-04: depois de enviado à cozinha, o item não pode mais ser alterado.
   const editable = item.status === 'pending'
-
-  function handleBlur(event) {
-    const quantity = Number(event.target.value)
-    if (quantity >= 1 && quantity !== item.quantity) onQuantityChange(quantity)
-  }
 
   return (
     <div className="order-item">
@@ -290,12 +331,11 @@ function OrderItem({ item, busy, onQuantityChange, onRemove, onCancel }) {
       <div className="item-controls">
         {editable ? (
           <>
-            <input
-              aria-label="Quantidade"
-              type="number"
-              min="1"
-              defaultValue={item.quantity}
-              onBlur={handleBlur}
+            <QuantityStepper
+              value={item.quantity}
+              onChange={onQuantityChange}
+              disabled={busy}
+              label={`Quantidade de ${item.name}`}
             />
             <button
               className="remove-btn"

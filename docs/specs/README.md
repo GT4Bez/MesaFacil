@@ -24,6 +24,7 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 | 008 | [Fechamento com conferência cega](008-conferencia-cega.md) | Fase 2 | 007 |
 | 009 | [Insumos e ficha técnica](009-insumos-e-ficha-tecnica.md) | Fase 2 | 002, 005 |
 | 011 | [Administração de usuários e superadmin](011-usuarios-e-superadmin.md) | Fase 2 | 004, 005 |
+| 012 | [Revisão de UX do frontend](012-ux-frontend.md) | Fase 2 | 004 |
 | 013 | [Cancelamento de item no caixa com autorização do gerente](013-cancelamento-autorizado-no-caixa.md) | Fase 2 | 005, 006, 012 |
 
 **MVP** fecha as regras obrigatórias RN-01 a RN-10 e as telas mínimas. **Fase 2** (pós-MVP) só é retomada depois do MVP entregue e com acordo da equipe; as regras novas são numeradas na ordem de implementação (RN-11 é a da spec 005).

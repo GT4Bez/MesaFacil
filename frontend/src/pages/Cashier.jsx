@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
-import { formatMoney, PAYMENT_METHOD_LABELS } from '../utils/format'
+import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../utils/format'
+import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
 
 export default function Cashier() {
   const [tables, setTables] = useState([])
@@ -135,7 +136,45 @@ export default function Cashier() {
           )}
         </section>
       </div>
+
+      <CashDrawer />
     </>
+  )
+}
+
+// RN-13: sangria e reforço do turno aberto. O caixa vê os movimentos, nunca o dinheiro esperado.
+function CashDrawer() {
+  const [shift, setShift] = useState(undefined)
+  const [movements, setMovements] = useState([])
+  const { error, run } = useAction()
+
+  async function load() {
+    const active = await api.get('/shifts/active')
+    setShift(active)
+    setMovements(active ? await api.get(`/shifts/${active.id}/cash-movements`) : [])
+  }
+
+  useEffect(() => {
+    run(load)
+  }, [])
+
+  return (
+    <section className="panel cash-drawer">
+      <div className="panel-heading">
+        <div>
+          <h2>Gaveta: sangria e reforço</h2>
+          <p>{shift ? `Turno #${shift.id}` : 'Movimentos de dinheiro do turno aberto.'}</p>
+        </div>
+      </div>
+      {error && <div className="alert error">{error}</div>}
+      {shift === null && <div className="empty-state">Nenhum turno aberto.</div>}
+      {shift && (
+        <>
+          <CashMovementForm shiftId={shift.id} onRegistered={load} />
+          <CashMovementTable movements={movements} />
+        </>
+      )}
+    </section>
   )
 }
 
@@ -148,6 +187,8 @@ function clampForMethod(rawValue, method, remaining) {
 function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }) {
   // RN-07: a comanda só pode ser encerrada com o saldo quitado.
   const paidOff = bill.remainingBalance <= 0
+  // RN-03: e só depois que o garçom pediu a conta (status `ready_to_pay`).
+  const billRequested = bill.status === 'ready_to_pay'
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('cash')
   // RN-12: cartão/Pix não passam do saldo; avisa quando o valor digitado foi limitado.
@@ -186,6 +227,10 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
 
   return (
     <>
+      <div className={`order-status-line ${billRequested ? 'ready' : 'waiting'}`}>
+        Status do pedido: <b>{ORDER_STATUS_LABELS[bill.status]}</b>
+      </div>
+
       <label className="toggle-line">
         <input
           type="checkbox"
@@ -290,13 +335,18 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
       </div>
       <button
         className="primary-btn full close-order"
-        disabled={busy || !paidOff}
+        disabled={busy || !paidOff || !billRequested}
         onClick={onClose}
       >
         Finalizar pedido e liberar mesa
       </button>
-      {!paidOff && (
-        <small className="hint">Quite o saldo para habilitar o encerramento da comanda.</small>
+      {!billRequested ? (
+        <small className="hint">
+          O garçom ainda não pediu a conta: o pedido só é encerrado depois disso (os pagamentos já podem ser
+          registrados).
+        </small>
+      ) : (
+        !paidOff && <small className="hint">Quite o saldo para habilitar o encerramento da comanda.</small>
       )}
     </>
   )
