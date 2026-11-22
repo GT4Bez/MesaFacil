@@ -1106,3 +1106,22 @@ footer span {
     flex-wrap: wrap;
   }
 }
+/* RN-13: sangria e reforço */
+.payment-form .full-row {
+  grid-column: 1/-1;
+}
+.cash-movement-table td small {
+  margin-top: 2px;
+}
+.cash-summary .bill-total {
+  margin-top: 4px;
+}
+.cash-movement-form {
+  margin-bottom: 14px;
+}
+.cash-drawer {
+  margin-top: 18px;
+}
+.cash-movement-table td:last-child {
+  white-space: nowrap;
+}
