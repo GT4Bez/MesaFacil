@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../utils/format'
+import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
 
 export default function Cashier() {
   const [tables, setTables] = useState([])
@@ -135,7 +136,45 @@ export default function Cashier() {
           )}
         </section>
       </div>
+
+      <CashDrawer />
     </>
+  )
+}
+
+// RN-13: sangria e reforço do turno aberto. O caixa vê os movimentos, nunca o dinheiro esperado.
+function CashDrawer() {
+  const [shift, setShift] = useState(undefined)
+  const [movements, setMovements] = useState([])
+  const { error, run } = useAction()
+
+  async function load() {
+    const active = await api.get('/shifts/active')
+    setShift(active)
+    setMovements(active ? await api.get(`/shifts/${active.id}/cash-movements`) : [])
+  }
+
+  useEffect(() => {
+    run(load)
+  }, [])
+
+  return (
+    <section className="panel cash-drawer">
+      <div className="panel-heading">
+        <div>
+          <h2>Gaveta: sangria e reforço</h2>
+          <p>{shift ? `Turno #${shift.id}` : 'Movimentos de dinheiro do turno aberto.'}</p>
+        </div>
+      </div>
+      {error && <div className="alert error">{error}</div>}
+      {shift === null && <div className="empty-state">Nenhum turno aberto.</div>}
+      {shift && (
+        <>
+          <CashMovementForm shiftId={shift.id} onRegistered={load} />
+          <CashMovementTable movements={movements} />
+        </>
+      )}
+    </section>
   )
 }
 

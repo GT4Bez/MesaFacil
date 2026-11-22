@@ -14,7 +14,7 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
   const api = (method, path, { role = 'manager', body } = {}) =>
     server.api(method, path, { token: role && staff[role].token, body })
 
-  const openShift = () => api('POST', '/shifts')
+  const openShift = () => api('POST', '/shifts', { body: { openingFloat: 0 } })
   const createOrder = async (tableId = tableIds[0]) =>
     (await api('POST', '/orders', { role: 'waiter', body: { tableId } })).json.data.id
   const addItem = async (orderId, menuItemId, quantity = 1) =>

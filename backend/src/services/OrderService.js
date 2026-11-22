@@ -10,12 +10,12 @@ import {
   NotFoundError
 } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
+import { MAX_PG_MONEY, roundMoney, toMoney } from '../domain/money.js';
 
 const SERVICE_TAX_RATE = 0.1;
 const PAYMENT_METHODS = ['cash', 'card', 'pix'];
 const KITCHEN_FLOW = { sent: 'preparing', preparing: 'ready' };
 const MAX_PG_INT = 2147483647;
-const MAX_PG_MONEY = 99999999.99;
 const ORDER_TRANSITION_ROLES = {
   in_kitchen: ['waiter', 'manager'],
   ready_to_pay: ['waiter', 'manager'],
@@ -23,7 +23,6 @@ const ORDER_TRANSITION_ROLES = {
   canceled: ['manager']
 };
 
-const roundMoney = (value) => Math.round(value * 100) / 100;
 const cleanReason = (reason) => (typeof reason === 'string' ? reason.trim() : '');
 const isPositiveInteger = (value) => Number.isInteger(value) && value > 0 && value <= MAX_PG_INT;
 
@@ -281,9 +280,7 @@ export class OrderService {
 
   // RN-12: trava o pedido em fila (FOR UPDATE), impede overpayment em cartão/Pix e calcula troco em dinheiro.
   async addPayment(orderId, { amount, method } = {}) {
-    const normalizedAmount = typeof amount === 'number' && Number.isFinite(amount)
-      ? roundMoney(amount)
-      : 0;
+    const normalizedAmount = toMoney(amount) ?? 0;
     if (!(normalizedAmount > 0) || normalizedAmount > MAX_PG_MONEY) {
       throw new DomainValidationError('Valor do pagamento inválido.');
     }
