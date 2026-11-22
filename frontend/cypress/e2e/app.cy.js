@@ -124,9 +124,15 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       .then((url) => url.split('/').pop())
       .as('orderId')
 
-    cy.get('.menu-list .add-btn').first().click()
-    cy.get('input[name="notes"]').type('E2E Cypress Smoke')
-    cy.contains('button', 'Adicionar à comanda').click()
+    // Spec 012: o card do item abre o modal de quantidade e observação.
+    cy.get('.menu-list .menu-pick').first().click()
+    cy.get('dialog[open]').within(() => {
+      cy.get('button[aria-label="Aumentar quantidade"]').click()
+      cy.get('textarea[name="notes"]').type('E2E Cypress Smoke')
+      cy.contains('button', 'Adicionar à comanda').click()
+    })
+    cy.get('dialog[open]').should('not.exist')
+    cy.contains('[role="status"]', 'adicionado à comanda').should('be.visible')
     cy.contains('E2E Cypress Smoke').should('be.visible')
 
     cy.contains('button', /Enviar para a cozinha/i).click()

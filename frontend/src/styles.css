@@ -480,21 +480,58 @@ button:disabled {
   color: var(--brand);
 }
 .add-btn {
-  border: 0;
-  border-radius: 8px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
   background: var(--brand-soft);
   color: var(--brand);
-  width: 30px;
-  height: 30px;
-  font-size: 20px;
+  width: var(--touch);
+  height: var(--touch);
+  font-size: 22px;
 }
-.add-form {
-  background: var(--brand-softer);
-  border: 1px solid #f4dddd;
+/* Spec 012: o card inteiro do cardápio é o alvo de toque que abre o modal de adicionar. */
+.menu-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px;
-  margin-top: 15px;
-  font-size: 12px;
+  background: var(--surface);
+  color: inherit;
+  text-align: left;
+  transition: border-color 120ms, background 120ms;
+}
+.menu-pick:hover,
+.menu-pick:focus-visible {
+  border-color: var(--brand);
+  background: var(--brand-softer);
+}
+.menu-pick b {
+  display: block;
+  font-size: var(--fs-md);
+}
+.menu-pick small {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  margin: 3px 0;
+}
+.menu-pick strong {
+  font-size: var(--fs-sm);
+  color: var(--brand);
+}
+.quantity-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 .form-row,
 .button-row {
@@ -512,8 +549,7 @@ button:disabled {
 }
 .form-row input,
 .payment-form input,
-.payment-form select,
-.item-controls input {
+.payment-form select {
   border: 1px solid var(--border-strong);
   border-radius: 7px;
   padding: 9px;
@@ -549,10 +585,6 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 7px;
-}
-.item-controls input {
-  width: 53px;
-  padding: 6px;
 }
 .remove-btn {
   width: var(--touch);
@@ -1314,6 +1346,19 @@ footer span {
   box-shadow: var(--shadow-lg);
   animation: modal-in 160ms ease-out;
 }
+/* Spec 012: no celular, o item da comanda quebra em duas linhas (nome em cima, controles e valor embaixo). */
+@media (max-width: 650px) {
+  .order-item {
+    flex-wrap: wrap;
+  }
+  .order-item-main {
+    flex: 1 1 100%;
+  }
+  .order-item > strong {
+    margin-left: auto;
+  }
+}
+
 /* RN-13: fundo de troco ao abrir o turno, dentro do banner */
 .shift-lookup.open-shift {
   margin: 0;
