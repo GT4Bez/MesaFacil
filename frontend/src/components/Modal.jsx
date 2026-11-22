@@ -2,15 +2,21 @@ import { useEffect, useId, useRef } from 'react'
 
 // Modal base (spec 012) sobre <dialog> nativo: foco preso no modal, Esc fecha e o fundo fica
 // escurecido e desfocado. Clique fora ou no × também fecha, exceto durante o envio (`busy`).
+// Ao fechar, o foco volta para o elemento que abriu o modal (se ele ainda existir).
 export default function Modal({ title, description, busy = false, onClose, children }) {
   const dialogRef = useRef(null)
   const titleId = useId()
+  // Só fecha pelo fundo se o clique também começou no fundo: arrastar uma seleção de texto
+  // de dentro do modal até fora dele não pode descartar o que foi digitado.
+  const pressedOnBackdrop = useRef(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
+    const opener = document.activeElement
     if (!dialog.open) dialog.showModal()
     return () => {
       if (dialog.open) dialog.close()
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
     }
   }, [])
 
@@ -25,8 +31,13 @@ export default function Modal({ title, description, busy = false, onClose, child
   }
 
   // O <dialog> não tem padding: clique nele (e não no conteúdo) é clique no fundo.
+  function handlePointerDown(event) {
+    pressedOnBackdrop.current = event.target === dialogRef.current
+  }
+
   function handleClick(event) {
-    if (event.target === dialogRef.current) requestClose()
+    if (event.target === dialogRef.current && pressedOnBackdrop.current) requestClose()
+    pressedOnBackdrop.current = false
   }
 
   return (
@@ -35,6 +46,7 @@ export default function Modal({ title, description, busy = false, onClose, child
       className="modal"
       aria-labelledby={titleId}
       onCancel={handleCancel}
+      onPointerDown={handlePointerDown}
       onClick={handleClick}
     >
       <div className="modal-body">
