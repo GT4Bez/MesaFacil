@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import Modal from '../components/Modal'
-import Toast from '../components/Toast'
+import Toast, { useToast } from '../components/Toast'
 import { formatMoney, formatQuantity, UNIT_LABELS } from '../utils/format'
 
 const EMPTY_FORM = { id: null, name: '', unit: 'kg', minStock: '', unitCost: '', active: true }
@@ -13,7 +13,7 @@ export default function Ingredients() {
   const [ingredients, setIngredients] = useState(null)
   // Modal aberto: { kind: 'form' | 'purchase' | 'adjustment', ingredient, values }
   const [dialog, setDialog] = useState(null)
-  const [toast, setToast] = useState('')
+  const { showToast, toastProps } = useToast()
   const { busy, error, clearError, run } = useAction()
 
   async function load() {
@@ -65,7 +65,7 @@ export default function Ingredients() {
     })
     if (saved) {
       setDialog(null)
-      setToast(message)
+      showToast(message)
     }
   }
 
@@ -157,7 +157,7 @@ export default function Ingredients() {
       {dialog && (
         <IngredientDialog dialog={dialog} busy={busy} error={error} onChange={setValue} onSubmit={submit} onClose={close} />
       )}
-      <Toast message={toast} onDone={() => setToast('')} />
+      <Toast {...toastProps} />
     </>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import Modal from '../components/Modal'
-import Toast from '../components/Toast'
+import Toast, { useToast } from '../components/Toast'
 import RecipeModal from '../components/RecipeModal'
 import { formatMoney } from '../utils/format'
 
@@ -15,7 +15,7 @@ export default function MenuAdmin() {
   const [categories, setCategories] = useState([])
   // null = modal fechado; com objeto = modal aberto (novo quando id é null).
   const [form, setForm] = useState(null)
-  const [toast, setToast] = useState('')
+  const { showToast, toastProps } = useToast()
   // RN-15: item com a ficha técnica aberta.
   const [recipeItem, setRecipeItem] = useState(null)
   const { busy, error, clearError, run } = useAction()
@@ -59,7 +59,7 @@ export default function MenuAdmin() {
       await load()
     })
     if (saved) {
-      setToast(editing ? `${form.name}: alterações salvas` : `${form.name} cadastrado no cardápio`)
+      showToast(editing ? `${form.name}: alterações salvas` : `${form.name} cadastrado no cardápio`)
       setForm(null)
     }
   }
@@ -178,11 +178,11 @@ export default function MenuAdmin() {
           onClose={() => setRecipeItem(null)}
           onSaved={(recipe) => {
             setRecipeItem(null)
-            setToast(`Ficha de ${recipeItem.name} salva · custo ${formatMoney(recipe.cost)}`)
+            showToast(`Ficha de ${recipeItem.name} salva · custo ${formatMoney(recipe.cost)}`)
           }}
         />
       )}
-      <Toast message={toast} onDone={() => setToast('')} />
+      <Toast {...toastProps} />
     </>
   )
 }

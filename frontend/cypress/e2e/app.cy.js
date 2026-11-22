@@ -212,6 +212,60 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     })
   })
 
+  it('caixa cancela item com o gerente autorizando no mesmo terminal (RN-17)', () => {
+    garantirTurnoAberto()
+
+    fazerLogin('garcom@mesafacil.com')
+    abrirPrimeiraMesaLivre()
+    cy.url()
+      .then((url) => url.split('/').pop())
+      .as('orderId')
+    for (const index of [0, 1]) {
+      cy.get('.menu-list .menu-pick').eq(index).click()
+      cy.get('dialog[open]').contains('button', 'Adicionar à comanda').click()
+      cy.get('dialog[open]').should('not.exist')
+    }
+    cy.contains('button', /Enviar para a cozinha/i).click()
+    sair()
+
+    fazerLogin('caixa@mesafacil.com')
+    cy.get('@orderId').then((orderId) => {
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`).click()
+    })
+    cy.get('.bill-item').should('have.length', 2)
+    cy.get('.bill-item button[aria-label^="Cancelar "]').first().click()
+
+    cy.get('dialog[open]').within(() => {
+      cy.contains('h2', 'Cancelar item com autorização')
+      cy.get('textarea[name="reason"]').type('Cliente não recebeu o prato')
+      cy.get('input[name="email"]').type('gerente@mesafacil.com')
+      cy.get('input[name="password"]').type('senha-errada')
+      cy.contains('button', 'Cancelar item').click()
+      cy.contains('Autorização do gerente inválida.').should('be.visible')
+
+      cy.get('input[name="password"]').type('123')
+      cy.contains('button', 'Cancelar item').click()
+    })
+    cy.get('dialog[open]').should('not.exist')
+    cy.contains('[role="status"]', 'autorizado por Gerente').should('be.visible')
+    cy.get('.bill-item').should('have.length', 1)
+    // A sessão do caixa continua ativa depois do 403.
+    cy.url().should('include', '/cashier')
+
+    // Limpeza: o gerente cancela o pedido (sem pagamento) para liberar a mesa.
+    const apiUrl = Cypress.expose('API_URL') || 'http://localhost:3001'
+    cy.request('POST', `${apiUrl}/auth/login`, { email: 'gerente@mesafacil.com', password: '123' }).then(({ body }) => {
+      cy.get('@orderId').then((orderId) => {
+        cy.request({
+          method: 'PATCH',
+          url: `${apiUrl}/orders/${orderId}/status`,
+          headers: { Authorization: `Bearer ${body.data.token}` },
+          body: { status: 'canceled', reason: 'Limpeza do teste E2E' },
+        })
+      })
+    })
+  })
+
   it('insumos: entrada, ficha técnica e baixa automática no envio à cozinha (RN-15)', () => {
     garantirTurnoAberto()
     const estoquePicanha = () =>

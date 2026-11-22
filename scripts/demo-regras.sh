@@ -109,6 +109,12 @@ OTHER=$(id_of POST "$GARCOM" /orders '{"tableId":2}')
 step 'RN-02: turno com pedido ativo não pode ser encerrado (409)'
 call PATCH "$GERENTE" "/shifts/$SHIFT/close"
 
+ITEM=$(id_of POST "$GARCOM" "/orders/$OTHER/items" '{"menuItemId":1}')
+call PATCH "$GARCOM" "/orders/$OTHER/status" '{"status":"in_kitchen"}' >/dev/null
+step 'RN-17: caixa cancela item com a senha do gerente (senha errada → 403 sem derrubar a sessão; certa → 200 com approvedBy)'
+call POST "$CAIXA" "/order-items/$ITEM/authorized-cancel" '{"reason":"Não chegou","approver":{"email":"gerente@mesafacil.com","password":"errada"}}'
+call POST "$CAIXA" "/order-items/$ITEM/authorized-cancel" '{"reason":"Não chegou","approver":{"email":"gerente@mesafacil.com","password":"123"}}'
+
 step 'RN-11: cancelar pedido exige gerente (403) e motivo (422 → 200)'
 call PATCH "$GARCOM" "/orders/$OTHER/status" '{"status":"canceled","reason":"desistiu"}'
 call PATCH "$GERENTE" "/orders/$OTHER/status" '{"status":"canceled"}'
