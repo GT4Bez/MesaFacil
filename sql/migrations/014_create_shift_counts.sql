@@ -5,8 +5,10 @@ CREATE TABLE shift_counts (
     shift_id BIGINT NOT NULL REFERENCES shifts (id),
     payment_method VARCHAR(10) NOT NULL,
     declared DECIMAL(10, 2) NOT NULL,
-    expected DECIMAL(10, 2) NOT NULL,
-    difference DECIMAL(11, 2) GENERATED ALWAYS AS (declared - expected) STORED,
+    -- O esperado soma valores que cabem cada um em DECIMAL(10, 2) (fundo, pagamentos, reforços),
+    -- então precisa de mais dígitos que eles.
+    expected DECIMAL(14, 2) NOT NULL,
+    difference DECIMAL(15, 2) GENERATED ALWAYS AS (declared - expected) STORED,
     counted_by BIGINT NOT NULL REFERENCES users (id),
     counted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     note TEXT,

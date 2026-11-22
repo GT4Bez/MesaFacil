@@ -148,6 +148,7 @@ describe('Fechamento do turno com conferência cega (RN-14)', () => {
     for (const declared of invalid) {
       assert.equal((await count(declared)).status, 422, JSON.stringify(declared))
     }
+    assert.equal((await count({ cash: 100, card: 0, pix: 0 }, { note: 12345 })).status, 422)
     for (const role of ['waiter', 'kitchen', 'manager']) {
       assert.equal((await count({ cash: 100, card: 0, pix: 0 }, { role })).status, 403, role)
     }
@@ -199,5 +200,17 @@ describe('Fechamento do turno com conferência cega (RN-14)', () => {
     assert.equal((await count({ cash: 100, card: 0, pix: 0 })).status, 409)
     assert.equal((await close()).status, 409)
     assert.equal((await api('GET', '/shifts/active', { role: 'cashier' })).json.data, null)
+  })
+
+  test('esperado acima do limite de um valor isolado ainda é contado (sem estouro numérico)', async () => {
+    // Fecha o turno do beforeEach e abre um com fundo máximo + reforço: esperado > 99.999.999,99.
+    await count({ cash: 100, card: 0, pix: 0 })
+    await close()
+    shiftId = (await api('POST', '/shifts', { body: { openingFloat: 99999999.99 } })).json.data.id
+    assert.equal((await movement('reinforcement', 10)).status, 201)
+    assert.equal((await count({ cash: 99999999.99, card: 0, pix: 0 })).status, 200)
+    const report = (await api('GET', `/shifts/${shiftId}/report`)).json.data
+    assert.equal(report.closing.methods[0].expected, 100000009.99)
+    assert.equal(report.closing.methods[0].difference, -10)
   })
 })
