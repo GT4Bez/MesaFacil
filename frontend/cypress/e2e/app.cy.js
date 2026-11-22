@@ -146,6 +146,20 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('Pedidos encerrados').should('be.visible')
   })
 
+  it('celular 375px: barra inferior navega e "Sair" fica na barra superior (spec 012)', () => {
+    cy.viewport(375, 812)
+    fazerLogin('caixa@mesafacil.com')
+    cy.get('nav[aria-label="Menu principal"]').should('be.visible').within(() => {
+      cy.contains('a', 'Salão').click()
+    })
+    cy.url().should('include', '/tables')
+    garantirSemScrollHorizontal()
+    cy.get('nav[aria-label="Menu principal"] a[aria-label="Minha conta"]').click()
+    cy.url().should('include', '/account')
+    cy.contains('button', /^Sair$/).click()
+    cy.url().should('include', '/login')
+  })
+
   it('cancelamento gerencial de pedido com motivo obrigatório (RN-11)', () => {
     garantirTurnoAberto()
 
