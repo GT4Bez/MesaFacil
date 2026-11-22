@@ -1,0 +1,52 @@
+import { useEffect, useId, useRef } from 'react'
+
+// Modal base (spec 012) sobre <dialog> nativo: foco preso no modal, Esc fecha e o fundo fica
+// escurecido e desfocado. Clique fora ou no × também fecha, exceto durante o envio (`busy`).
+export default function Modal({ title, description, busy = false, onClose, children }) {
+  const dialogRef = useRef(null)
+  const titleId = useId()
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog.open) dialog.showModal()
+    return () => {
+      if (dialog.open) dialog.close()
+    }
+  }, [])
+
+  function requestClose() {
+    if (!busy) onClose()
+  }
+
+  // Esc dispara `cancel`: o fechamento fica com o React, para respeitar o `busy`.
+  function handleCancel(event) {
+    event.preventDefault()
+    requestClose()
+  }
+
+  // O <dialog> não tem padding: clique nele (e não no conteúdo) é clique no fundo.
+  function handleClick(event) {
+    if (event.target === dialogRef.current) requestClose()
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="modal"
+      aria-labelledby={titleId}
+      onCancel={handleCancel}
+      onClick={handleClick}
+    >
+      <div className="modal-body">
+        <div className="modal-header">
+          <h2 id={titleId}>{title}</h2>
+          <button type="button" className="modal-close" aria-label="Fechar" disabled={busy} onClick={requestClose}>
+            ×
+          </button>
+        </div>
+        {description && <p className="modal-description">{description}</p>}
+        {children}
+      </div>
+    </dialog>
+  )
+}
