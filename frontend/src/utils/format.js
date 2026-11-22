@@ -30,3 +30,9 @@ export const PAYMENT_METHOD_LABELS = {
   card: 'Cartão',
   pix: 'Pix',
 }
+
+export const CASH_MOVEMENT_LABELS = {
+  opening_float: 'Fundo de troco',
+  withdrawal: 'Sangria',
+  reinforcement: 'Reforço',
+}

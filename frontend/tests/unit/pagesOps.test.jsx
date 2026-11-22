@@ -91,6 +91,7 @@ describe('Telas Operacionais (KDS, Comanda e Caixa)', () => {
     const fetchSpy = mockFetch(
       {
         'GET /tables': [{ id: '1', number: 1, status: 'occupied', activeOrderId: '7' }],
+        'GET /shifts/active': () => jsonResponse({ success: true, data: null }),
         'GET /orders/7/bill': () => jsonResponse({ success: true, data: buildBill() }),
         'PATCH /orders/7/service-tax': ({ body }) => {
           serviceTax = body.enabled
