@@ -1252,3 +1252,10 @@ footer span {
   box-shadow: var(--shadow-lg);
   animation: modal-in 160ms ease-out;
 }
+
+/* Spec 012: com os formulários em modal, as listas de administração ocupam a largura toda. */
+.admin-list,
+.user-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  column-gap: 16px;
+}
