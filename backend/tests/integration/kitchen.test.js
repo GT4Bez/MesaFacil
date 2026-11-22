@@ -39,7 +39,7 @@ describe('KDS da cozinha (spec 003)', () => {
       picanha: await createMenuItem({ name: 'Picanha', price: 89.9 }),
       suco: await createMenuItem({ name: 'Suco', category: 'Bebidas', price: 10 }),
     }
-    await api('POST', '/shifts')
+    await api('POST', '/shifts', { body: { openingFloat: 0 } })
   })
 
   test('acesso apenas para cozinha e gerente', async () => {

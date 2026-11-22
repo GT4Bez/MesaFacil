@@ -86,7 +86,7 @@ describe('Administração do cardápio (spec 002)', () => {
       ['Sai de linha', false],
     ])
 
-    await api('POST', '/shifts')
+    await api('POST', '/shifts', { body: { openingFloat: 0 } })
     const orderId = (await api('POST', '/orders', { role: 'waiter', body: { tableId } })).json.data.id
     const added = await api('POST', `/orders/${orderId}/items`, { role: 'waiter', body: { menuItemId: saiDeLinha } })
     assert.equal(added.status, 404)
@@ -100,7 +100,7 @@ describe('Administração do cardápio (spec 002)', () => {
   test('RN-09: mudar o preço não altera itens já lançados', async () => {
     const [tableId] = await createTables(1)
     const id = await createMenuItem({ name: 'Picanha', price: 89.9 })
-    await api('POST', '/shifts')
+    await api('POST', '/shifts', { body: { openingFloat: 0 } })
     const orderId = (await api('POST', '/orders', { role: 'waiter', body: { tableId } })).json.data.id
     await api('POST', `/orders/${orderId}/items`, { role: 'waiter', body: { menuItemId: id, quantity: 2 } })
 
@@ -132,7 +132,7 @@ describe('Administração do cardápio (spec 002)', () => {
     assert.equal(reactivated.status, 200)
     assert.equal(reactivated.json.data.available, true)
 
-    await api('POST', '/shifts')
+    await api('POST', '/shifts', { body: { openingFloat: 0 } })
     const orderId = (await api('POST', '/orders', { role: 'waiter', body: { tableId } })).json.data.id
     assert.equal(
       (await api('POST', `/orders/${orderId}/items`, { role: 'waiter', body: { menuItemId: id } })).status,
