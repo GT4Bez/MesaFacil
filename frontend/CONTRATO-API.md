@@ -40,12 +40,18 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 ## Turno e mesas
 
 - `GET /shifts/active` — `{ id, status: "open" }` ou `null` quando não há turno aberto.
-- `POST /shifts` — abre o turno (gerente).
+- `POST /shifts` — abre o turno (gerente). Body `{ "openingFloat": 100 }` (fundo de troco, `≥ 0`; ausente/inválido → `422`, RN-13).
+- `POST /shifts/:id/cash-movements` — sangria/reforço (caixa e gerente). Body `{ "type": "withdrawal" | "reinforcement", "amount": 50, "reason": "Cofre" }`.
+  Resposta `201` `{ id, type, amount, reason, createdAt }`; só para gerente/admin vem também `expectedCash`.
+  `422` sem motivo, valor inválido ou sangria maior que a gaveta (a mensagem não revela o valor); `409` turno encerrado.
+- `GET /shifts/:id/cash-movements` — `[{ id, type, amount, reason, by, createdAt }]` (caixa e gerente), o fundo primeiro; nunca traz o esperado.
 - `PATCH /shifts/:id/close` — encerra o turno; `409` se houver pedido ativo (RN-02).
 - `GET /shifts/:id/report` — relatório do turno (gerente; `404` se não existir), parcial enquanto aberto (RN-10):
   `{ shift: { id, status, openedAt, closedAt, openedBy }, totalShift, ordersClosed, averageTicket,
   byPaymentMethod: [{ method, total, count }], byMenuItem: [{ menuItemId, name, quantity, total }],
-  cancellations: { ordersCount, orders: [{ orderId, reason, by }], items: [{ orderItemId, name, quantity, reason, by }] } }`.
+  cancellations: { ordersCount, orders: [{ orderId, reason, by }], items: [{ orderItemId, name, quantity, reason, by }] },
+  cash: { openingFloat, cashPayments, withdrawals, reinforcements, expected, movements: [{ id, type, amount, reason, by, createdAt }] } }`.
+  `cash.expected` = fundo + dinheiro líquido de troco − sangrias + reforços (RN-13).
   `byPaymentMethod` sempre traz `cash`, `card` e `pix`; `byMenuItem` vem do maior para o menor total;
   `cancellations.items` lista só cancelamentos gerenciais de pedidos não cancelados.
 - `GET /tables` — array de `{ id, number, status, activeOrderId }`, com `status` igual a

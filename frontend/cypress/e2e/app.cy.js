@@ -9,7 +9,7 @@ function garantirTurnoAberto() {
 
     cy.request({ url: `${apiUrl}/shifts/active`, headers }).then(({ body: active }) => {
       if (active.data?.status !== 'open') {
-        cy.request({ method: 'POST', url: `${apiUrl}/shifts`, headers })
+        cy.request({ method: 'POST', url: `${apiUrl}/shifts`, headers, body: { openingFloat: 100 } })
       }
     })
   })
@@ -80,7 +80,7 @@ function pagarEFecharNoCaixa(orderId) {
     .should('be.checked')
 
   cy.get('select[name="method"]').select('cash')
-  cy.get('input[name="amount"]').type('500')
+  cy.contains('section', 'Extrato da conta').find('input[name="amount"]').type('500')
   cy.contains(/Troco estimado:/).should('be.visible')
   cy.contains('button', 'Adicionar pagamento').click()
   cy.contains('Pagamento registrado com sucesso!').should('be.visible')
@@ -152,6 +152,20 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('Pedidos encerrados').should('be.visible')
   })
 
+  it('celular 375px: barra inferior navega e "Sair" fica na barra superior (spec 012)', () => {
+    cy.viewport(375, 812)
+    fazerLogin('caixa@mesafacil.com')
+    cy.get('nav[aria-label="Menu principal"]').should('be.visible').within(() => {
+      cy.contains('a', 'Salão').click()
+    })
+    cy.url().should('include', '/tables')
+    garantirSemScrollHorizontal()
+    cy.get('nav[aria-label="Menu principal"] a[aria-label="Minha conta"]').click()
+    cy.url().should('include', '/account')
+    cy.contains('button', /^Sair$/).click()
+    cy.url().should('include', '/login')
+  })
+
   it('cancelamento gerencial de pedido com motivo obrigatório (RN-11)', () => {
     garantirTurnoAberto()
 
@@ -165,5 +179,36 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     })
 
     cy.contains('Cancelamento E2E').should('be.visible')
+  })
+
+  it('sangria pelo caixa sem ver o esperado; gerente vê o dinheiro esperado (RN-13)', () => {
+    garantirTurnoAberto()
+    const motivo = `Cofre E2E ${Date.now()}`
+
+    fazerLogin('caixa@mesafacil.com')
+    cy.contains('section', 'Gaveta: sangria e reforço').within(() => {
+      cy.get('select[name="type"]').select('withdrawal')
+      cy.get('input[name="amount"]').type('9999999')
+      cy.get('input[name="reason"]').type('Acima da gaveta')
+      cy.contains('button', 'Registrar movimento').click()
+      cy.contains('A sangria é maior que o dinheiro disponível na gaveta.').should('be.visible')
+
+      cy.get('input[name="amount"]').clear().type('10')
+      cy.get('input[name="reason"]').clear().type(motivo)
+      cy.contains('button', 'Registrar movimento').click()
+      cy.contains('Sangria registrada com sucesso!').should('be.visible')
+      cy.contains('td', motivo).should('be.visible')
+    })
+    cy.contains(/esperado/i).should('not.exist')
+    sair()
+
+    fazerLogin('gerente@mesafacil.com')
+    cy.visit('/admin/shift')
+    cy.contains('section', 'Dinheiro na gaveta').within(() => {
+      cy.contains('Dinheiro esperado').should('be.visible')
+    })
+    cy.contains('section', 'Movimentos de caixa').within(() => {
+      cy.contains('td', motivo).should('be.visible')
+    })
   })
 })

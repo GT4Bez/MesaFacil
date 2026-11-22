@@ -52,7 +52,7 @@ describe('Relatório do turno (RN-10)', () => {
       picanha: await createMenuItem({ name: 'Picanha', price: 89.9 }),
       suco: await createMenuItem({ name: 'Suco', category: 'Bebidas', price: 10 }),
     }
-    shiftId = (await api('POST', '/shifts')).json.data.id
+    shiftId = (await api('POST', '/shifts', { body: { openingFloat: 0 } })).json.data.id
   })
 
   test('apenas gerente; turno inexistente → 404', async () => {

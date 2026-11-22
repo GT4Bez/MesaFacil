@@ -2,14 +2,15 @@
 // aqui ela só decide o que cada papel vê no menu e para onde é redirecionado.
 const ALL_ROLES = ['waiter', 'kitchen', 'cashier', 'manager']
 
+// `short` é o rótulo da barra inferior no celular (spec 012).
 export const SCREENS = {
-  users: { path: '/admin/users', label: 'Usuários', icon: '☺', roles: [] },
-  tables: { path: '/tables', label: 'Salão e mesas', icon: '▦', roles: ['waiter', 'cashier', 'manager'] },
-  kitchen: { path: '/kitchen', label: 'Cozinha (KDS)', icon: '♨', roles: ['kitchen', 'manager'] },
-  cashier: { path: '/cashier', label: 'Caixa', icon: '▤', roles: ['cashier', 'manager'] },
-  menuAdmin: { path: '/admin/menu', label: 'Admin do cardápio', icon: '☰', roles: ['manager'] },
-  shiftAdmin: { path: '/admin/shift', label: 'Turno e relatório', icon: '◷', roles: ['manager'] },
-  account: { path: '/account', label: 'Minha conta', icon: '⚙', roles: ALL_ROLES },
+  users: { path: '/admin/users', label: 'Usuários', short: 'Usuários', icon: '☺', roles: [] },
+  tables: { path: '/tables', label: 'Salão e mesas', short: 'Salão', icon: '▦', roles: ['waiter', 'cashier', 'manager'] },
+  kitchen: { path: '/kitchen', label: 'Cozinha (KDS)', short: 'Cozinha', icon: '♨', roles: ['kitchen', 'manager'] },
+  cashier: { path: '/cashier', label: 'Caixa', short: 'Caixa', icon: '▤', roles: ['cashier', 'manager'] },
+  menuAdmin: { path: '/admin/menu', label: 'Admin do cardápio', short: 'Cardápio', icon: '☰', roles: ['manager'] },
+  shiftAdmin: { path: '/admin/shift', label: 'Turno e relatório', short: 'Turno', icon: '◷', roles: ['manager'] },
+  account: { path: '/account', label: 'Minha conta', short: 'Conta', icon: '⚙', roles: ALL_ROLES },
 }
 
 // RN-16: o admin (superadmin) passa em toda checagem de papel, como no backend.
