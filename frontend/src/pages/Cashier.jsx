@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
+import { useAuth } from '../context/AuthContext'
 import { api } from '../services/api'
+import { hasRole } from '../utils/access'
+import AuthorizedCancelModal from '../components/AuthorizedCancelModal'
+import ReasonModal from '../components/ReasonModal'
+import Toast from '../components/Toast'
 import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../utils/format'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
 import { ShiftCountForm } from '../components/ShiftClosing'
@@ -12,6 +17,12 @@ export default function Cashier() {
   const [success, setSuccess] = useState('')
   const [lastChange, setLastChange] = useState(0)
   const { busy, error, run } = useAction()
+  // RN-17 / RN-05: item da conta sendo cancelado; o erro fica dentro do modal.
+  const [cancelTarget, setCancelTarget] = useState(null)
+  const [toast, setToast] = useState('')
+  const cancelAction = useAction()
+  const { user } = useAuth()
+  const isManager = hasRole(user, 'manager')
 
   async function loadTables() {
     const allTables = await api.get('/tables')
@@ -60,6 +71,31 @@ export default function Cashier() {
       setSuccess('Pagamento registrado com sucesso!')
     }
     return paid
+  }
+
+  function openCancel(item) {
+    cancelAction.clearError()
+    setCancelTarget(item)
+  }
+
+  // Gerente e admin cancelam direto pela RN-05; o caixa precisa da autorização do gerente (RN-17).
+  async function confirmCancel(body) {
+    const item = cancelTarget
+    let approvedBy = null
+    const ok = await cancelAction.run(async () => {
+      if (isManager) {
+        await api.patch(`/order-items/${item.id}/status`, { status: 'canceled', reason: body.reason })
+      } else {
+        approvedBy = (await api.post(`/order-items/${item.id}/authorized-cancel`, body)).approvedBy
+      }
+      await loadBill()
+    })
+    if (ok) {
+      setSuccess('')
+      setLastChange(0)
+      setToast(`Item cancelado: ${item.name}${approvedBy ? ` (autorizado por ${approvedBy.name})` : ''}`)
+    }
+    return ok
   }
 
   async function closeOrder() {
@@ -126,8 +162,9 @@ export default function Cashier() {
             <Bill
               key={bill.orderId}
               bill={bill}
-              busy={busy}
+              busy={busy || cancelAction.busy}
               lastChange={lastChange}
+              onCancelItem={openCancel}
               onServiceTaxChange={toggleServiceTax}
               onPayment={registerPayment}
               onClose={closeOrder}
@@ -139,6 +176,29 @@ export default function Cashier() {
       </div>
 
       <CashDrawer />
+
+      <Toast message={toast} onDone={() => setToast('')} />
+
+      {cancelTarget &&
+        (isManager ? (
+          <ReasonModal
+            title={`Cancelar ${cancelTarget.name}`}
+            description="O item sai da conta e da cozinha. O cancelamento fica registrado com o seu nome."
+            confirmLabel="Cancelar item"
+            busy={cancelAction.busy}
+            error={cancelAction.error}
+            onConfirm={(reason) => confirmCancel({ reason })}
+            onClose={() => setCancelTarget(null)}
+          />
+        ) : (
+          <AuthorizedCancelModal
+            item={cancelTarget}
+            busy={cancelAction.busy}
+            error={cancelAction.error}
+            onConfirm={confirmCancel}
+            onClose={() => setCancelTarget(null)}
+          />
+        ))}
     </>
   )
 }
@@ -192,7 +252,7 @@ function clampForMethod(rawValue, method, remaining) {
   return Number.isFinite(numeric) && numeric > remaining ? String(remaining) : rawValue
 }
 
-function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }) {
+function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose, onCancelItem }) {
   // RN-07: a comanda só pode ser encerrada com o saldo quitado.
   const paidOff = bill.remainingBalance <= 0
   // RN-03: e só depois que o garçom pediu a conta (status `ready_to_pay`).
@@ -258,7 +318,18 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose }
                 {item.quantity} × {formatMoney(item.unitPrice)}
               </small>
             </div>
-            <strong>{formatMoney(item.unitPrice * item.quantity)}</strong>
+            <div className="bill-item-end">
+              <strong>{formatMoney(item.unitPrice * item.quantity)}</strong>
+              <button
+                className="remove-btn"
+                aria-label={`Cancelar ${item.name}`}
+                title="Cancelar item"
+                disabled={busy}
+                onClick={() => onCancelItem(item)}
+              >
+                ×
+              </button>
+            </div>
           </div>
         ))}
       </div>

@@ -4,7 +4,7 @@ import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import { ROLE_LABELS } from '../utils/format'
 import Modal from '../components/Modal'
-import Toast from '../components/Toast'
+import Toast, { useToast } from '../components/Toast'
 
 const EMPTY_FORM = { id: null, name: '', email: '', role: 'waiter', password: '' }
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS)
@@ -18,7 +18,7 @@ export default function Users() {
   // null = modal fechado; com objeto = modal aberto (novo quando id é null).
   const [form, setForm] = useState(null)
   const [resetTarget, setResetTarget] = useState(null)
-  const [toast, setToast] = useState('')
+  const { showToast, toastProps } = useToast()
   const { busy, error, clearError, run } = useAction()
 
   async function load(current = filters) {
@@ -59,7 +59,7 @@ export default function Users() {
       await load()
     })
     if (saved) {
-      setToast(editing ? `${name}: alterações salvas` : `${name} cadastrado(a) na equipe`)
+      showToast(editing ? `${name}: alterações salvas` : `${name} cadastrado(a) na equipe`)
       setForm(null)
     }
   }
@@ -220,7 +220,7 @@ export default function Users() {
           onClose={closeReset}
         />
       )}
-      <Toast message={toast} onDone={() => setToast('')} />
+      <Toast {...toastProps} />
     </>
   )
 }

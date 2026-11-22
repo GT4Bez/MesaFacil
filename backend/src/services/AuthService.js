@@ -2,7 +2,13 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { UserRepository } from '../repositories/UserRepository.js';
-import { BadRequestError, UnauthorizedError } from '../errors/AppError.js';
+import { hasRole } from '../auth/roles.js';
+import {
+  BadRequestError,
+  DomainValidationError,
+  ForbiddenError,
+  UnauthorizedError
+} from '../errors/AppError.js';
 
 export class AuthService {
   constructor(userRepository = new UserRepository()) {
@@ -36,5 +42,23 @@ export class AuthService {
     });
 
     return { token, user: safeUser };
+  }
+
+  // RN-17: confere a autorização de um gerente (ou admin) sem abrir sessão para ele.
+  // Qualquer falha devolve a mesma mensagem, e 403 (não 401) para não derrubar a sessão de quem pede.
+  async verifyApprover({ email, password } = {}) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+      throw new DomainValidationError('Informe o e-mail e a senha do gerente.');
+    }
+    const approver = await this.userRepository.findByEmail(email.trim().toLowerCase());
+    if (
+      !approver ||
+      !approver.active ||
+      !hasRole(approver, 'manager') ||
+      !(await bcrypt.compare(password, approver.password_hash))
+    ) {
+      throw new ForbiddenError('Autorização do gerente inválida.');
+    }
+    return { id: String(approver.id), name: approver.name };
   }
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import Modal from '../components/Modal'
-import Toast from '../components/Toast'
+import Toast, { useToast } from '../components/Toast'
 import { formatMoney } from '../utils/format'
 
 const EMPTY_FORM = { id: null, name: '', category: '', price: '', available: true }
@@ -14,7 +14,7 @@ export default function MenuAdmin() {
   const [categories, setCategories] = useState([])
   // null = modal fechado; com objeto = modal aberto (novo quando id é null).
   const [form, setForm] = useState(null)
-  const [toast, setToast] = useState('')
+  const { showToast, toastProps } = useToast()
   const { busy, error, clearError, run } = useAction()
 
   async function load() {
@@ -56,7 +56,7 @@ export default function MenuAdmin() {
       await load()
     })
     if (saved) {
-      setToast(editing ? `${form.name}: alterações salvas` : `${form.name} cadastrado no cardápio`)
+      showToast(editing ? `${form.name}: alterações salvas` : `${form.name} cadastrado no cardápio`)
       setForm(null)
     }
   }
@@ -166,7 +166,7 @@ export default function MenuAdmin() {
           </form>
         </Modal>
       )}
-      <Toast message={toast} onDone={() => setToast('')} />
+      <Toast {...toastProps} />
     </>
   )
 }
