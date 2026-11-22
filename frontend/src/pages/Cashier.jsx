@@ -5,7 +5,7 @@ import { api } from '../services/api'
 import { hasRole } from '../utils/access'
 import AuthorizedCancelModal from '../components/AuthorizedCancelModal'
 import ReasonModal from '../components/ReasonModal'
-import Toast from '../components/Toast'
+import Toast, { useToast } from '../components/Toast'
 import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../utils/format'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
 
@@ -18,7 +18,7 @@ export default function Cashier() {
   const { busy, error, run } = useAction()
   // RN-17 / RN-05: item da conta sendo cancelado; o erro fica dentro do modal.
   const [cancelTarget, setCancelTarget] = useState(null)
-  const [toast, setToast] = useState('')
+  const { showToast, toastProps } = useToast()
   const cancelAction = useAction()
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
@@ -92,7 +92,7 @@ export default function Cashier() {
     if (ok) {
       setSuccess('')
       setLastChange(0)
-      setToast(`Item cancelado: ${item.name}${approvedBy ? ` (autorizado por ${approvedBy.name})` : ''}`)
+      showToast(`Item cancelado: ${item.name}${approvedBy ? ` (autorizado por ${approvedBy.name})` : ''}`)
     }
     return ok
   }
@@ -176,7 +176,7 @@ export default function Cashier() {
 
       <CashDrawer />
 
-      <Toast message={toast} onDone={() => setToast('')} />
+      <Toast {...toastProps} />
 
       {cancelTarget &&
         (isManager ? (
