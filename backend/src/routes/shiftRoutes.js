@@ -31,8 +31,13 @@ router.get('/:id/report', requireRole('manager'), async (req, res) => {
   res.json({ success: true, data: await shiftService.getReport(req.params.id) });
 });
 
+// RN-14: contagem cega do caixa (o admin passa pelo hasRole) e fechamento pelo gerente (spec 008).
+router.put('/:id/count', requireRole('cashier'), async (req, res) => {
+  res.json({ success: true, data: await shiftService.count(req.params.id, req.body, req.user) });
+});
+
 router.patch('/:id/close', requireRole('manager'), async (req, res) => {
-  res.json({ success: true, data: await shiftService.close(req.params.id, req.user) });
+  res.json({ success: true, data: await shiftService.close(req.params.id, req.user, req.body) });
 });
 
 export default router;

@@ -1269,7 +1269,8 @@ footer span {
   display: grid;
   gap: 14px;
 }
-.modal label {
+.modal label,
+.closing-form label {
   display: grid;
   gap: 6px;
   font-size: var(--fs-xs);
@@ -1277,7 +1278,8 @@ footer span {
   color: var(--text-secondary);
 }
 .modal textarea,
-.modal select {
+.modal select,
+.closing-form textarea {
   border: 1px solid var(--border-strong);
   border-radius: 7px;
   padding: 10px;
@@ -1432,6 +1434,7 @@ footer span {
   border-color: var(--warning-border);
   color: var(--warning);
 }
+
 /* RN-15 (spec 009): insumos, ficha técnica e CMV. */
 .ingredient-list {
   display: grid;
@@ -1541,4 +1544,36 @@ footer span {
 }
 .cmv-margin .diff-negative {
   color: var(--brand);
+}
+
+/* RN-14 (spec 008): contagem cega no Caixa e conferência no Turno. */
+.shift-count-form {
+  margin-top: 12px;
+}
+.shift-closing {
+  margin-bottom: 18px;
+}
+.closing-table td.diff-zero {
+  color: var(--success);
+}
+.closing-table td.diff-negative {
+  color: var(--brand);
+  font-weight: 700;
+}
+.closing-table td.diff-positive {
+  color: var(--warning);
+  font-weight: 700;
+}
+.closing-note {
+  margin: 10px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.closing-form {
+  margin-top: 14px;
+}
+@media (max-width: 650px) {
+  .shift-banner a.dark-btn {
+    white-space: nowrap;
+  }
 }
