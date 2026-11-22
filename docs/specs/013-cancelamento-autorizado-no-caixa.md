@@ -52,7 +52,7 @@ Sem migration. Reaproveita `order_items.canceled_by` / `cancellation_reason` e a
 - quando o operador for `cashier`, abre o `Modal` (spec 012) "Cancelar item com autorização", mostrando item/valor e pedindo motivo + **autorização do gerente** (e-mail e senha);
 - o botão "Cancelar item" fica desabilitado durante o envio;
 - o erro da API aparece no modal;
-- com sucesso, a conta recarrega e o aviso confirma: "Picanha cancelada (autorizado por Gerente)" (ou "Picanha cancelada" no fluxo RN-05).
+- com sucesso, a conta recarrega e o aviso confirma: "Item cancelado: Picanha (autorizado por Gerente)" (ou "Item cancelado: Picanha" no fluxo RN-05; a frase não depende do gênero do item).
 
 ## Critérios de aceite
 
