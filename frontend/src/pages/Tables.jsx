@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
@@ -31,10 +31,9 @@ export default function Tables() {
   const canOpenOrder = hasRole(user, 'waiter', 'manager')
   const occupiedCount = tables?.filter((table) => table.status === 'occupied').length
 
-  function toggleShift() {
+  function closeShift() {
     run(async () => {
-      if (shiftOpen) await api.patch(`/shifts/${shift.id}/close`)
-      else await api.post('/shifts')
+      await api.patch(`/shifts/${shift.id}/close`)
       await load()
     })
   }
@@ -81,15 +80,17 @@ export default function Tables() {
                 </p>
               </div>
             </div>
-            {isManager && (
-              <button
-                className={shiftOpen ? 'dark-btn' : 'primary-btn'}
-                disabled={busy}
-                onClick={toggleShift}
-              >
-                {shiftOpen ? 'Encerrar turno' : 'Abrir turno'}
-              </button>
-            )}
+            {/* RN-13: abrir turno exige o fundo de troco, informado na tela Turno e relatório. */}
+            {isManager &&
+              (shiftOpen ? (
+                <button className="dark-btn" disabled={busy} onClick={closeShift}>
+                  Encerrar turno
+                </button>
+              ) : (
+                <Link className="primary-btn" to="/admin/shift">
+                  Abrir turno →
+                </Link>
+              ))}
           </section>
 
           <div className="stats-grid">
