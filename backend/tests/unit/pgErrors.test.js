@@ -14,6 +14,7 @@ describe('translatePgError', () => {
     ['23514 check_violation', pgError('23514'), 422],
     ['23502 not_null_violation', pgError('23502'), 422],
     ['22P02 id/valor malformado', pgError('22P02'), 400],
+    ['22003 valor numérico fora do limite', pgError('22003'), 422],
   ]
   for (const [nome, erro, status] of casos) {
     test(`${nome} → ${status}`, () => {

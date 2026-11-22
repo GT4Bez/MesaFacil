@@ -147,6 +147,16 @@ describe('Insumos, ficha técnica, baixa automática e CMV (RN-15)', () => {
       [['Arroz', 0.15, 0.87], ['Picanha', 0.4, 28]],
     )
 
+    // Insumo desativado que já está na ficha não trava a edição (só não pode entrar um inativo novo).
+    await api('PATCH', `/ingredients/${arroz.id}`, { body: { active: false } })
+    const kept = await saveRecipe(menu.picanha, [
+      { ingredientId: carne.id, quantity: 0.35 },
+      { ingredientId: arroz.id, quantity: 0.15 },
+    ])
+    assert.equal(kept.status, 200)
+    assert.equal(kept.json.data.items.find((item) => item.name === 'Arroz').active, false)
+    await api('PATCH', `/ingredients/${arroz.id}`, { body: { active: true } })
+
     // Substitui a ficha inteira; lista vazia remove.
     assert.equal((await saveRecipe(menu.picanha, [{ ingredientId: arroz.id, quantity: 0.2 }])).json.data.items.length, 1)
     const empty = await saveRecipe(menu.picanha, [])
@@ -222,5 +232,43 @@ describe('Insumos, ficha técnica, baixa automática e CMV (RN-15)', () => {
       soldItems: 2,
       itemsWithRecipe: 1,
     })
+  })
+
+  test('valores além do limite das colunas viram 422, não 500 (entrada e baixa no envio)', async () => {
+    const sal = await createIngredient({ name: 'Sal', unit: 'kg', unitCost: 1 })
+    assert.equal((await api('POST', `/ingredients/${sal.id}/purchases`, { body: { quantity: 600000000, unitCost: 1 } })).status, 201)
+    const overflow = await api('POST', `/ingredients/${sal.id}/purchases`, { body: { quantity: 500000000, unitCost: 1 } })
+    assert.equal(overflow.status, 422)
+    assert.equal(overflow.json.error, 'Valor fora do limite permitido.')
+
+    await saveRecipe(menu.suco, [{ ingredientId: sal.id, quantity: 1000 }])
+    const orderId = await createOrder()
+    await addItem(orderId, menu.suco, 2000000)
+    // 2.000.000 × 1.000 kg não cabe na coluna: o envio inteiro volta atrás com 422.
+    assert.equal((await send(orderId)).status, 422)
+    const { rows } = await query(`SELECT status FROM order_items WHERE order_id = $1`, [orderId])
+    assert.equal(rows[0].status, 'pending')
+    assert.equal((await ingredient(sal.id)).stockQuantity, 600000000)
+  })
+
+  test('CMV conta unidades vendidas na cobertura', async () => {
+    const carne = await createIngredient({ name: 'Picanha', unit: 'kg', unitCost: 70 })
+    await saveRecipe(menu.picanha, [{ ingredientId: carne.id, quantity: 0.4 }])
+    const orderId = await createOrder()
+    const picanhas = await addItem(orderId, menu.picanha, 3)
+    const suco = await addItem(orderId, menu.suco, 2)
+    await send(orderId)
+    for (const itemId of [picanhas, suco]) {
+      for (const status of ['preparing', 'ready']) {
+        await api('PATCH', `/order-items/${itemId}/status`, { role: 'kitchen', body: { status } })
+      }
+    }
+    await api('PATCH', `/orders/${orderId}/status`, { role: 'waiter', body: { status: 'ready_to_pay' } })
+    await api('POST', `/orders/${orderId}/payments`, { role: 'cashier', body: { amount: 289.7, method: 'pix' } })
+    await api('PATCH', `/orders/${orderId}/status`, { role: 'cashier', body: { status: 'closed' } })
+    const { cmv } = (await api('GET', `/shifts/${shiftId}/report`)).json.data
+    assert.equal(cmv.soldItems, 5)
+    assert.equal(cmv.itemsWithRecipe, 3)
+    assert.equal(cmv.cost, 84)
   })
 })

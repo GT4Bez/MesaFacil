@@ -33,3 +33,11 @@ FROM (VALUES
 ) AS r(item, ingredient, quantity)
 JOIN menu_items m ON m.name = r.item
 JOIN ingredients i ON i.name = r.ingredient;
+
+-- O estoque inicial também vira movimento de entrada, para que a soma dos movimentos de cada
+-- insumo bata com o saldo (stock_quantity).
+INSERT INTO stock_movements (ingredient_id, type, quantity, unit_cost, user_id, reason)
+SELECT i.id, 'purchase', i.stock_quantity, i.unit_cost, u.id, 'Estoque inicial'
+FROM ingredients i
+JOIN users u ON u.email = 'gerente@mesafacil.com'
+WHERE i.stock_quantity > 0;
