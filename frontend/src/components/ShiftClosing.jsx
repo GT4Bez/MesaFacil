@@ -51,8 +51,9 @@ export function ShiftCountForm({ shift, onCounted }) {
       </label>
       {error && <div className="alert error full-row">{error}</div>}
       {success && <div className="alert success full-row">{success}</div>}
-      <button className="primary-btn" disabled={busy}>
-        {shift.countedAt ? 'Contar de novo' : 'Registrar contagem'}
+      {/* Recontar é exceção: depois da primeira contagem o botão perde o destaque. */}
+      <button className={shift.countedAt || success ? 'outline-btn' : 'primary-btn'} disabled={busy}>
+        {shift.countedAt || success ? 'Contar de novo' : 'Registrar contagem'}
       </button>
     </form>
   )
