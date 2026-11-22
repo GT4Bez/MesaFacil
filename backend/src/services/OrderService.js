@@ -1,5 +1,6 @@
 import { OrderRepository, ACTIVE_ORDER_STATUSES } from '../repositories/OrderRepository.js';
 import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
+import { StockRepository } from '../repositories/StockRepository.js';
 import { AuditLogService } from './AuditLogService.js';
 import { AuthService } from './AuthService.js';
 import { hasRole } from '../auth/roles.js';
@@ -32,12 +33,14 @@ export class OrderService {
     orderRepository = new OrderRepository(),
     menuItemRepository = new MenuItemRepository(),
     auditLogService = new AuditLogService(),
-    authService = new AuthService()
+    authService = new AuthService(),
+    stockRepository = new StockRepository()
   ) {
     this.orders = orderRepository;
     this.menuItems = menuItemRepository;
     this.audit = auditLogService;
     this.auth = authService;
+    this.stock = stockRepository;
   }
 
   // RN-01 e RN-02: só abre pedido com turno aberto e sem outro pedido ativo na mesa.
@@ -219,7 +222,11 @@ export class OrderService {
           if (!items.some((item) => item.status === 'pending')) {
             throw new ConflictError('Não há itens pendentes para enviar à cozinha.');
           }
-          await this.orders.sendPendingItems(orderId, db);
+          {
+            // RN-15: a baixa dos insumos acontece no envio, na mesma transação.
+            const sentIds = await this.orders.sendPendingItems(orderId, db);
+            await this.stock.recordSales({ orderItemIds: sentIds, shiftId: order.shiftId, userId: user.id }, db);
+          }
           break;
 
         case 'ready_to_pay':

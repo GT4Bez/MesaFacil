@@ -1,6 +1,6 @@
 # 009 — Insumos e ficha técnica
 
-> Status: proposta · Regras: **RN-15 (nova)** · Tela: Insumos + ficha técnica no Admin do cardápio
+> Status: aprovada (revisada antes da implementação) · Regras: RN-10, **RN-15 (nova)** · Telas: Insumos, ficha técnica no Admin do cardápio e CMV no Turno
 
 ## Contexto
 
@@ -8,78 +8,52 @@ O restaurante não sabe quanto custa cada prato nem quanto ingrediente consumiu 
 
 ## Regras (RN-15)
 
-1. **Insumo**: `name`, `unit` (`un`, `kg`, `l`), `min_stock` ≥ 0, `unit_cost` ≥ 0, `active`. Quantidades com 3 casas decimais. Só `manager` cadastra e altera.
-2. **Ficha técnica**: lista de `{ ingredientId, quantity > 0 }` por item do cardápio, sem insumo repetido; substituída inteira a cada gravação. Item sem ficha é vendido normalmente, sem baixa.
-3. **Baixa automática**: no envio à cozinha (`pending → sent`), na mesma transação, cada item enviado gera um movimento `sale` por insumo da ficha: `−(quantidade do item × quantidade da ficha)`.
+1. **Insumo**: `name`, `unit` (`un`, `kg`, `l`), `min_stock` ≥ 0, `unit_cost` ≥ 0, `active`. Quantidades com 3 casas decimais. Só `manager` (e `admin`) vê, cadastra e altera; a unidade não muda depois do cadastro.
+2. **Ficha técnica**: lista de `{ ingredientId, quantity > 0 }` por item do cardápio, sem insumo repetido; substituída inteira a cada gravação. Item sem ficha é vendido normalmente, sem baixa. Não se inclui insumo inativo novo (`409`), mas um insumo desativado que **já estava** na ficha pode continuar nela (a ficha segue editável e continua dando baixa); a tela o destaca para ser trocado.
+3. **Baixa automática**: no envio à cozinha (`pending → sent`), na mesma transação, cada item enviado gera um movimento `sale` por insumo da ficha: `−(quantidade do item × quantidade da ficha)`. Os insumos são travados em ordem de id (`FOR UPDATE`), para que envios simultâneos não entrem em deadlock.
 4. Estoque **pode ficar negativo**; insumos com `stock_quantity < min_stock` aparecem como alerta.
 5. Cancelar item já enviado **não** devolve estoque (é perda); item `pending` cancelado nunca foi baixado.
 6. **Entrada** (`purchase`): quantidade > 0 e custo unitário; atualiza `unit_cost` para o último custo.
-7. **Ajuste** (`adjustment`): o gerente informa a quantidade contada e o motivo; o sistema grava a diferença e audita `stock.adjusted`.
+7. **Ajuste** (`adjustment`): o gerente informa a quantidade contada e o motivo; o sistema grava a diferença e audita `stock.adjusted` (`details`: `from`, `to`, `difference`, `reason`). Contagem igual ao estoque → `422`.
 8. Cada movimento guarda o `unit_cost` do momento (snapshot), para o CMV de turnos passados não mudar.
 9. Custo do item do cardápio = Σ (quantidade da ficha × `unit_cost` atual), exibido no admin com a margem.
 
 ## Modelo de dados
 
-`014_create_ingredients.sql`, `015_create_menu_item_recipes.sql`, `016_create_stock_movements.sql`:
+Uma migration só, `015_create_ingredients_and_stock.sql` (a `013` é dos movimentos de caixa e a `014` é da conferência cega, spec 008):
 
-```sql
-CREATE TABLE ingredients (
-  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  name VARCHAR(100) NOT NULL UNIQUE,
-  unit VARCHAR(2) NOT NULL CHECK (unit IN ('un', 'kg', 'l')),
-  stock_quantity DECIMAL(10, 3) NOT NULL DEFAULT 0,
-  min_stock DECIMAL(10, 3) NOT NULL DEFAULT 0 CHECK (min_stock >= 0),
-  unit_cost DECIMAL(10, 2) NOT NULL DEFAULT 0 CHECK (unit_cost >= 0),
-  active BOOLEAN NOT NULL DEFAULT true
-);
+- `ingredients`: `name` único sem diferenciar maiúsculas (`ingredients_name_unique_idx` em `lower(name)`), `unit` (`un`, `kg`, `l`), `stock_quantity DECIMAL(12, 3)` (pode ficar negativo), `min_stock ≥ 0`, `unit_cost ≥ 0`, `active`.
+- `menu_item_recipes (menu_item_id, ingredient_id)` como chave primária, com `quantity > 0` (3 casas).
+- `stock_movements`: `type` (`sale`, `purchase`, `adjustment`), `quantity ≠ 0`, `unit_cost` do momento, `order_item_id` (obrigatório só na venda), `shift_id`, `user_id` e `reason` (obrigatório no ajuste). O sinal é checado no banco: venda < 0, entrada > 0.
+- `audit_logs_action_check` ganha `stock.adjusted` e mantém todas as ações anteriores (specs 005, 007, 008 e 011, inclusive `shift.counted`).
 
-CREATE TABLE menu_item_recipes (
-  menu_item_id BIGINT NOT NULL REFERENCES menu_items (id),
-  ingredient_id BIGINT NOT NULL REFERENCES ingredients (id),
-  quantity DECIMAL(10, 3) NOT NULL CHECK (quantity > 0),
-  PRIMARY KEY (menu_item_id, ingredient_id)
-);
+Seed `010_seed_ingredients.sql`: 10 insumos (o leite condensado já começa abaixo do mínimo) e fichas para 6 dos 8 itens do cardápio. Refrigerante e Petit Gâteau ficam sem ficha, para mostrar a cobertura do CMV.
 
-CREATE TABLE stock_movements (
-  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  ingredient_id BIGINT NOT NULL REFERENCES ingredients (id),
-  type VARCHAR(20) NOT NULL CHECK (type IN ('sale', 'purchase', 'adjustment')),
-  quantity DECIMAL(10, 3) NOT NULL CHECK (quantity <> 0),
-  unit_cost DECIMAL(10, 2) NOT NULL,
-  order_item_id BIGINT REFERENCES order_items (id),
-  shift_id BIGINT REFERENCES shifts (id),
-  user_id BIGINT NOT NULL REFERENCES users (id),
-  reason TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT stock_movements_sale_item_check CHECK ((type = 'sale') = (order_item_id IS NOT NULL)),
-  CONSTRAINT stock_movements_quantity_sign_check CHECK (
-    (type = 'sale' AND quantity < 0) OR (type = 'purchase' AND quantity > 0) OR type = 'adjustment'),
-  CONSTRAINT stock_movements_adjustment_reason_check CHECK (
-    type <> 'adjustment' OR length(trim(COALESCE(reason, ''))) > 0)
-);
+## Contrato da API (gerente; o admin passa pelo `hasRole`)
 
-ALTER TABLE audit_logs DROP CONSTRAINT audit_logs_action_check;
-ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_action_check CHECK (action IN (
-  'order_item.canceled', 'order.canceled', 'shift.opened', 'shift.closed',
-  'menu_item.price_changed', 'cash.withdrawal', 'cash.reinforcement', 'stock.adjusted'));
-```
+- `GET /ingredients` → `[{ id, name, unit, stockQuantity, minStock, unitCost, active, belowMin }]`, em ordem alfabética.
+- `POST /ingredients` — `{ name, unit, minStock?, unitCost?, active? }` → `201`. Nome repetido → `409`.
+- `PATCH /ingredients/:id` — qualquer subconjunto de `{ name, minStock, unitCost, active }`. A unidade não muda depois do cadastro (`422`); o estoque só muda por movimento.
+- `POST /ingredients/:id/purchases` — `{ quantity > 0, unitCost ≥ 0 }` → `201` com o insumo atualizado (o custo passa a ser o da compra).
+- `POST /ingredients/:id/adjustments` — `{ countedQuantity ≥ 0, reason }` → `201`. Sem diferença → `422`.
+- `GET /menu-items/:id/recipe` → `{ menuItemId, price, items: [{ ingredientId, name, unit, quantity, unitCost, cost, active }], cost, margin, marginPercent }`.
+- `PUT /menu-items/:id/recipe` — `{ items: [{ ingredientId, quantity }] }`. Lista vazia remove a ficha. A resposta tem o mesmo formato do `GET`.
+- `GET /shifts/:id/report` ganha `cmv: { revenue, cost, grossMargin, marginPercent, losses, soldItems, itemsWithRecipe }`.
 
-Seed novo (próximo número livre na `main`, ex.: `008_seed_ingredients.sql`): ~10 insumos e ficha para 6 dos 8 itens do cardápio (2 ficam sem ficha, para demonstrar a cobertura do CMV).
+Erros: `422` validação (inclusive insumo repetido na ficha e valores além do limite das colunas, como uma baixa gigante no envio), `404` inexistente, `403` papel, `409` nome repetido ou insumo inativo novo na ficha.
 
-## Contrato da API (todas `manager`)
+## CMV no relatório do turno (decisão da revisão)
 
-- `GET /ingredients` → `[{ id, name, unit, stockQuantity, minStock, unitCost, active, belowMin }]`
-- `POST /ingredients` · `PATCH /ingredients/:id`
-- `POST /ingredients/:id/purchases` — `{ quantity, unitCost }`
-- `POST /ingredients/:id/adjustments` — `{ countedQuantity, reason }`
-- `GET /menu-items/:id/recipe` → `{ items: [{ ingredientId, name, unit, quantity, cost }], cost, price, margin }`
-- `PUT /menu-items/:id/recipe` — `{ items: [{ ingredientId, quantity }] }`
-
-Erros: `422` validação, `404` inexistente, `403` papel, `409` insumo inativo na ficha.
+- `cost`: soma das baixas (`−quantity × unit_cost` gravado) dos itens **vendidos**, isto é, não cancelados e de pedidos `closed` do turno. É a mesma base de `byMenuItem`.
+- `revenue`: soma de `quantity × unit_price` desses itens, sem taxa de serviço. `grossMargin = revenue − cost`; `marginPercent` (uma casa) é `null` sem vendas.
+- `losses`: custo das baixas de itens enviados e depois cancelados (item ou pedido). É perda, não venda (regra 5).
+- `soldItems` / `itemsWithRecipe`: unidades vendidas e quantas delas tiveram baixa (cobertura das fichas).
 
 ## Telas
 
-**Insumos**: lista com estoque, mínimo (alerta em vermelho), custo; ações de entrada e ajuste. **Admin do cardápio**: aba "Ficha técnica" no item, com custo e margem.
+- **Insumos** (nova tela, gerente/admin): lista com estoque, mínimo (alerta), custo e situação; novo/editar, entrada e ajuste em modal (spec 012).
+- **Admin do cardápio**: botão "Ficha técnica" no item, que abre um modal com as linhas de insumo e quantidade, o custo e a margem.
+- **Turno**: bloco "CMV" no relatório (custo, margem, perdas e cobertura).
 
 ## Critérios de aceite
 
@@ -87,7 +61,8 @@ Erros: `422` validação, `404` inexistente, `403` papel, `409` insumo inativo n
 - [ ] Estoque negativo é permitido e marcado com `belowMin`.
 - [ ] Ajuste grava a diferença e a auditoria; entrada atualiza o custo.
 - [ ] Alterar o custo depois não muda o custo gravado nos movimentos antigos.
-- [ ] `docs/ESPECIFICACAO.md`: RN-15 na seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4).
+- [ ] O CMV do relatório considera só os itens vendidos de pedidos encerrados; os enviados e cancelados entram como perda.
+- [ ] `docs/ESPECIFICACAO.md`: RN-15 na seção 3.3 "Evoluções da squad" e linha na matriz de validação (§4); `frontend/CONTRATO-API.md`, `docs/ROTEIRO-DEMO.md` e `scripts/demo-regras.sh` atualizados.
 
 ## Fora de escopo
 

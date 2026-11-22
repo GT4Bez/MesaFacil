@@ -175,6 +175,7 @@ export class ShiftService {
       const cashSummary = await this.cash.findCashSummary(id, db);
       const movements = await this.cash.findByShift(id, db);
       const count = await this.counts.findByShift(id, db);
+      const cmv = await this.reports.findCmv(id, db);
       const { closingNote, ...shiftData } = shift;
 
       return {
@@ -184,6 +185,7 @@ export class ShiftService {
         byMenuItem,
         cancellations: { ordersCount: orders.length, orders, items },
         cash: { ...cashSummary, movements },
+        cmv,
         // RN-14: conferência cega; `stale` indica contagem desatualizada com o turno aberto.
         closing: count && {
           ...count,

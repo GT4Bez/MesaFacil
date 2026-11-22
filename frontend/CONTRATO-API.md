@@ -99,6 +99,19 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - Cancelar o pedido: `{ "status": "canceled", "reason": "cliente desistiu" }` — só `manager` (`403`),
   motivo obrigatório (`422`), `409` se houver pagamento registrado. Cancela os itens ativos e libera a mesa (RN-11).
 
+## Insumos e ficha técnica (gerente, RN-15)
+
+- `GET /ingredients` — `[{ id, name, unit, stockQuantity, minStock, unitCost, active, belowMin }]` (`unit`: `un`, `kg`, `l`).
+- `POST /ingredients` — `{ "name": "Batata", "unit": "kg", "minStock": 5, "unitCost": 6.2 }` → `201`; nome repetido → `409`.
+- `PATCH /ingredients/:id` — subconjunto de `{ name, minStock, unitCost, active }`; mudar `unit` → `422`.
+- `POST /ingredients/:id/purchases` — `{ "quantity": 20, "unitCost": 6.4 }` → `201` com o insumo (custo passa a ser o da compra).
+- `POST /ingredients/:id/adjustments` — `{ "countedQuantity": 18.25, "reason": "Perda" }` → `201`; sem diferença → `422`.
+- `GET /menu-items/:id/recipe` / `PUT /menu-items/:id/recipe` (`{ "items": [{ "ingredientId": "1", "quantity": 0.4 }] }`) →
+  `{ menuItemId, price, items: [{ ingredientId, name, unit, quantity, unitCost, cost, active }], cost, margin, marginPercent }`.
+  Insumo repetido ou quantidade ≤ 0 → `422`; insumo inativo → `409`.
+- A baixa de estoque acontece sozinha no envio à cozinha; o relatório do turno traz o bloco
+  `cmv: { revenue, cost, grossMargin, marginPercent, losses, soldItems, itemsWithRecipe }`.
+
 ## Cozinha (KDS)
 
 - `GET /kitchen/orders` — `kitchen` e `manager`. Itens `sent` e `preparing` de pedidos ativos, agrupados por

@@ -31,7 +31,7 @@ docker compose up --build
 | 10 | Caixa | **Frente de caixa** → mesa 1; marcar "Incluir 10% de taxa de serviço" | A taxa começa desligada e, marcada, fica gravada no pedido; total de R$ 98,89 sem o suco cancelado | RN-08, RN-12 |
 | 11 | Caixa | Pagar R$ 50,00 em Pix; depois digitar R$ 60,00 ainda em Pix | "Finalizar pedido e liberar mesa" bloqueado com saldo devedor; em cartão/Pix o valor é limitado ao saldo | RN-07, RN-12 |
 | 12 | Caixa | Trocar para Dinheiro, pagar R$ 60,00 e finalizar | "Troco: R$ 11,11"; o histórico mostra recebido e troco; mesa 1 volta a "Livre" | RN-07, RN-12 |
-| 13 | Gerente | **Admin do cardápio**: mudar o preço da picanha e tirar o Pudim de linha | Pudim some do cardápio do garçom; pedidos antigos mantêm o preço | RN-09 |
+| 13 | Gerente | **Admin do cardápio**: mudar o preço da picanha e tirar o Pudim de linha; abrir a **Ficha técnica** da picanha. Em **Insumos**, ver a baixa do envio (Picanha 11,600 kg), o alerta do leite condensado e registrar uma entrada | Pudim some do cardápio do garçom; pedidos antigos mantêm o preço; a ficha mostra custo e margem; a entrada atualiza estoque e custo | RN-09, RN-15 |
 | 14 | Garçom + Gerente | Abrir a mesa 2 com um item; gerente usa **Cancelar pedido** com motivo | Mesa liberada; comanda mostra quem cancelou e por quê | RN-11 |
 | 15 | Garçom + Caixa | Na mesa 3, lançar e enviar um item; no **Frente de caixa**, "×" no item e o gerente digita e-mail e senha no modal (errar a senha primeiro) | Senha errada mostra "Autorização do gerente inválida." sem derrubar o caixa; com a certa, o item sai da conta com "autorizado por Gerente" | RN-17 |
 | 16 | Caixa | **Frente de caixa** → **Contagem de fechamento**: dinheiro, cartão e Pix contados | Nenhum valor esperado na tela; a contagem fica registrada com o horário | RN-14 |
@@ -71,6 +71,7 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-13 | Abrir turno sem fundo; sangria acima da gaveta; garçom sangrando; caixa sangra 100; gerente reforça 20 | `422`; `422` sem revelar o valor; `403`; `201` sem `expectedCash`; `201` com `expectedCash: 68.89` |
 | RN-10 | Caixa pedindo o relatório; gerente pedindo o relatório | `403`, `200` com totais por SQL e o bloco `cash` (`expected: 68.89`) |
 | RN-14 | Encerrar sem contagem; gerente contando; caixa conta dinheiro 68,00 / Pix 50,00; encerrar sem motivo; com motivo | `409`; `403`; `200` sem `expected`; `422`; `200` com diferença de `-0.89` |
+| RN-15 | Estoque depois do envio; garçom ajustando estoque; ajuste sem motivo; com motivo; relatório | Picanha `11.6`, Laranja `14`; `403`; `422`; `201` (auditado); `cmv` com custo `30.07` e perda `34.74` (suco cancelado no RN-05 + picanha cancelada no RN-17) |
 | RN-17 | Caixa cancela item com a senha errada do gerente; com a certa; com pago acima do novo total | `403` (sessão do caixa segue válida); `200` com `approvedBy`; `409` |
 | RN-16 | Gerente listando usuários; admin cria "Ana" e a desativa; Ana usa o token antigo e tenta logar; admin desativa a si mesmo | `403`; `201`; `401` e `401`; `409` |
 
@@ -94,6 +95,7 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-12 | `OrderService.addPayment` (fila com `FOR UPDATE`) | `payments_change_amount_check`, `payments_change_only_cash_check` | `orders.test.js`, `shiftReport.test.js` |
 | RN-13 | `ShiftService.open`, `ShiftService.addCashMovement` (trava `FOR UPDATE` no turno), `CashMovementRepository.findCashSummary` | `cash_movements_amount_check`, `cash_movements_reason_check`, `cash_movements_single_float_idx` | `cashMovements.test.js` |
 | RN-14 | `ShiftService.count`, `ShiftService.close` (trava `FOR UPDATE` no turno; contagem desatualizada → `409`) | `shift_counts_declared_check`, `shift_counts_unique`, coluna gerada `difference` | `shiftClosing.test.js` |
+| RN-15 | `IngredientService`, `StockRepository.recordSales` (baixa no envio, insumos travados em ordem), `ShiftReportRepository.findCmv` | `stock_movements_sale_item_check`, `stock_movements_quantity_sign_check`, `ingredients_name_unique_idx` | `ingredients.test.js` |
 | RN-17 | `AuthService.verifyApprover`, `OrderService.authorizedCancelItem` (trava `FOR UPDATE` depois da autorização), `#assertPaidFitsWithout` | `order_items.canceled_by`, `audit_logs_action_check` | `authorizedCancel.test.js` |
 | RN-16 | `hasRole`, `authenticateToken` (confere `active`/`token_version`), `UserService` | `users_role_check`, `users_email_normalized_check`, trava `FOR UPDATE` nos admins ativos | `users.test.js` |
 

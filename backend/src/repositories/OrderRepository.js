@@ -155,13 +155,16 @@ export class OrderRepository {
     );
   }
 
+  // Devolve os ids enviados, para a baixa de estoque na mesma transação (RN-15).
   async sendPendingItems(orderId, db = this.database) {
-    await db.query(
+    const { rows } = await db.query(
       `UPDATE order_items
        SET status = 'sent', sent_at = CURRENT_TIMESTAMP
-       WHERE order_id = $1 AND status = 'pending'`,
+       WHERE order_id = $1 AND status = 'pending'
+       RETURNING id`,
       [orderId]
     );
+    return rows.map((row) => String(row.id));
   }
 
   async findPayments(orderId, db = this.database) {
