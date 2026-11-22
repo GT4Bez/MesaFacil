@@ -152,7 +152,12 @@ describe('Relatório do turno (RN-10)', () => {
     assert.equal(cashRes.status, 201)
     assert.equal(cashRes.json.data.changeAmount, 30.1)
     await setStatus(third.orderId, 'closed', 'cashier')
-    assert.equal((await api('PATCH', `/shifts/${shiftId}/close`)).status, 200)
+    // RN-14: contagem com diferença (o caixa declarou 0) → o gerente informa o motivo.
+    await api('PUT', `/shifts/${shiftId}/count`, { role: 'cashier', body: { declared: { cash: 0, card: 0, pix: 0 } } })
+    assert.equal(
+      (await api('PATCH', `/shifts/${shiftId}/close`, { body: { reason: 'Conferência de teste' } })).status,
+      200,
+    )
 
     const final = (await report()).json.data
     assert.equal(final.shift.status, 'closed')

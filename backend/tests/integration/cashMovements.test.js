@@ -149,6 +149,7 @@ describe('Movimentos de caixa: fundo, sangria e reforço (RN-13)', () => {
 
   test('turno encerrado não aceita movimentos (409)', async () => {
     const shiftId = (await openShift(100)).json.data.id
+    await api('PUT', `/shifts/${shiftId}/count`, { role: 'cashier', body: { declared: { cash: 100, card: 0, pix: 0 } } })
     assert.equal((await api('PATCH', `/shifts/${shiftId}/close`)).status, 200)
     assert.equal((await withdraw(shiftId, 10)).status, 409)
     assert.equal((await move(shiftId, { type: 'reinforcement', amount: 10, reason: 'Troco' })).status, 409)

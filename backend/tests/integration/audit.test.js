@@ -131,6 +131,7 @@ describe('Cancelamento de pedido com motivo e auditoria (RN-11)', () => {
   })
 
   test('abrir e encerrar turno gravam auditoria', async () => {
+    await api('PUT', `/shifts/${shiftId}/count`, { role: 'cashier', body: { declared: { cash: 0, card: 0, pix: 0 } } })
     assert.equal((await api('PATCH', `/shifts/${shiftId}/close`)).status, 200)
     const opened = await auditLogs('shift.opened')
     const closed = await auditLogs('shift.closed')
@@ -161,6 +162,7 @@ describe('Cancelamento de pedido com motivo e auditoria (RN-11)', () => {
     assert.deepEqual(log.details, { from: 10, to: 12.5 })
 
     // Sem turno aberto, o registro fica sem shift_id.
+    await api('PUT', `/shifts/${shiftId}/count`, { role: 'cashier', body: { declared: { cash: 0, card: 0, pix: 0 } } })
     await api('PATCH', `/shifts/${shiftId}/close`)
     await patch({ price: 13 })
     const logs = await auditLogs('menu_item.price_changed')
