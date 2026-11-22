@@ -18,10 +18,19 @@ export default function Layout() {
         </div>
 
         <div className="side-label">MENU PRINCIPAL</div>
-        <nav>
+        {/* No celular (spec 012) vira barra inferior com ícone e rótulo curto. */}
+        <nav aria-label="Menu principal">
           {menuFor(user.role).map((screen) => (
-            <NavLink key={screen.path} to={screen.path}>
-              {screen.icon} <span>{screen.label}</span>
+            <NavLink key={screen.path} to={screen.path} aria-label={screen.label}>
+              <span className="nav-icon" aria-hidden="true">
+                {screen.icon}
+              </span>
+              <span className="nav-label" aria-hidden="true">
+                {screen.label}
+              </span>
+              <span className="nav-short" aria-hidden="true">
+                {screen.short}
+              </span>
             </NavLink>
           ))}
         </nav>
@@ -46,6 +55,9 @@ export default function Layout() {
             <span className="eyebrow">PAINEL DE CONTROLE</span>
             <b>Olá, {user.name}!</b>
           </div>
+          <button className="topbar-logout" onClick={() => logout()}>
+            Sair
+          </button>
         </header>
         <div className="page-content">
           <Outlet />
