@@ -4,7 +4,12 @@ import assert from 'node:assert/strict'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { AuthService } from '../../src/services/AuthService.js'
-import { BadRequestError, UnauthorizedError } from '../../src/errors/AppError.js'
+import {
+  BadRequestError,
+  DomainValidationError,
+  ForbiddenError,
+  UnauthorizedError,
+} from '../../src/errors/AppError.js'
 
 const passwordHash = await bcrypt.hash('123', 4)
 const dbUser = {
@@ -96,4 +101,37 @@ describe('AuthService.login', () => {
       assert.equal(calls.length, 0, 'não deve consultar o banco com entrada inválida')
     })
   }
+})
+
+describe('AuthService.verifyApprover (RN-17)', () => {
+  test('gerente ativo com senha certa autoriza; e-mail é normalizado', async () => {
+    const { service, calls } = makeService()
+    const approved = await service.verifyApprover({ email: '  GERENTE@mesafacil.com ', password: '123' })
+    assert.deepEqual(approved, { id: '7', name: 'Mariana Gerente' })
+    assert.deepEqual(calls, ['gerente@mesafacil.com'])
+  })
+
+  test('campos ausentes → 422; qualquer outra falha → 403 com a mesma mensagem', async () => {
+    await assert.rejects(makeService().service.verifyApprover({}), DomainValidationError)
+    await assert.rejects(makeService().service.verifyApprover({ email: 'a@b.c', password: '' }), DomainValidationError)
+
+    const failures = [
+      [dbUser, { email: dbUser.email, password: 'errada' }],
+      [{ ...dbUser, active: false }, { email: dbUser.email, password: '123' }],
+      [{ ...dbUser, role: 'cashier' }, { email: dbUser.email, password: '123' }],
+      [null, { email: dbUser.email, password: '123' }],
+    ]
+    for (const [user, credentials] of failures) {
+      await assert.rejects(makeService(user).service.verifyApprover(credentials), (error) => {
+        assert.ok(error instanceof ForbiddenError)
+        assert.equal(error.message, 'Autorização do gerente inválida.')
+        return true
+      })
+    }
+  })
+
+  test('admin também autoriza', async () => {
+    const { service } = makeService({ ...dbUser, role: 'admin' })
+    assert.equal((await service.verifyApprover({ email: dbUser.email, password: '123' })).id, '7')
+  })
 })

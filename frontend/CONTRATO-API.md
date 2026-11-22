@@ -84,6 +84,12 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `PATCH /order-items/:id/quantity` — body `{ "quantity": 2 }`; só para item `pending` (RN-04).
 - `PATCH /order-items/:id/status` — body `{ "status": "canceled" }` remove um item `pending`.
   Item já enviado: só `manager`, com `{ "status": "canceled", "reason": "..." }` (RN-05; `403`/`422`).
+  Com pagamento registrado, recusa com `409` se o valor pago passaria do novo total (RN-17, vale também para `pending`).
+- `POST /order-items/:id/authorized-cancel` — só `cashier` (e `admin`). Body
+  `{ "reason": "Cliente não recebeu o prato", "approver": { "email": "gerente@mesafacil.com", "password": "..." } }`.
+  Resposta `{ "id": "21", "status": "canceled", "approvedBy": { "id": "4", "name": "Gerente" } }` (RN-17).
+  Erros: `422` sem motivo/autorização; `403` "Autorização do gerente inválida." (não encerra a sessão);
+  `404` item inexistente; `409` item já cancelado, pedido inativo ou pago acima do novo total.
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).
 - Cancelar o pedido: `{ "status": "canceled", "reason": "cliente desistiu" }` — só `manager` (`403`),
