@@ -9,7 +9,7 @@ function garantirTurnoAberto() {
 
     cy.request({ url: `${apiUrl}/shifts/active`, headers }).then(({ body: active }) => {
       if (active.data?.status !== 'open') {
-        cy.request({ method: 'POST', url: `${apiUrl}/shifts`, headers })
+        cy.request({ method: 'POST', url: `${apiUrl}/shifts`, headers, body: { openingFloat: 100 } })
       }
     })
   })

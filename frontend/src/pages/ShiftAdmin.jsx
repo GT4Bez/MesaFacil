@@ -27,12 +27,16 @@ export default function ShiftAdmin() {
     run(() => load())
   }, [])
 
-  const openShift = () =>
+  // RN-13: o turno abre com o fundo de troco (pode ser 0); a validação é do backend.
+  function openShift(event) {
+    event.preventDefault()
+    const raw = new FormData(event.target).get('openingFloat')
     run(async () => {
-      await api.post('/shifts')
+      await api.post('/shifts', { openingFloat: raw === '' ? null : Number(raw) })
       setSelectedId(null)
       await load(null)
     })
+  }
 
   // Depois de encerrar, o relatório continua na tela, agora como fechamento do turno.
   const closeShift = () =>
@@ -89,13 +93,21 @@ export default function ShiftAdmin() {
                 </p>
               </div>
             </div>
-            <button
-              className={activeShift ? 'dark-btn' : 'primary-btn'}
-              disabled={busy}
-              onClick={activeShift ? closeShift : openShift}
-            >
-              {activeShift ? 'Encerrar turno' : 'Abrir turno'}
-            </button>
+            {activeShift ? (
+              <button className="dark-btn" disabled={busy} onClick={closeShift}>
+                Encerrar turno
+              </button>
+            ) : (
+              <form className="shift-lookup open-shift" onSubmit={openShift}>
+                <label>
+                  Fundo de troco (R$)
+                  <input name="openingFloat" type="number" min="0" step="0.01" placeholder="0,00" required />
+                </label>
+                <button className="primary-btn" disabled={busy}>
+                  Abrir turno
+                </button>
+              </form>
+            )}
           </section>
 
           <form className="shift-lookup" onSubmit={showShift}>

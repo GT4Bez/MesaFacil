@@ -36,9 +36,10 @@ curl -s "$API/tables" -w ' → HTTP %{http_code}\n'
 step 'RN-02: sem turno aberto, o garçom não abre pedido (409)'
 call POST "$GARCOM" /orders '{"tableId":1}'
 
-step 'RBAC: só o gerente abre turno (garçom → 403, gerente → 201)'
-call POST "$GARCOM" /shifts
-SHIFT=$(id_of POST "$GERENTE" /shifts)
+step 'RBAC: só o gerente abre turno (garçom → 403); RN-13: sem fundo de troco → 422; com fundo de 100,00 → 201'
+call POST "$GARCOM" /shifts '{"openingFloat":100}'
+call POST "$GERENTE" /shifts '{}'
+SHIFT=$(id_of POST "$GERENTE" /shifts '{"openingFloat":100}')
 echo "turno aberto: #$SHIFT"
 
 step 'RN-01: segundo pedido na mesma mesa → 409 (índice único parcial no PostgreSQL)'
@@ -88,6 +89,14 @@ call PATCH "$CAIXA" "/orders/$ORDER/service-tax" '{"enabled":false}'
 step 'RN-07: saldo quitado → pedido encerrado e mesa liberada'
 call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
 
+step 'RN-13: gaveta = fundo 100,00 + dinheiro líquido 48,89 = 148,89. Sangria acima → 422 (sem revelar o valor); garçom → 403'
+call POST "$CAIXA" "/shifts/$SHIFT/cash-movements" '{"type":"withdrawal","amount":500,"reason":"Cofre"}'
+call POST "$GARCOM" "/shifts/$SHIFT/cash-movements" '{"type":"withdrawal","amount":10,"reason":"Cofre"}'
+
+step 'RN-13: caixa sangra 100,00 (resposta sem o esperado); gerente reforça 20,00 e vê expectedCash 68.89'
+call POST "$CAIXA" "/shifts/$SHIFT/cash-movements" '{"type":"withdrawal","amount":100,"reason":"Cofre"}'
+call POST "$GERENTE" "/shifts/$SHIFT/cash-movements" '{"type":"reinforcement","amount":20,"reason":"Moedas para troco"}'
+
 OTHER=$(id_of POST "$GARCOM" /orders '{"tableId":2}')
 step 'RN-02: turno com pedido ativo não pode ser encerrado (409)'
 call PATCH "$GERENTE" "/shifts/$SHIFT/close"
@@ -100,7 +109,7 @@ call PATCH "$GERENTE" "/orders/$OTHER/status" '{"status":"canceled","reason":"Cl
 step 'RN-02: turno sem pedidos ativos pode ser encerrado'
 call PATCH "$GERENTE" "/shifts/$SHIFT/close"
 
-step 'RN-10: relatório do turno derivado do banco (só gerente: caixa → 403)'
+step 'RN-10: relatório do turno derivado do banco (só gerente: caixa → 403); bloco cash com expected 68.89'
 call GET "$CAIXA" "/shifts/$SHIFT/report"
 call GET "$GERENTE" "/shifts/$SHIFT/report"
 
