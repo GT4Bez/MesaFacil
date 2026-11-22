@@ -9,7 +9,7 @@ O restaurante não sabe quanto custa cada prato nem quanto ingrediente consumiu 
 ## Regras (RN-15)
 
 1. **Insumo**: `name`, `unit` (`un`, `kg`, `l`), `min_stock` ≥ 0, `unit_cost` ≥ 0, `active`. Quantidades com 3 casas decimais. Só `manager` (e `admin`) vê, cadastra e altera; a unidade não muda depois do cadastro.
-2. **Ficha técnica**: lista de `{ ingredientId, quantity > 0 }` por item do cardápio, sem insumo repetido; substituída inteira a cada gravação. Item sem ficha é vendido normalmente, sem baixa.
+2. **Ficha técnica**: lista de `{ ingredientId, quantity > 0 }` por item do cardápio, sem insumo repetido; substituída inteira a cada gravação. Item sem ficha é vendido normalmente, sem baixa. Não se inclui insumo inativo novo (`409`), mas um insumo desativado que **já estava** na ficha pode continuar nela (a ficha segue editável e continua dando baixa); a tela o destaca para ser trocado.
 3. **Baixa automática**: no envio à cozinha (`pending → sent`), na mesma transação, cada item enviado gera um movimento `sale` por insumo da ficha: `−(quantidade do item × quantidade da ficha)`. Os insumos são travados em ordem de id (`FOR UPDATE`), para que envios simultâneos não entrem em deadlock.
 4. Estoque **pode ficar negativo**; insumos com `stock_quantity < min_stock` aparecem como alerta.
 5. Cancelar item já enviado **não** devolve estoque (é perda); item `pending` cancelado nunca foi baixado.
@@ -40,14 +40,14 @@ Seed `010_seed_ingredients.sql`: 10 insumos (o leite condensado já começa abai
 - `PUT /menu-items/:id/recipe` — `{ items: [{ ingredientId, quantity }] }`. Lista vazia remove a ficha. A resposta tem o mesmo formato do `GET`.
 - `GET /shifts/:id/report` ganha `cmv: { revenue, cost, grossMargin, marginPercent, losses, soldItems, itemsWithRecipe }`.
 
-Erros: `422` validação (inclusive insumo repetido na ficha), `404` inexistente, `403` papel, `409` nome repetido ou insumo inativo na ficha.
+Erros: `422` validação (inclusive insumo repetido na ficha e valores além do limite das colunas, como uma baixa gigante no envio), `404` inexistente, `403` papel, `409` nome repetido ou insumo inativo novo na ficha.
 
 ## CMV no relatório do turno (decisão da revisão)
 
 - `cost`: soma das baixas (`−quantity × unit_cost` gravado) dos itens **vendidos**, isto é, não cancelados e de pedidos `closed` do turno. É a mesma base de `byMenuItem`.
 - `revenue`: soma de `quantity × unit_price` desses itens, sem taxa de serviço. `grossMargin = revenue − cost`; `marginPercent` (uma casa) é `null` sem vendas.
 - `losses`: custo das baixas de itens enviados e depois cancelados (item ou pedido). É perda, não venda (regra 5).
-- `soldItems` / `itemsWithRecipe`: linhas vendidas e quantas tiveram baixa (cobertura das fichas).
+- `soldItems` / `itemsWithRecipe`: unidades vendidas e quantas delas tiveram baixa (cobertura das fichas).
 
 ## Telas
 

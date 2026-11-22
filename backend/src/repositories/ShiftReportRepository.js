@@ -148,7 +148,7 @@ export class ShiftReportRepository {
          GROUP BY sm.order_item_id
        ),
        sold AS (
-         SELECT oi.id, oi.quantity * oi.unit_price AS revenue
+         SELECT oi.id, oi.quantity, oi.quantity * oi.unit_price AS revenue
          FROM order_items oi
          JOIN orders o ON o.id = oi.order_id
          WHERE o.shift_id = $1 AND o.status = 'closed' AND oi.status <> 'canceled'
@@ -162,8 +162,8 @@ export class ShiftReportRepository {
        )
        SELECT COALESCE(SUM(s.revenue), 0) AS revenue,
               ROUND(COALESCE(SUM(c.cost), 0), 2) AS cost,
-              COUNT(s.id)::int AS sold_items,
-              COUNT(c.order_item_id)::int AS items_with_recipe,
+              COALESCE(SUM(s.quantity), 0)::int AS sold_items,
+              COALESCE(SUM(s.quantity) FILTER (WHERE c.order_item_id IS NOT NULL), 0)::int AS items_with_recipe,
               ROUND((SELECT losses FROM lost), 2) AS losses
        FROM sold s
        LEFT JOIN costs c ON c.order_item_id = s.id`,

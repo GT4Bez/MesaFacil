@@ -175,10 +175,18 @@ export class IngredientService {
     return this.stock.transaction(async (db) => {
       const menuItem = await this.menuItems.findById(menuItemId, { lock: true }, db);
       if (!menuItem) throw new NotFoundError('Item do cardápio não encontrado.');
+      // FOR SHARE: uma desativação simultânea espera a ficha ser gravada (e vice-versa).
+      const ingredients = await this.stock.lockIngredients(parsed.map((item) => item.ingredientId), 'SHARE', db);
+      const byId = new Map(ingredients.map((ingredient) => [ingredient.id, ingredient]));
+      // Insumo desativado que já estava na ficha pode continuar (a ficha segue editável);
+      // o que não pode é incluir um insumo inativo novo.
+      const current = new Set((await this.stock.findRecipe(menuItem.id, db)).map((item) => item.ingredientId));
       for (const item of parsed) {
-        const ingredient = await this.stock.findIngredient(item.ingredientId, {}, db);
+        const ingredient = byId.get(item.ingredientId);
         if (!ingredient) throw new NotFoundError('Insumo não encontrado.');
-        if (!ingredient.active) throw new ConflictError(`O insumo ${ingredient.name} está inativo.`);
+        if (!ingredient.active && !current.has(ingredient.id)) {
+          throw new ConflictError(`O insumo ${ingredient.name} está inativo.`);
+        }
       }
       await this.stock.replaceRecipe(menuItem.id, parsed, db);
       return this.#withCost(menuItem, await this.stock.findRecipe(menuItem.id, db));
@@ -187,7 +195,8 @@ export class IngredientService {
 
   #withCost(menuItem, recipe) {
     const items = recipe.map((item) => ({ ...item, cost: roundMoney(item.quantity * item.unitCost) }));
-    const cost = roundMoney(items.reduce((sum, item) => sum + item.quantity * item.unitCost, 0));
+    // O total é a soma das linhas já arredondadas, para a tela fechar a conta linha a linha.
+    const cost = roundMoney(items.reduce((sum, item) => sum + item.cost, 0));
     const margin = roundMoney(menuItem.price - cost);
     return {
       menuItemId: menuItem.id,

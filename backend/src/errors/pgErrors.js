@@ -6,6 +6,7 @@ const FOREIGN_KEY_VIOLATION = '23503'
 const CHECK_VIOLATION = '23514'
 const NOT_NULL_VIOLATION = '23502'
 const INVALID_TEXT_REPRESENTATION = '22P02'
+const NUMERIC_VALUE_OUT_OF_RANGE = '22003'
 
 /**
  * Verifica se o erro veio do driver `pg` com o SQLSTATE (e, opcionalmente, a constraint) informado.
@@ -37,6 +38,9 @@ export function translatePgError(error) {
       return new DomainValidationError('Dados inválidos.')
     case INVALID_TEXT_REPRESENTATION:
       return new BadRequestError('Formato de identificador ou valor inválido.')
+    // Ex.: quantidade × ficha técnica ou saldo de estoque além do que a coluna comporta (RN-15).
+    case NUMERIC_VALUE_OUT_OF_RANGE:
+      return new DomainValidationError('Valor fora do limite permitido.')
     default:
       return null
   }

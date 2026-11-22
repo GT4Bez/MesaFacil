@@ -77,37 +77,61 @@ export class StockRepository {
     return toIngredient(rows[0]);
   }
 
-  // RN-15 (regra 3): baixa dos itens enviados à cozinha, na transação do envio. Os insumos são
-  // travados em ordem de id para que envios simultâneos não entrem em deadlock.
+  // RN-15 (regra 3): baixa dos itens enviados à cozinha, na transação do envio. O consumo é lido
+  // uma vez; os insumos dessa lista fixa são travados em ordem de id (envios simultâneos não entram
+  // em deadlock) e só eles são baixados, mesmo que uma ficha mude no meio do caminho.
   async recordSales({ orderItemIds, shiftId, userId }, db = this.database) {
     if (!orderItemIds.length) return;
-    await db.query(
-      `SELECT i.id FROM ingredients i
-       WHERE i.id IN (
-         SELECT r.ingredient_id FROM order_items oi
-         JOIN menu_item_recipes r ON r.menu_item_id = oi.menu_item_id
-         WHERE oi.id = ANY($1::bigint[])
-       )
-       ORDER BY i.id
-       FOR UPDATE`,
+    const { rows: consumption } = await db.query(
+      `SELECT oi.id AS order_item_id, r.ingredient_id, -(oi.quantity * r.quantity) AS quantity
+       FROM order_items oi
+       JOIN menu_item_recipes r ON r.menu_item_id = oi.menu_item_id
+       WHERE oi.id = ANY($1::bigint[])`,
       [orderItemIds]
     );
+    if (!consumption.length) return;
+    const ingredientIds = [...new Set(consumption.map((row) => String(row.ingredient_id)))];
+    const locked = await this.lockIngredients(ingredientIds, 'UPDATE', db);
+    const costs = new Map(locked.map((row) => [row.id, row.unitCost]));
+
     await db.query(
-      `WITH moved AS (
-         INSERT INTO stock_movements (ingredient_id, type, quantity, unit_cost, order_item_id, shift_id, user_id)
-         SELECT r.ingredient_id, 'sale', -(oi.quantity * r.quantity), i.unit_cost, oi.id, $2, $3
-         FROM order_items oi
-         JOIN menu_item_recipes r ON r.menu_item_id = oi.menu_item_id
-         JOIN ingredients i ON i.id = r.ingredient_id
-         WHERE oi.id = ANY($1::bigint[])
-         RETURNING ingredient_id, quantity
-       )
-       UPDATE ingredients i
-       SET stock_quantity = i.stock_quantity + totals.quantity
-       FROM (SELECT ingredient_id, SUM(quantity) AS quantity FROM moved GROUP BY ingredient_id) totals
-       WHERE i.id = totals.ingredient_id`,
-      [orderItemIds, shiftId, userId]
+      `INSERT INTO stock_movements (ingredient_id, type, quantity, unit_cost, order_item_id, shift_id, user_id)
+       SELECT t.ingredient_id, 'sale', t.quantity, t.unit_cost, t.order_item_id, $5, $6
+       FROM unnest($1::bigint[], $2::numeric[], $3::numeric[], $4::bigint[])
+         AS t(ingredient_id, quantity, unit_cost, order_item_id)`,
+      [
+        consumption.map((row) => row.ingredient_id),
+        consumption.map((row) => row.quantity),
+        consumption.map((row) => costs.get(String(row.ingredient_id))),
+        consumption.map((row) => row.order_item_id),
+        shiftId,
+        userId
+      ]
     );
+    await db.query(
+      `UPDATE ingredients i
+       SET stock_quantity = i.stock_quantity + totals.quantity
+       FROM (
+         SELECT t.ingredient_id, SUM(t.quantity) AS quantity
+         FROM unnest($1::bigint[], $2::numeric[]) AS t(ingredient_id, quantity)
+         GROUP BY t.ingredient_id
+       ) totals
+       WHERE i.id = totals.ingredient_id`,
+      [consumption.map((row) => row.ingredient_id), consumption.map((row) => row.quantity)]
+    );
+  }
+
+  // Trava os insumos em ordem de id (FOR UPDATE ou FOR SHARE), sempre na mesma ordem.
+  async lockIngredients(ids, mode, db = this.database) {
+    if (!ids.length) return [];
+    const { rows } = await db.query(
+      `SELECT ${INGREDIENT_COLUMNS} FROM ingredients
+       WHERE id = ANY($1::bigint[])
+       ORDER BY id
+       FOR ${mode === 'SHARE' ? 'SHARE' : 'UPDATE'}`,
+      [ids]
+    );
+    return rows.map(toIngredient);
   }
 
   async findRecipe(menuItemId, db = this.database) {
