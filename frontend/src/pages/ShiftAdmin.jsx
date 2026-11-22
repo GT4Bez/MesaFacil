@@ -337,12 +337,13 @@ function CmvPanel({ cmv }) {
         <span>− CMV</span>
         <b>{formatMoney(cmv.cost)}</b>
       </div>
-      <div className="bill-total">
+      {/* Margem positiva em verde, negativa em vermelho: o estilo de "total" (vermelho) parecia prejuízo. */}
+      <div className="bill-line cmv-margin">
         <span>Margem bruta</span>
-        <strong>
+        <b className={cmv.grossMargin < 0 ? 'diff-negative' : 'diff-zero'}>
           {formatMoney(cmv.grossMargin)}
           {cmv.marginPercent !== null && ` (${cmv.marginPercent.toLocaleString('pt-BR')} %)`}
-        </strong>
+        </b>
       </div>
       <div className="bill-line cmv-losses">
         <span>Perdas (itens enviados e cancelados)</span>

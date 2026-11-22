@@ -1530,3 +1530,15 @@ footer span {
 .recipe-row.inactive-row select {
   border-color: var(--warning);
 }
+.cmv-margin span {
+  font-weight: 700;
+}
+.cmv-margin b {
+  font-size: var(--fs-md);
+}
+.cmv-margin .diff-zero {
+  color: var(--success);
+}
+.cmv-margin .diff-negative {
+  color: var(--brand);
+}
