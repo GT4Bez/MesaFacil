@@ -39,7 +39,7 @@ describe('Cancelamento de pedido com motivo e auditoria (RN-11)', () => {
       picanha: await createMenuItem({ name: 'Picanha', price: 89.9 }),
       suco: await createMenuItem({ name: 'Suco', category: 'Bebidas', price: 10 }),
     }
-    shiftId = (await api('POST', '/shifts')).json.data.id
+    shiftId = (await api('POST', '/shifts', { body: { openingFloat: 0 } })).json.data.id
   })
 
   test('cancelar pedido exige gerente, motivo e ausência de pagamento', async () => {
