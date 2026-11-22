@@ -101,7 +101,7 @@ describe('Usuários e superadmin (RN-16)', () => {
     assert.equal((await api('POST', '/shifts', { role: 'waiter' })).status, 403)
     await api('PATCH', `/users/${staff.waiter.id}`, { body: { role: 'manager' } })
     // Mesmo token de antes: o papel vem do banco.
-    assert.equal((await api('POST', '/shifts', { role: 'waiter' })).status, 201)
+    assert.equal((await api('POST', '/shifts', { role: 'waiter', body: { openingFloat: 0 } })).status, 201)
     const me = await api('GET', '/me', { role: 'waiter' })
     assert.equal(me.json.data.role, 'manager')
   })
@@ -199,7 +199,7 @@ describe('Usuários e superadmin (RN-16)', () => {
     const [tableId] = await createTables(1)
     const menuItemId = await createMenuItem({ price: 20 })
 
-    assert.equal((await api('POST', '/shifts')).status, 201)
+    assert.equal((await api('POST', '/shifts', { body: { openingFloat: 0 } })).status, 201)
     const orderId = (await api('POST', '/orders', { body: { tableId } })).json.data.id
     const itemId = (await api('POST', `/orders/${orderId}/items`, { body: { menuItemId } })).json.data.id
     assert.equal((await api('PATCH', `/orders/${orderId}/status`, { body: { status: 'in_kitchen' } })).status, 200)

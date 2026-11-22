@@ -1097,3 +1097,12 @@ footer span {
   font: inherit;
   resize: vertical;
 }
+/* RN-13: fundo de troco ao abrir o turno, dentro do banner */
+.shift-lookup.open-shift {
+  margin: 0;
+}
+@media (max-width: 650px) {
+  .shift-banner:has(.open-shift) {
+    flex-wrap: wrap;
+  }
+}
