@@ -49,6 +49,12 @@ export default function ShiftAdmin() {
       await load(closed.id)
     })
 
+  // Leva à Conferência do turno aberto, mesmo se outro relatório estiver na tela.
+  async function goToClosing() {
+    if (report?.shift.id !== activeShift.id) await showActive()
+    requestAnimationFrame(() => document.getElementById('closing-title')?.scrollIntoView({ behavior: 'smooth' }))
+  }
+
   function showShift(event) {
     event.preventDefault()
     const id = new FormData(event.target).get('shiftId').trim()
@@ -97,9 +103,9 @@ export default function ShiftAdmin() {
               </div>
             </div>
             {activeShift ? (
-              <a className="dark-btn" href="#closing-title">
+              <button className="dark-btn" disabled={busy} onClick={goToClosing}>
                 Conferência ↓
-              </a>
+              </button>
             ) : (
               <form className="shift-lookup open-shift" onSubmit={openShift}>
                 <label>
@@ -132,6 +138,7 @@ export default function ShiftAdmin() {
             <ShiftReport
               report={report}
               busy={busy}
+              error={error}
               onClose={closeShift}
               cashForm={
                 activeShift?.id === report.shift.id && (
@@ -148,7 +155,7 @@ export default function ShiftAdmin() {
   )
 }
 
-function ShiftReport({ report, cashForm, busy, onClose }) {
+function ShiftReport({ report, cashForm, busy, error, onClose }) {
   const { shift, cancellations, cash, closing } = report
   const partial = shift.status === 'open'
 
@@ -173,7 +180,7 @@ function ShiftReport({ report, cashForm, busy, onClose }) {
         </div>
       )}
 
-      <ShiftClosingPanel shift={shift} closing={closing} busy={busy} onClose={onClose} />
+      <ShiftClosingPanel shift={shift} closing={closing} busy={busy} error={error} onClose={onClose} />
 
       <div className="stats-grid money-stats">
         <StatCard label="Total do turno" value={formatMoney(report.totalShift)} hint="pagamentos registrados" valueClassName="green-text" />

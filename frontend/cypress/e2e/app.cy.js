@@ -276,7 +276,7 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       cy.get('input[name="cash"]').type('1')
       cy.get('input[name="card"]').type('0')
       cy.get('input[name="pix"]').type('0')
-      cy.contains('button', 'Registrar contagem').click()
+      cy.contains('button', /Registrar contagem|Contar de novo/).click()
       cy.contains(/Contagem registrada às/).should('be.visible')
     })
     cy.contains(/esperado/i).should('not.exist')

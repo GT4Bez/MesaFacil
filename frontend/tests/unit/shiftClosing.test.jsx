@@ -118,4 +118,40 @@ describe('Conferência cega no fechamento do turno (RN-14)', () => {
     expect(within(stalePanel).getByText(/peça ao caixa uma nova contagem/)).toBeInTheDocument()
     expect(within(stalePanel).getByRole('button', { name: 'Encerrar turno' })).toBeDisabled()
   })
+
+  it('gerente no Caixa não vê o formulário de contagem, que é do caixa', async () => {
+    mockFetch(
+      {
+        'GET /tables': [],
+        'GET /shifts/active': ok(openShift()),
+        'GET /shifts/5/cash-movements': ok([]),
+      },
+      manager,
+    )
+    renderWithAuth(<Cashier />, { user: manager, route: '/cashier', path: '/cashier' })
+    expect(await screen.findByText(/A contagem cega é feita pelo caixa \(ainda pendente\)/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Dinheiro contado (R$)')).not.toBeInTheDocument()
+  })
+
+  it('motivo só com espaços não encerra o turno', async () => {
+    const sent = []
+    mockFetch(
+      {
+        'GET /shifts/active': ok(openShift({ countedAt: new Date().toISOString() })),
+        'GET /shifts/5/report': ok(report(openShift(), closing(137.5))),
+        'PATCH /shifts/5/close': ({ body }) => {
+          sent.push(body)
+          return jsonResponse({ success: true, data: {} })
+        },
+      },
+      manager,
+    )
+    renderWithAuth(<ShiftAdmin />, { user: manager, route: '/admin/shift', path: '/admin/shift' })
+    const panel = await screen.findByRole('region', { name: 'Conferência' })
+    const reason = within(panel).getByLabelText('Motivo da diferença')
+    fireEvent.change(reason, { target: { value: '   ' } })
+    fireEvent.submit(reason.closest('form'))
+    expect(reason).toHaveValue('')
+    expect(sent).toEqual([])
+  })
 })

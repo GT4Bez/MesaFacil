@@ -23,11 +23,12 @@ export function ShiftCountForm({ shift, onCounted }) {
     let result = null
     const saved = await run(async () => {
       result = await api.put(`/shifts/${shift.id}/count`, { declared, note: data.get('note') })
-      await onCounted?.()
     })
     if (saved) {
       form.reset()
       setSuccess(`Contagem registrada às ${formatTime(result.countedAt)}. O gerente confere e encerra o turno.`)
+      // Recarregar a gaveta é à parte: se falhar, a contagem já gravada não aparece como erro.
+      onCounted?.()
     }
   }
 
@@ -87,7 +88,7 @@ export function ClosingTable({ closing }) {
 }
 
 // Bloco "Conferência" da tela Turno: com o turno aberto, o gerente confere e encerra.
-export function ShiftClosingPanel({ shift, closing, busy, onClose }) {
+export function ShiftClosingPanel({ shift, closing, busy, error, onClose }) {
   const open = shift.status === 'open'
   if (!open && !closing) return null
   const hasDifference = closing?.methods.some((row) => row.difference !== 0)
@@ -95,8 +96,15 @@ export function ShiftClosingPanel({ shift, closing, busy, onClose }) {
 
   function handleSubmit(event) {
     event.preventDefault()
-    const reason = new FormData(event.target).get('reason') ?? ''
-    onClose(reason.trim())
+    const field = event.currentTarget.elements.reason
+    const reason = field ? field.value.trim() : ''
+    // Motivo só com espaços passa no `required` do navegador: barra aqui, no próprio campo.
+    if (field && !reason) {
+      field.value = ''
+      field.reportValidity()
+      return
+    }
+    onClose(reason)
   }
 
   return (
@@ -127,6 +135,7 @@ export function ShiftClosingPanel({ shift, closing, busy, onClose }) {
 
       {open ? (
         <form className="modal-form closing-form" onSubmit={handleSubmit}>
+          {error && <div className="alert error">{error}</div>}
           {hasDifference && canClose && (
             <label>
               Motivo da diferença
