@@ -37,9 +37,12 @@ export function AuthProvider({ children }) {
   // RN-16: nome e papel vêm do banco; ao abrir o app, atualiza o que ficou guardado no navegador.
   useEffect(() => {
     if (!user) return
+    const token = localStorage.getItem(TOKEN_KEY)
     api
       .get('/me')
       .then(({ id, name, email, role }) => {
+        // Ignora a resposta se a sessão mudou enquanto ela vinha (logout ou outro login).
+        if (localStorage.getItem(TOKEN_KEY) !== token) return
         const fresh = { id, name, email, role }
         storeUser(fresh)
         setUser(fresh)
