@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import Modal from '../../src/components/Modal'
 import QuantityStepper from '../../src/components/QuantityStepper'
-import Toast from '../../src/components/Toast'
+import Toast, { useToast } from '../../src/components/Toast'
 
 describe('Componentes de UX (spec 012)', () => {
   it('Modal abre como diálogo, fecha no ×, no Esc e no clique fora', () => {
@@ -19,6 +19,7 @@ describe('Componentes de UX (spec 012)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
     fireEvent(dialog, new Event('cancel', { cancelable: true }))
+    fireEvent.pointerDown(dialog)
     fireEvent.click(dialog)
     expect(onClose).toHaveBeenCalledTimes(3)
 
@@ -67,6 +68,67 @@ describe('Componentes de UX (spec 012)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('2× Picanha adicionado à comanda')
     act(() => vi.advanceTimersByTime(1000))
     expect(onDone).toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('Modal não fecha quando a seleção começa dentro e o botão é solto no fundo', () => {
+    const onClose = vi.fn()
+    render(
+      <Modal title="Observação" onClose={onClose}>
+        <p>conteúdo</p>
+      </Modal>,
+    )
+    const dialog = screen.getByRole('dialog')
+    fireEvent.pointerDown(screen.getByText('conteúdo'))
+    fireEvent.click(dialog)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('Modal devolve o foco para quem o abriu ao fechar', () => {
+    function Host() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Abrir</button>
+          {open && (
+            <Modal title="Teste" onClose={() => setOpen(false)}>
+              <p>conteúdo</p>
+            </Modal>
+          )}
+        </>
+      )
+    }
+    render(<Host />)
+    const opener = screen.getByRole('button', { name: 'Abrir' })
+    opener.focus()
+    fireEvent.click(opener)
+    screen.getByRole('button', { name: 'Fechar' }).focus()
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(opener).toHaveFocus()
+  })
+
+  it('Toast reinicia o tempo quando a mesma mensagem é disparada de novo', () => {
+    vi.useFakeTimers()
+    function Host() {
+      const { showToast, toastProps } = useToast()
+      return (
+        <>
+          <button onClick={() => showToast('1× Suco adicionado à comanda')}>Adicionar</button>
+          <Toast {...toastProps} duration={1000} />
+        </>
+      )
+    }
+    render(<Host />)
+    const add = screen.getByRole('button', { name: 'Adicionar' })
+    fireEvent.click(add)
+    act(() => vi.advanceTimersByTime(800))
+    fireEvent.click(add)
+    act(() => vi.advanceTimersByTime(800))
+    // 1,6 s depois do primeiro clique, mas só 0,8 s depois do segundo: continua visível.
+    expect(screen.getByRole('status')).toHaveTextContent('1× Suco adicionado à comanda')
+    act(() => vi.advanceTimersByTime(200))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     vi.useRealTimers()
   })
 })

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import QuantityStepper from '../components/QuantityStepper'
 import ReasonModal from '../components/ReasonModal'
-import Toast from '../components/Toast'
+import Toast, { useToast } from '../components/Toast'
 import { hasRole } from '../utils/access'
 import { api } from '../services/api'
 import { formatMoney, ITEM_STATUS_LABELS, ORDER_STATUS_LABELS } from '../utils/format'
@@ -21,7 +21,7 @@ export default function Order() {
   const [cancelTarget, setCancelTarget] = useState(null)
   // Item do cardápio sendo adicionado (modal de quantidade e observação, spec 012).
   const [addTarget, setAddTarget] = useState(null)
-  const [toast, setToast] = useState('')
+  const { showToast, toastProps } = useToast()
   const { busy, error, clearError, run } = useAction()
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
@@ -65,7 +65,7 @@ export default function Order() {
       api.post(`/orders/${id}/items`, { menuItemId: addTarget.id, quantity, notes }),
     )
     if (added) {
-      setToast(`${quantity}× ${addTarget.name} adicionado à comanda`)
+      showToast(`${quantity}× ${addTarget.name} adicionado à comanda`)
       setAddTarget(null)
     }
   }
@@ -190,7 +190,7 @@ export default function Order() {
       {addTarget && (
         <AddItemModal item={addTarget} busy={busy} error={error} onConfirm={addItem} onClose={closeAdd} />
       )}
-      <Toast message={toast} onDone={() => setToast('')} />
+      <Toast {...toastProps} />
 
       {cancelTarget && (
         <ReasonModal
