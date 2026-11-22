@@ -25,6 +25,10 @@ router.patch('/order-items/:id/quantity', authenticateToken, requireRole('waiter
 router.patch('/order-items/:id/status', authenticateToken, async (req, res) =>
   ok(res, await orderService.updateItemStatus(req.params.id, req.body, req.user)));
 
+// RN-17: o caixa cancela com a autorização (e-mail e senha) de um gerente.
+router.post('/order-items/:id/authorized-cancel', authenticateToken, requireRole('cashier'), async (req, res) =>
+  ok(res, await orderService.authorizedCancelItem(req.params.id, req.body, req.user)));
+
 router.get('/orders/:id/bill', authenticateToken, async (req, res) =>
   ok(res, await orderService.getBill(req.params.id)));
 

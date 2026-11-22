@@ -1,6 +1,6 @@
 # 013 — Cancelamento de item no caixa com autorização do gerente
 
-> Status: proposta · Regras: RN-05, RN-11, RN-12, **RN-17 (nova)** · Tela: Caixa
+> Status: aprovada · Regras: RN-05, RN-11, RN-12, **RN-17 (nova)** · Tela: Caixa
 
 ## Contexto
 

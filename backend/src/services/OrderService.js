@@ -1,6 +1,7 @@
 import { OrderRepository, ACTIVE_ORDER_STATUSES } from '../repositories/OrderRepository.js';
 import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
 import { AuditLogService } from './AuditLogService.js';
+import { AuthService } from './AuthService.js';
 import { hasRole } from '../auth/roles.js';
 import {
   BadRequestError,
@@ -30,11 +31,13 @@ export class OrderService {
   constructor(
     orderRepository = new OrderRepository(),
     menuItemRepository = new MenuItemRepository(),
-    auditLogService = new AuditLogService()
+    auditLogService = new AuditLogService(),
+    authService = new AuthService()
   ) {
     this.orders = orderRepository;
     this.menuItems = menuItemRepository;
     this.audit = auditLogService;
+    this.auth = authService;
   }
 
   // RN-01 e RN-02: só abre pedido com turno aberto e sem outro pedido ativo na mesa.
@@ -128,6 +131,7 @@ export class OrderService {
           }
           const cleaned = cleanReason(reason);
           if (!cleaned) throw new DomainValidationError('Informe o motivo do cancelamento.');
+          await this.#assertPaidFitsWithout(item, order, db);
           await this.orders.cancelItem(itemId, { canceledBy: user.id, reason: cleaned }, db);
           await this.audit.record(
             {
@@ -144,6 +148,7 @@ export class OrderService {
           if (!hasRole(user, 'waiter', 'manager')) {
             throw new ForbiddenError('Apenas o garçom ou gerente pode remover itens pendentes.');
           }
+          await this.#assertPaidFitsWithout(item, order, db);
           await this.orders.cancelItem(itemId, {}, db);
         }
         return { id: item.id, status };
@@ -161,6 +166,33 @@ export class OrderService {
       }
 
       throw new BadRequestError('Status do item inválido.');
+    });
+  }
+
+  // RN-17: o caixa cancela item com a autorização de um gerente, sem trocar de sessão.
+  async authorizedCancelItem(itemId, { reason, approver } = {}, user) {
+    const cleaned = cleanReason(reason);
+    if (!cleaned) throw new DomainValidationError('Informe o motivo do cancelamento.');
+    // Credenciais conferidas antes de travar o pedido: sem lock segurado nem 404/409 antes da autorização.
+    const approvedBy = await this.auth.verifyApprover(approver ?? {});
+
+    return this.orders.transaction(async (db) => {
+      const { item, order } = await this.#lockItem(itemId, db);
+      if (item.status === 'canceled') throw new ConflictError('O item já está cancelado.');
+      await this.#assertPaidFitsWithout(item, order, db);
+      await this.orders.cancelItem(itemId, { canceledBy: approvedBy.id, reason: cleaned }, db);
+      await this.audit.record(
+        {
+          userId: user.id,
+          shiftId: order.shiftId,
+          action: 'order_item.canceled',
+          entity: 'order_item',
+          entityId: item.id,
+          details: { orderId: order.id, reason: cleaned, previousStatus: item.status, approvedBy }
+        },
+        db
+      );
+      return { id: item.id, status: 'canceled', approvedBy };
     });
   }
 
@@ -359,6 +391,21 @@ export class OrderService {
     const subtotal = this.#subtotal(items);
     const total = serviceTax ? roundMoney(subtotal + roundMoney(subtotal * SERVICE_TAX_RATE)) : subtotal;
     return roundMoney(total - this.#effectivePaid(payments));
+  }
+
+  // RN-17 (regra 5): sem estorno, um cancelamento não pode deixar o valor pago acima do novo total.
+  async #assertPaidFitsWithout(item, order, db) {
+    const payments = await this.orders.findPayments(order.id, db);
+    if (payments.length === 0) return;
+    const items = await this.orders.findItems(order.id, db);
+    const remaining = this.#remaining(
+      items.filter((other) => String(other.id) !== String(item.id)),
+      payments,
+      order.serviceTax
+    );
+    if (remaining < 0) {
+      throw new ConflictError('O valor já pago passaria do novo total da conta. Estorno não é suportado.');
+    }
   }
 
   async #lockOrder(orderId, db) {
