@@ -1,6 +1,6 @@
 # 013 — Cancelamento de item no caixa com autorização do gerente
 
-> Status: proposta · Regras: RN-05, RN-11, RN-12, **RN-17 (nova)** · Tela: Caixa
+> Status: aprovada · Regras: RN-05, RN-11, RN-12, **RN-17 (nova)** · Tela: Caixa
 
 ## Contexto
 
@@ -52,7 +52,7 @@ Sem migration. Reaproveita `order_items.canceled_by` / `cancellation_reason` e a
 - quando o operador for `cashier`, abre o `Modal` (spec 012) "Cancelar item com autorização", mostrando item/valor e pedindo motivo + **autorização do gerente** (e-mail e senha);
 - o botão "Cancelar item" fica desabilitado durante o envio;
 - o erro da API aparece no modal;
-- com sucesso, a conta recarrega e o aviso confirma: "Picanha cancelada (autorizado por Gerente)" (ou "Picanha cancelada" no fluxo RN-05).
+- com sucesso, a conta recarrega e o aviso confirma: "Item cancelado: Picanha (autorizado por Gerente)" (ou "Item cancelado: Picanha" no fluxo RN-05; a frase não depende do gênero do item).
 
 ## Critérios de aceite
 
