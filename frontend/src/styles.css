@@ -658,12 +658,32 @@ button:disabled {
 .bill-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 8px;
   padding: 11px 0;
   border-bottom: 1px solid var(--divider);
 }
 .bill-item b,
 .bill-item strong {
   font-size: 12px;
+}
+.bill-item-end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.approver-fields {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.approver-fields legend {
+  padding: 0 4px;
+  font-weight: 700;
+  font-size: var(--fs-sm);
 }
 .bill-item small {
   display: block;
