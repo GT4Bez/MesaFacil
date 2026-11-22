@@ -31,13 +31,6 @@ export default function Tables() {
   const canOpenOrder = hasRole(user, 'waiter', 'manager')
   const occupiedCount = tables?.filter((table) => table.status === 'occupied').length
 
-  function closeShift() {
-    run(async () => {
-      await api.patch(`/shifts/${shift.id}/close`)
-      await load()
-    })
-  }
-
   function openTable(table) {
     if (table.status === 'occupied') {
       navigate(`/orders/${table.activeOrderId}`)
@@ -80,12 +73,12 @@ export default function Tables() {
                 </p>
               </div>
             </div>
-            {/* RN-13: abrir turno exige o fundo de troco, informado na tela Turno e relatório. */}
+            {/* RN-13: abrir exige o fundo de troco; RN-14: encerrar exige a conferência. Ambos na tela Turno. */}
             {isManager &&
               (shiftOpen ? (
-                <button className="dark-btn" disabled={busy} onClick={closeShift}>
-                  Encerrar turno
-                </button>
+                <Link className="dark-btn" to="/admin/shift">
+                  Conferir e encerrar →
+                </Link>
               ) : (
                 <Link className="primary-btn" to="/admin/shift">
                   Abrir turno →
