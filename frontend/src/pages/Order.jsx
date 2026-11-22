@@ -97,6 +97,7 @@ export default function Order() {
   const kitchenDone =
     order.status === 'in_kitchen' && activeItems.every((item) => item.status === 'ready')
   const orderActive = ACTIVE_ORDER_STATUSES.includes(order.status)
+  const billHint = nextStepHint(order.status, activeItems)
 
   return (
     <>
@@ -182,6 +183,7 @@ export default function Order() {
               Pedir a conta
             </button>
           </div>
+          {billHint && <small className="hint">{billHint}</small>}
         </section>
       </div>
 
@@ -211,6 +213,21 @@ export default function Order() {
       )}
     </>
   )
+}
+
+// Diz o que falta para a conta ser pedida (RN-06) ou onde ela segue (RN-03), antes do clique.
+function nextStepHint(status, activeItems) {
+  const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
+  const pending = activeItems.filter((item) => item.status === 'pending').length
+  const inKitchen = activeItems.filter((item) => ['sent', 'preparing'].includes(item.status)).length
+  if (status === 'ready_to_pay') return 'Conta pedida: o pagamento e o encerramento são feitos no caixa.'
+  if (!ACTIVE_ORDER_STATUSES.includes(status)) return null
+  if (!activeItems.length) return 'Adicione itens do cardápio à comanda.'
+  if (pending) return `Envie ${plural(pending, 'item pendente', 'itens pendentes')} para a cozinha antes de pedir a conta.`
+  if (inKitchen) {
+    return `Aguardando a cozinha: ${plural(inKitchen, 'item ainda não está pronto', 'itens ainda não estão prontos')}.`
+  }
+  return null
 }
 
 function Menu({ menu, onPick }) {
