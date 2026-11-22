@@ -202,11 +202,13 @@ describe('Usuários e superadmin (RN-16)', () => {
     assert.equal((await api('POST', '/shifts', { body: { openingFloat: 0 } })).status, 201)
     const orderId = (await api('POST', '/orders', { body: { tableId } })).json.data.id
     const itemId = (await api('POST', `/orders/${orderId}/items`, { body: { menuItemId } })).json.data.id
+    // Segundo item mantém o total acima do pago depois do cancelamento (RN-17, regra 5).
+    await api('POST', `/orders/${orderId}/items`, { body: { menuItemId } })
     assert.equal((await api('PATCH', `/orders/${orderId}/status`, { body: { status: 'in_kitchen' } })).status, 200)
     assert.equal((await api('PATCH', `/order-items/${itemId}/status`, { body: { status: 'preparing' } })).status, 200)
     assert.equal((await api('GET', '/kitchen/orders')).status, 200)
     assert.equal((await api('GET', '/menu-items?all=true')).status, 200)
-    // Paga antes de cancelar: depois do cancelamento o pedido ficaria quitado (RN-12 → 409).
+    // Paga antes de cancelar: depois do cancelamento o pedido ainda teria saldo (RN-12).
     assert.equal((await api('POST', `/orders/${orderId}/payments`, { body: { amount: 5, method: 'pix' } })).status, 201)
     assert.equal(
       (await api('PATCH', `/order-items/${itemId}/status`, { body: { status: 'canceled', reason: 'Teste' } })).status,
