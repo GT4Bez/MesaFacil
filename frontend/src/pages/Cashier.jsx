@@ -8,6 +8,7 @@ import ReasonModal from '../components/ReasonModal'
 import Toast, { useToast } from '../components/Toast'
 import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../utils/format'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
+import { ShiftCountForm } from '../components/ShiftClosing'
 
 export default function Cashier() {
   const [tables, setTables] = useState([])
@@ -174,7 +175,7 @@ export default function Cashier() {
         </section>
       </div>
 
-      <CashDrawer />
+      <CashDrawer canCount={hasRole(user, 'cashier')} />
 
       <Toast {...toastProps} />
 
@@ -203,7 +204,8 @@ export default function Cashier() {
 }
 
 // RN-13: sangria e reforço do turno aberto. O caixa vê os movimentos, nunca o dinheiro esperado.
-function CashDrawer() {
+// RN-14: só o caixa (e o admin) faz a contagem cega; o gerente confere na tela Turno.
+function CashDrawer({ canCount }) {
   const [shift, setShift] = useState(undefined)
   const [movements, setMovements] = useState([])
   const { error, run } = useAction()
@@ -232,6 +234,22 @@ function CashDrawer() {
         <>
           <CashMovementForm shiftId={shift.id} onRegistered={load} />
           <CashMovementTable movements={movements} />
+          {/* RN-14: contagem cega no fim do turno, sem nenhum valor esperado na tela. */}
+          <h3 className="subheading">Contagem de fechamento</h3>
+          {canCount ? (
+            <>
+              <p className="muted">
+                Conte o dinheiro da gaveta e os comprovantes de cartão e Pix e informe os valores. O gerente confere e
+                encerra o turno.
+              </p>
+              <ShiftCountForm shift={shift} onCounted={() => run(load)} />
+            </>
+          ) : (
+            <p className="muted">
+              A contagem cega é feita pelo caixa ({shift.countedAt ? 'já registrada' : 'ainda pendente'}). Confira e
+              encerre o turno na tela Turno e relatório.
+            </p>
+          )}
         </>
       )}
     </section>

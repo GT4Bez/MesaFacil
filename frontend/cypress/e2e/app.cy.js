@@ -265,4 +265,32 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       })
     })
   })
+
+  it('fechamento com conferência cega: caixa conta, gerente confere e encerra (RN-14)', () => {
+    garantirTurnoAberto()
+
+    fazerLogin('caixa@mesafacil.com')
+    cy.url().should('include', '/cashier')
+    cy.contains('section', 'Gaveta: sangria e reforço').within(() => {
+      cy.contains('h3', 'Contagem de fechamento')
+      cy.get('input[name="cash"]').type('1')
+      cy.get('input[name="card"]').type('0')
+      cy.get('input[name="pix"]').type('0')
+      cy.contains('button', /Registrar contagem|Contar de novo/).click()
+      cy.contains(/Contagem registrada às/).should('be.visible')
+    })
+    cy.contains(/esperado/i).should('not.exist')
+    sair()
+
+    fazerLogin('gerente@mesafacil.com')
+    cy.visit('/admin/shift')
+    cy.get('section[aria-labelledby="closing-title"]').within(() => {
+      cy.contains('th', 'Esperado')
+      cy.contains('td', 'Dinheiro').should('be.visible')
+      cy.get('textarea[name="reason"]').type('Conferência do teste E2E')
+      cy.contains('button', 'Encerrar turno').click()
+    })
+    cy.contains('Relatório do turno').should('contain', '(fechado)')
+    cy.contains(/Motivo da diferença: Conferência do teste E2E/).should('be.visible')
+  })
 })

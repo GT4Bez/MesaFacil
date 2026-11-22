@@ -19,7 +19,7 @@ describe('Salão: banner do turno (RN-02, RN-13)', () => {
     expect(fetchSpy).not.toHaveBeenCalledWith(expect.stringMatching(/\/shifts$/), expect.objectContaining({ method: 'POST' }))
   })
 
-  it('com turno aberto, o gerente vê "Encerrar turno"', async () => {
+  it('com turno aberto, o gerente é levado à conferência (RN-14)', async () => {
     mockFetch(
       {
         'GET /tables': tables,
@@ -28,6 +28,7 @@ describe('Salão: banner do turno (RN-02, RN-13)', () => {
       manager,
     )
     renderWithAuth(<Tables />, { user: manager, route: '/tables', path: '/tables' })
-    expect(await screen.findByRole('button', { name: 'Encerrar turno' })).toBeInTheDocument()
+    const link = await screen.findByRole('link', { name: /Conferir e encerrar/ })
+    expect(link).toHaveAttribute('href', '/admin/shift')
   })
 })
