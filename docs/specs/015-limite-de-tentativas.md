@@ -1,6 +1,6 @@
 # 015 — Limite de tentativas de senha
 
-> Status: proposta · Regras: RN-16, RN-17, RN-18, **RN-19 (nova)** · Telas: Login, Caixa e Minha conta
+> Status: aprovada · Regras: RN-16, RN-17, RN-18, **RN-19 (nova)** · Telas: Login, Caixa e Minha conta
 
 ## Contexto
 
@@ -43,7 +43,7 @@ O caso mais sério é a autorização. Um caixa logado pode testar senhas do ger
 
 ## Modelo de dados
 
-`017_create_auth_throttles.sql` (próximo número livre):
+`016_create_auth_throttles.sql` (próximo número livre):
 
 ```sql
 CREATE TABLE auth_throttles (

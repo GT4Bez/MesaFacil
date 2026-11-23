@@ -22,7 +22,7 @@ Também há uma lacuna na regra atual: o cancelamento gerencial (RN-05) não con
    - O item fica com `canceled_by` = **autorizador** e `cancellation_reason` = motivo.
    - A auditoria grava `order_item.canceled`, com `user_id` = caixa e `details` = `{ orderId, reason, previousStatus, approvedBy: { id, name } }`.
 7. Item cancelado sai do KDS e da conta, como hoje.
-8. Tentativas com autorização inválida não alteram nada. O limite de tentativas fica fora de escopo.
+8. Tentativas com autorização inválida não alteram nada. O limite de tentativas é a RN-19 ([spec 015](015-limite-de-tentativas.md)).
 
 ## Modelo de dados
 
@@ -71,4 +71,4 @@ Sem migration. Reaproveita `order_items.canceled_by` / `cancellation_reason` e a
 - Estorno de pagamento.
 - PIN numérico ou cartão do gerente (usa e-mail e senha).
 - Pedido de aprovação assíncrono (o gerente aprova depois, na tela dele).
-- Limite de tentativas de autorização (rate limiting).
+- Limite de tentativas de autorização: tratado na [spec 015](015-limite-de-tentativas.md) (RN-19).

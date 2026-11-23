@@ -177,7 +177,7 @@ export class OrderService {
     const cleaned = cleanReason(reason);
     if (!cleaned) throw new DomainValidationError('Informe o motivo do cancelamento.');
     // Credenciais conferidas antes de travar o pedido: sem lock segurado nem 404/409 antes da autorização.
-    const approvedBy = await this.auth.verifyApprover(approver ?? {});
+    const approvedBy = await this.auth.verifyApprover(approver ?? {}, user);
 
     return this.orders.transaction(async (db) => {
       const { item, order } = await this.#lockItem(itemId, db);

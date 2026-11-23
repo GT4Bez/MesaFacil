@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { UserRepository } from '../repositories/UserRepository.js';
 import { AuditLogService } from './AuditLogService.js';
+import { AuthThrottleService } from './AuthThrottleService.js';
 import { ROLES } from '../auth/roles.js';
 import { ConflictError, DomainValidationError, NotFoundError } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
@@ -42,9 +43,14 @@ const PARSERS = { name: parseName, email: parseEmail, role: parseRole, active: p
 
 // RN-16: administração de usuários (só admin) e conta do próprio usuário.
 export class UserService {
-  constructor(userRepository = new UserRepository(), auditLogService = new AuditLogService()) {
+  constructor(
+    userRepository = new UserRepository(),
+    auditLogService = new AuditLogService(),
+    authThrottleService = new AuthThrottleService()
+  ) {
     this.users = userRepository;
     this.audit = auditLogService;
+    this.throttle = authThrottleService;
   }
 
   list({ role, active } = {}) {
@@ -120,12 +126,14 @@ export class UserService {
   }
 
   // O admin redefine sem saber a senha atual; os tokens anteriores do usuário deixam de valer.
+  // RN-19: também desbloqueia o login e a troca de senha do usuário.
   async resetPassword(id, { password } = {}, actor) {
     const passwordHash = await bcrypt.hash(parsePassword(password), BCRYPT_ROUNDS);
     return this.users.transaction(async (db) => {
       if (!(await this.users.updatePassword(id, passwordHash, db))) {
         throw new NotFoundError('Usuário não encontrado.');
       }
+      await this.throttle.resetUser(id, db);
       await this.#record(actor, 'user.password_reset', id, {}, db);
       return { id: String(id) };
     });
@@ -138,21 +146,33 @@ export class UserService {
   }
 
   // Troca da própria senha: exige a atual. Os tokens anteriores (inclusive o atual) deixam de valer.
+  // RN-19: o bloqueio é conferido antes de qualquer bcrypt, e a senha atual errada conta como falha.
   async changeOwnPassword(user, { currentPassword, newPassword } = {}) {
     if (typeof currentPassword !== 'string' || !currentPassword) {
       throw new DomainValidationError('Informe a senha atual.');
     }
+    await this.throttle.assertNotLocked('password_change', user.id);
     const passwordHash = await bcrypt.hash(parsePassword(newPassword), BCRYPT_ROUNDS);
 
-    return this.users.transaction(async (db) => {
-      const currentHash = await this.users.findPasswordHash(user.id, db);
-      if (!currentHash || !(await bcrypt.compare(currentPassword, currentHash))) {
-        throw new DomainValidationError('Senha atual incorreta.');
-      }
-      await this.users.updatePassword(user.id, passwordHash, db);
-      await this.#record(user, 'user.password_changed', user.id, {}, db);
-      return { id: user.id };
-    });
+    let wrongPassword = false;
+    try {
+      const result = await this.users.transaction(async (db) => {
+        const currentHash = await this.users.findPasswordHash(user.id, db);
+        if (!currentHash || !(await bcrypt.compare(currentPassword, currentHash))) {
+          wrongPassword = true;
+          throw new DomainValidationError('Senha atual incorreta.');
+        }
+        await this.users.updatePassword(user.id, passwordHash, db);
+        await this.#record(user, 'user.password_changed', user.id, {}, db);
+        return { id: user.id };
+      });
+      await this.throttle.reset('password_change', user.id);
+      return result;
+    } catch (error) {
+      // Fora da transação da troca, que sofreu rollback: a falha precisa ficar gravada.
+      if (wrongPassword) await this.throttle.registerFailure('password_change', user.id, { userId: user.id });
+      throw error;
+    }
   }
 
   async #withUniqueEmail(action) {

@@ -35,7 +35,7 @@ Para fechar a brecha, a resposta que o caixa recebe **não pode depender do espe
 
 ## Modelo de dados
 
-`016_add_approved_by_to_cash_movements.sql` (próximo número livre):
+`017_add_approved_by_to_cash_movements.sql` (próximo número livre; a `016` é a da spec 015):
 
 ```sql
 ALTER TABLE cash_movements ADD COLUMN approved_by BIGINT REFERENCES users (id);
@@ -96,5 +96,5 @@ Movimentos (`GET /shifts/:id/cash-movements` e o bloco `cash.movements` do relat
 
 - Limite acumulado no turno (soma das sangrias): o caixa pode dividir uma retirada grande em várias pequenas. Cada uma fica auditada e entra na conferência.
 - Limite configurável pela tela (fica no `.env`).
-- Limite de tentativas de autorização (como na RN-17).
+- Limite de tentativas de autorização: tratado na [spec 015](015-limite-de-tentativas.md) (RN-19), que vale também para a sangria autorizada.
 - Estorno de sangria (o caminho continua sendo um reforço com motivo).

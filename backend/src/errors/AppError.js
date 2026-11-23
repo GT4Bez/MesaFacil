@@ -26,3 +26,8 @@ export class ConflictError extends AppError {
 export class DomainValidationError extends AppError {
   constructor(message = 'Dados inválidos.') { super(message, 422, 'VALIDATION_ERROR'); }
 }
+
+// RN-19: chave bloqueada por excesso de tentativas de senha.
+export class TooManyAttemptsError extends AppError {
+  constructor(message = 'Muitas tentativas. Tente novamente mais tarde.') { super(message, 429, 'TOO_MANY_ATTEMPTS'); }
+}
