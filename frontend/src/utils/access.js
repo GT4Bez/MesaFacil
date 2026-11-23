@@ -12,6 +12,8 @@ export const SCREENS = {
   ingredients: { path: '/admin/ingredients', label: 'Insumos', short: 'Insumos', icon: '⚖', roles: ['manager'] },
   shiftAdmin: { path: '/admin/shift', label: 'Turno e relatório', short: 'Turno', icon: '◷', roles: ['manager'] },
   audit: { path: '/admin/audit', label: 'Auditoria', short: 'Auditoria', icon: '☷', roles: ['manager'] },
+  // Spec 022: configurações do sistema, só o admin (roles vazio = só admin).
+  settings: { path: '/admin/settings', label: 'Configurações', short: 'Ajustes', icon: '⚒', roles: [] },
   account: { path: '/account', label: 'Minha conta', short: 'Conta', icon: '⚙', roles: ALL_ROLES },
 }
 

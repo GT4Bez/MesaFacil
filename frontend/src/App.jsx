@@ -13,6 +13,7 @@ import Ingredients from './pages/Ingredients'
 import Users from './pages/Users'
 import Account from './pages/Account'
 import Audit from './pages/Audit'
+import Settings from './pages/Settings'
 import { homeFor, SCREENS } from './utils/access'
 
 export default function App() {
@@ -44,6 +45,9 @@ export default function App() {
         </Route>
         <Route element={<RoleRoute roles={SCREENS.audit.roles} />}>
           <Route path={SCREENS.audit.path} element={<Audit />} />
+        </Route>
+        <Route element={<RoleRoute roles={SCREENS.settings.roles} />}>
+          <Route path={SCREENS.settings.path} element={<Settings />} />
         </Route>
         <Route element={<RoleRoute roles={SCREENS.users.roles} />}>
           <Route path={SCREENS.users.path} element={<Users />} />
