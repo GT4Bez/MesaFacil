@@ -4,6 +4,7 @@ import { formatMoney, formatQuantity, PAYMENT_METHOD_LABELS, ROLE_LABELS } from 
 export const AUDIT_CATEGORIES = [
   { value: null, label: 'Todas' },
   { value: 'cancellations', label: 'Cancelamentos' },
+  { value: 'orders', label: 'Pedidos' },
   { value: 'cash', label: 'Caixa' },
   { value: 'shift', label: 'Turno' },
   { value: 'catalog', label: 'Cardápio e estoque' },
@@ -38,6 +39,11 @@ const DESCRIBERS = {
   'order.canceled': ({ details, target }) => ({
     title: 'Cancelou pedido',
     summary: join(orderLabel(target), reason(details.reason)),
+  }),
+  // Spec 019: conta pedida que voltou ao atendimento.
+  'order.reopened': ({ details, target }) => ({
+    title: 'Reabriu a conta',
+    summary: join(orderLabel(target), reason(details.reason), details.paidAmount > 0 && `já pago ${formatMoney(details.paidAmount)}`),
   }),
   'shift.opened': ({ details, shiftId }) => ({
     title: `Abriu o turno ${shiftId ?? ''}`.trim(),

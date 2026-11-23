@@ -21,12 +21,21 @@ export default function Cashier() {
   const [cancelTarget, setCancelTarget] = useState(null)
   const { showToast, toastProps } = useToast()
   const cancelAction = useAction()
+  // Spec 019: reabertura da conta pedida, com o erro dentro do modal.
+  const [reopening, setReopening] = useState(false)
+  const reopenAction = useAction()
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
 
   async function loadTables() {
     const allTables = await api.get('/tables')
-    setTables(allTables.filter((table) => table.status === 'occupied'))
+    // Spec 019: as mesas aguardando pagamento vêm primeiro (prontas para cobrar).
+    const awaiting = (table) => (table.orderStatus === 'ready_to_pay' ? 0 : 1)
+    setTables(
+      allTables
+        .filter((table) => table.status === 'occupied')
+        .sort((a, b) => awaiting(a) - awaiting(b) || a.number - b.number),
+    )
   }
 
   async function loadBill() {
@@ -98,6 +107,26 @@ export default function Cashier() {
     return ok
   }
 
+  function openReopen() {
+    reopenAction.clearError()
+    setReopening(true)
+  }
+
+  // Spec 019: a conta volta ao atendimento; os pagamentos registrados continuam valendo.
+  async function confirmReopen(reason) {
+    const table = tables.find((candidate) => candidate.activeOrderId === orderId)
+    const ok = await reopenAction.run(async () => {
+      await api.post(`/orders/${orderId}/reopen`, { reason: reason || null })
+      await Promise.all([loadBill(), loadTables()])
+    })
+    if (ok) {
+      setSuccess('')
+      setLastChange(0)
+      showToast(table ? `Conta da mesa ${table.number} reaberta` : 'Conta reaberta')
+    }
+    return ok
+  }
+
   async function closeOrder() {
     setSuccess('')
     setLastChange(0)
@@ -144,6 +173,9 @@ export default function Cashier() {
               >
                 <b>Mesa {table.number}</b>
                 <small>Comanda ativa · #{table.activeOrderId}</small>
+                {table.orderStatus === 'ready_to_pay' && (
+                  <span className="status-tag awaiting">Aguardando pagamento</span>
+                )}
               </button>
             ))}
             {!tables.length && <div className="empty-state">Nenhuma mesa ocupada encontrada.</div>}
@@ -168,6 +200,7 @@ export default function Cashier() {
               onServiceTaxChange={toggleServiceTax}
               onPayment={registerPayment}
               onClose={closeOrder}
+              onReopen={openReopen}
             />
           ) : (
             <div className="empty-state">O extrato da conta aparecerá aqui.</div>
@@ -178,6 +211,20 @@ export default function Cashier() {
       <CashDrawer canCount={hasRole(user, 'cashier')} />
 
       <Toast {...toastProps} />
+
+      {reopening && bill && (
+        <ReasonModal
+          title={`Reabrir a conta #${bill.orderId}`}
+          description="A comanda volta ao atendimento para o garçom lançar mais itens. Os pagamentos já registrados continuam valendo."
+          confirmLabel="Reabrir conta"
+          placeholder="Ex.: cliente pediu sobremesa"
+          optional
+          busy={reopenAction.busy}
+          error={reopenAction.error}
+          onConfirm={confirmReopen}
+          onClose={() => setReopening(false)}
+        />
+      )}
 
       {cancelTarget &&
         (isManager ? (
@@ -262,7 +309,7 @@ function clampForMethod(rawValue, method, remaining) {
   return Number.isFinite(numeric) && numeric > remaining ? String(remaining) : rawValue
 }
 
-function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose, onCancelItem }) {
+function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose, onCancelItem, onReopen }) {
   // RN-07: a comanda só pode ser encerrada com o saldo quitado.
   const paidOff = bill.remainingBalance <= 0
   // RN-03: e só depois que o garçom pediu a conta (status `ready_to_pay`).
@@ -306,7 +353,14 @@ function Bill({ bill, busy, lastChange, onServiceTaxChange, onPayment, onClose, 
   return (
     <>
       <div className={`order-status-line ${billRequested ? 'ready' : 'waiting'}`}>
-        Status do pedido: <b>{ORDER_STATUS_LABELS[bill.status]}</b>
+        <span>
+          Status do pedido: <b>{ORDER_STATUS_LABELS[bill.status]}</b>
+        </span>
+        {billRequested && (
+          <button type="button" className="outline-btn reopen-btn" disabled={busy} onClick={onReopen}>
+            Reabrir conta
+          </button>
+        )}
       </div>
 
       <label className="toggle-line">

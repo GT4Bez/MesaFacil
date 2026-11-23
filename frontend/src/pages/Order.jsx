@@ -21,10 +21,13 @@ export default function Order() {
   const [cancelTarget, setCancelTarget] = useState(null)
   // Item do cardápio sendo adicionado (modal de quantidade e observação, spec 012).
   const [addTarget, setAddTarget] = useState(null)
+  // Spec 019: modal de reabertura da conta pedida.
+  const [reopening, setReopening] = useState(false)
   const { showToast, toastProps } = useToast()
   const { busy, error, clearError, run } = useAction()
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
+  const canReopen = hasRole(user, 'waiter', 'cashier', 'manager')
 
   function openCancel(target) {
     clearError()
@@ -82,6 +85,23 @@ export default function Order() {
           api.patch(`/order-items/${cancelTarget.item.id}/status`, { status: 'canceled', reason }),
         )
 
+  function openReopen() {
+    clearError()
+    setReopening(true)
+  }
+
+  function closeReopen() {
+    clearError()
+    setReopening(false)
+  }
+
+  // Spec 019: a conta volta ao atendimento; os pagamentos já feitos continuam valendo.
+  async function confirmReopen(reason) {
+    const reopened = await change(() => api.post(`/orders/${id}/reopen`, { reason: reason || null }))
+    if (reopened) showToast('Conta reaberta: já dá para lançar mais itens')
+    return reopened
+  }
+
   if (!order) {
     return error ? (
       <div className="alert error">{error}</div>
@@ -132,7 +152,7 @@ export default function Order() {
           {order.cancellation.reason}
         </div>
       )}
-      {error && !cancelTarget && !addTarget && <div className="alert error">{error}</div>}
+      {error && !cancelTarget && !addTarget && !reopening && <div className="alert error">{error}</div>}
 
       <div className="order-layout">
         <Menu menu={menu} onPick={openAdd} />
@@ -175,13 +195,21 @@ export default function Order() {
             >
               Enviar para a cozinha →
             </button>
-            <button
-              className="outline-btn full"
-              disabled={busy || !kitchenDone}
-              onClick={() => setStatus('ready_to_pay')}
-            >
-              Pedir a conta
-            </button>
+            {order.status === 'ready_to_pay' ? (
+              canReopen && (
+                <button className="outline-btn full" disabled={busy} onClick={openReopen}>
+                  Reabrir conta
+                </button>
+              )
+            ) : (
+              <button
+                className="outline-btn full"
+                disabled={busy || !kitchenDone}
+                onClick={() => setStatus('ready_to_pay')}
+              >
+                Pedir a conta
+              </button>
+            )}
           </div>
           {billHint && <small className="hint">{billHint}</small>}
         </section>
@@ -191,6 +219,20 @@ export default function Order() {
         <AddItemModal item={addTarget} busy={busy} error={error} onConfirm={addItem} onClose={closeAdd} />
       )}
       <Toast {...toastProps} />
+
+      {reopening && (
+        <ReasonModal
+          title={`Reabrir a conta da mesa ${order.table.number}`}
+          description="A comanda volta ao atendimento para lançar mais itens. Os pagamentos já registrados continuam valendo."
+          confirmLabel="Reabrir conta"
+          placeholder="Ex.: cliente pediu sobremesa"
+          optional
+          busy={busy}
+          error={error}
+          onConfirm={confirmReopen}
+          onClose={closeReopen}
+        />
+      )}
 
       {cancelTarget && (
         <ReasonModal
@@ -220,7 +262,9 @@ function nextStepHint(status, activeItems) {
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
   const pending = activeItems.filter((item) => item.status === 'pending').length
   const inKitchen = activeItems.filter((item) => ['sent', 'preparing'].includes(item.status)).length
-  if (status === 'ready_to_pay') return 'Conta pedida: o pagamento e o encerramento são feitos no caixa.'
+  if (status === 'ready_to_pay') {
+    return 'Conta pedida: o pagamento é feito no caixa. Reabra a conta para lançar mais itens.'
+  }
   if (!ACTIVE_ORDER_STATUSES.includes(status)) return null
   if (!activeItems.length) return 'Adicione itens do cardápio à comanda.'
   if (pending) return `Envie ${plural(pending, 'item pendente', 'itens pendentes')} para a cozinha antes de pedir a conta.`
