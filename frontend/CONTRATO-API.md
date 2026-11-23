@@ -106,7 +106,8 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).
 - `POST /orders/:id/reopen` (`waiter`, `cashier` e `manager`; spec 019) — body `{ "reason": "Faltou a sobremesa" }` (opcional, até
-  200 caracteres) → `{ id, status: "in_kitchen" }`. Só a partir de `ready_to_pay` (`409` nos demais); pagamentos já
+  200 caracteres) → `{ id, status: "in_kitchen" }`. Só a partir de `ready_to_pay` (`409` nos demais); cozinha → `403`;
+  pedido inexistente → `404`; motivo que não é texto ou passa de 200 caracteres → `422`. Pagamentos já
   registrados permanecem. Gera o registro de auditoria `order.reopened` com `{ reason, paidAmount }`.
 - Cancelar o pedido: `{ "status": "canceled", "reason": "cliente desistiu" }` — só `manager` (`403`),
   motivo obrigatório (`422`), `409` se houver pagamento registrado. Cancela os itens ativos e libera a mesa (RN-11).

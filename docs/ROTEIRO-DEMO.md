@@ -62,6 +62,7 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-01 | Segundo pedido na mesma mesa | `409` (índice único parcial no PostgreSQL) |
 | RN-03 | Pedido `open` direto para `closed` | `409` |
 | RN-03 | Reabrir conta de pedido que não está aguardando pagamento | `409` |
+| RN-03 | Cozinha reabrindo a conta; garçom reabrindo a conta pedida | `403`, `200` |
 | RN-04 | Alterar quantidade de item já enviado | `409` |
 | RN-05 | Garçom cancelando item enviado; gerente sem motivo | `403`, `422` |
 | RN-06 | Pedir a conta com item em preparo | `409` |
