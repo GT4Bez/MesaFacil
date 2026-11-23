@@ -28,22 +28,23 @@ docker compose up --build
 | 7 | Gerente | Na comanda, "×" no Suco Natural já enviado | Modal exige motivo; o item fica "Cancelado" | RN-05 |
 | 8 | Cozinha | **Iniciar preparo** → **Pronto ✓** na picanha | Cartão some do KDS quando tudo fica pronto | RN-06 |
 | 9 | Garçom | **Pedir a conta**; voltar ao Salão | Botão só habilita depois da cozinha; a mesa 1 aparece com a tag "Aguardando pagamento" (também no Caixa). Se faltar um item, **Reabrir conta** devolve a comanda ao atendimento | RN-03, RN-06 |
-| 10 | Caixa | **Frente de caixa** → mesa 1; marcar "Incluir 10% de taxa de serviço" | A taxa começa desligada e, marcada, fica gravada no pedido; total de R$ 98,89 sem o suco cancelado | RN-08, RN-12 |
-| 11 | Caixa | Pagar R$ 50,00 em Pix; depois digitar R$ 60,00 ainda em Pix | "Finalizar pedido e liberar mesa" bloqueado com saldo devedor; em cartão/Pix o valor é limitado ao saldo | RN-07, RN-12 |
-| 12 | Caixa | Trocar para Dinheiro, pagar R$ 60,00 e finalizar | "Troco: R$ 11,11"; o histórico mostra recebido e troco; mesa 1 volta a "Livre" | RN-07, RN-12 |
-| 13 | Gerente | **Admin do cardápio**: mudar o preço da picanha e tirar o Pudim de linha; abrir a **Ficha técnica** da picanha. Em **Insumos**, ver a baixa do envio (Picanha 11,600 kg), o alerta do leite condensado e registrar uma entrada | Pudim some do cardápio do garçom; pedidos antigos mantêm o preço; a ficha mostra custo e margem; a entrada atualiza estoque e custo | RN-09, RN-15 |
-| 14 | Garçom + Gerente | Abrir a mesa 2 com um item; gerente usa **Cancelar pedido** com motivo | Mesa liberada; comanda mostra quem cancelou e por quê | RN-11 |
-| 15 | Garçom + Caixa | Na mesa 3, lançar e enviar um item; no **Frente de caixa**, "×" no item e o gerente digita e-mail e senha no modal (errar a senha primeiro) | Senha errada mostra "Autorização do gerente inválida." sem derrubar o caixa; com a certa, o item sai da conta com "autorizado por Gerente" | RN-17 |
-| 16 | Caixa | **Frente de caixa** → **Contagem de fechamento**: dinheiro, cartão e Pix contados | Nenhum valor esperado na tela; a contagem fica registrada com o horário | RN-14 |
-| 17 | Gerente | **Turno e relatório** → **Conferência** → **Encerrar turno** | Declarado × esperado × diferença por forma; com diferença, o motivo é obrigatório. Relatório fechado: total, ticket médio, formas de pagamento, itens, cancelamentos, dinheiro esperado na gaveta e a conferência | RN-02, RN-10, RN-13, RN-14 |
-| 18 | Admin | Entrar como `admin@` | A home é **Usuários**; o menu tem todas as telas; o admin pode abrir turno, cancelar e receber como qualquer papel | RN-16 |
-| 19 | Admin | Cadastrar "Ana", e-mail `Ana@MesaFacil.com`, papel Garçom, senha de 8+ caracteres | E-mail gravado em minúsculas; senha curta é recusada | RN-16 |
-| 20 | Admin + Garçom | Admin desativa o Garçom; o garçom clica em qualquer tela | A sessão cai na hora: volta ao login com "Sua sessão foi encerrada"; o login dele é recusado | RN-16 |
-| 21 | Admin | Na própria linha, não há "Desativar"; **Redefinir senha** do Caixa | O admin não remove a si mesmo; a senha nova encerra as sessões abertas do caixa | RN-16 |
-| 22 | Cozinha | **Minha conta** → trocar a senha (errar a atual primeiro) | "Senha atual incorreta"; com a certa, volta ao login para entrar com a senha nova | RN-16 |
-| 23 | Gerente | Abrir `/admin/users` na barra de endereço | Volta para a tela inicial: só o admin administra usuários | RN-16 |
+| 10 | Caixa | Deixar a **Frente de caixa** aberta enquanto o garçom pede a conta | Em até 10 s a mesa 1 ganha a tag "Aguardando pagamento", sem clicar em "Atualizar"; o horário ao lado do botão mostra a última atualização | Spec 020 |
+| 11 | Caixa | **Frente de caixa** → mesa 1; marcar "Incluir 10% de taxa de serviço" | A taxa começa desligada e, marcada, fica gravada no pedido; total de R$ 98,89 sem o suco cancelado | RN-08, RN-12 |
+| 12 | Caixa | Pagar R$ 50,00 em Pix; depois digitar R$ 60,00 ainda em Pix | "Finalizar pedido e liberar mesa" bloqueado com saldo devedor; em cartão/Pix o valor é limitado ao saldo | RN-07, RN-12 |
+| 13 | Caixa | Trocar para Dinheiro, pagar R$ 60,00 e finalizar | "Troco: R$ 11,11"; o histórico mostra recebido e troco; mesa 1 volta a "Livre" | RN-07, RN-12 |
+| 14 | Gerente | **Admin do cardápio**: mudar o preço da picanha e tirar o Pudim de linha; abrir a **Ficha técnica** da picanha. Em **Insumos**, ver a baixa do envio (Picanha 11,600 kg), o alerta do leite condensado e registrar uma entrada | Pudim some do cardápio do garçom; pedidos antigos mantêm o preço; a ficha mostra custo e margem; a entrada atualiza estoque e custo | RN-09, RN-15 |
+| 15 | Garçom + Gerente | Abrir a mesa 2 com um item; gerente usa **Cancelar pedido** com motivo | Mesa liberada; comanda mostra quem cancelou e por quê | RN-11 |
+| 16 | Garçom + Caixa | Na mesa 3, lançar e enviar um item; no **Frente de caixa**, "×" no item e o gerente digita e-mail e senha no modal (errar a senha primeiro) | Senha errada mostra "Autorização do gerente inválida." sem derrubar o caixa; com a certa, o item sai da conta com "autorizado por Gerente" | RN-17 |
+| 17 | Caixa | **Frente de caixa** → **Contagem de fechamento**: dinheiro, cartão e Pix contados | Nenhum valor esperado na tela; a contagem fica registrada com o horário | RN-14 |
+| 18 | Gerente | **Turno e relatório** → **Conferência** → **Encerrar turno** | Declarado × esperado × diferença por forma; com diferença, o motivo é obrigatório. Relatório fechado: total, ticket médio, formas de pagamento, itens, cancelamentos, dinheiro esperado na gaveta e a conferência | RN-02, RN-10, RN-13, RN-14 |
+| 19 | Admin | Entrar como `admin@` | A home é **Usuários**; o menu tem todas as telas; o admin pode abrir turno, cancelar e receber como qualquer papel | RN-16 |
+| 20 | Admin | Cadastrar "Ana", e-mail `Ana@MesaFacil.com`, papel Garçom, senha de 8+ caracteres | E-mail gravado em minúsculas; senha curta é recusada | RN-16 |
+| 21 | Admin + Garçom | Admin desativa o Garçom; o garçom clica em qualquer tela | A sessão cai na hora: volta ao login com "Sua sessão foi encerrada"; o login dele é recusado | RN-16 |
+| 22 | Admin | Na própria linha, não há "Desativar"; **Redefinir senha** do Caixa | O admin não remove a si mesmo; a senha nova encerra as sessões abertas do caixa | RN-16 |
+| 23 | Cozinha | **Minha conta** → trocar a senha (errar a atual primeiro) | "Senha atual incorreta"; com a certa, volta ao login para entrar com a senha nova | RN-16 |
+| 24 | Gerente | Abrir `/admin/users` na barra de endereço | Volta para a tela inicial: só o admin administra usuários | RN-16 |
 
-> Dica: no passo 14, se o caixa registrar um pagamento antes, o cancelamento é recusado (`409`): pedido pago não é cancelado.
+> Dica: no passo 15, se o caixa registrar um pagamento antes, o cancelamento é recusado (`409`): pedido pago não é cancelado.
 
 ## 3. Prova pela API
 

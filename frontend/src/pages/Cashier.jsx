@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAction } from '../hooks/useAction'
+import { usePolling } from '../hooks/usePolling'
+import { PollWarning, UpdatedAt } from '../components/RefreshStatus'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../services/api'
 import { hasRole } from '../utils/access'
@@ -10,6 +12,9 @@ import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../util
 import { reopenConflictMessage } from '../utils/reopen'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
 import { ShiftCountForm } from '../components/ShiftClosing'
+
+const POLLING_MS = 10000
+const ACTIVE_ORDER_STATUSES = ['open', 'in_kitchen', 'ready_to_pay']
 
 export default function Cashier() {
   const [tables, setTables] = useState([])
@@ -28,8 +33,12 @@ export default function Cashier() {
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
 
-  async function loadTables() {
-    const allTables = await api.get('/tables')
+  // Spec 020: a comanda selecionada agora, para descartar o extrato de uma seleção anterior.
+  const selectedRef = useRef(null)
+  const [updatedAt, setUpdatedAt] = useState(null)
+  const [notice, setNotice] = useState('')
+
+  function applyTables(allTables) {
     // Spec 019: as mesas aguardando pagamento vêm primeiro (prontas para cobrar).
     const awaiting = (table) => (table.orderStatus === 'ready_to_pay' ? 0 : 1)
     setTables(
@@ -37,6 +46,11 @@ export default function Cashier() {
         .filter((table) => table.status === 'occupied')
         .sort((a, b) => awaiting(a) - awaiting(b) || a.number - b.number),
     )
+    setUpdatedAt(new Date())
+  }
+
+  async function loadTables() {
+    applyTables(await api.get('/tables'))
   }
 
   async function loadBill() {
@@ -50,15 +64,42 @@ export default function Cashier() {
   }, [])
 
   useEffect(() => {
+    selectedRef.current = orderId
     if (orderId) run(loadBill)
     else setBill(null)
   }, [orderId])
 
   function selectOrder(id) {
     setSuccess('')
+    setNotice('')
     setLastChange(0)
     setOrderId(id)
   }
+
+  // Spec 020: lista e extrato atualizam sozinhos. O extrato é trocado no lugar, então o valor e a
+  // forma de pagamento digitados continuam no formulário. Conta encerrada em outro terminal some com aviso.
+  async function refresh(isActive) {
+    const requested = orderId
+    const [allTables, current] = await Promise.all([
+      api.get('/tables'),
+      requested ? api.get(`/orders/${requested}/bill`) : null,
+    ])
+    if (!isActive()) return
+    applyTables(allTables)
+    if (!current || selectedRef.current !== requested) return
+    if (ACTIVE_ORDER_STATUSES.includes(current.status)) {
+      setBill(current)
+    } else {
+      setOrderId(null)
+      setSuccess('')
+      setLastChange(0)
+      setNotice(`A comanda #${requested} não está mais ativa.`)
+    }
+  }
+
+  const { error: pollError } = usePolling(refresh, POLLING_MS, {
+    enabled: !busy && !cancelAction.busy && !reopenAction.busy && !cancelTarget && !reopening,
+  })
 
   async function toggleServiceTax(enabled) {
     setSuccess('')
@@ -156,13 +197,18 @@ export default function Cashier() {
           <h1>Frente de caixa</h1>
           <p>Consulte comandas, registre pagamentos e libere mesas.</p>
         </div>
-        <button className="outline-btn" disabled={busy} onClick={() => run(loadTables)}>
-          ↻ Atualizar mesas
-        </button>
+        <div className="refresh-group">
+          <UpdatedAt at={updatedAt} />
+          <button className="outline-btn" disabled={busy} onClick={() => run(loadTables)}>
+            ↻ Atualizar mesas
+          </button>
+        </div>
       </div>
 
       {error && <div className="alert error">{error}</div>}
+      {!error && <PollWarning error={pollError} />}
       {success && <div className="alert success">{success}</div>}
+      {notice && <div className="alert warning">{notice}</div>}
 
       <div className="cashier-layout">
         <section className="panel">

@@ -1863,3 +1863,27 @@ footer span {
     flex: 1 1 40%;
   }
 }
+
+/* Spec 020: horário da última atualização ao lado do botão "Atualizar". */
+.refresh-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 10px;
+}
+.updated-at {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.poll-warning {
+  margin-top: 0;
+}
+@media (max-width: 650px) {
+  .refresh-group {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}

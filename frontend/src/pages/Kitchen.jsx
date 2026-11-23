@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
+import { usePolling } from '../hooks/usePolling'
 import { api } from '../services/api'
 import { ITEM_STATUS_LABELS } from '../utils/format'
 
@@ -18,7 +19,6 @@ function waitingTime(sentAt, now) {
 export default function Kitchen() {
   const [orders, setOrders] = useState(null)
   const [now, setNow] = useState(Date.now())
-  const [pollError, setPollError] = useState('')
   const { busy, error, run } = useAction()
 
   async function load(isActive = () => true) {
@@ -26,25 +26,14 @@ export default function Kitchen() {
     if (!isActive()) return
     setOrders(data)
     setNow(Date.now())
-    setPollError('')
   }
 
   useEffect(() => {
-    let active = true
-    run(() => load(() => active))
-    // Polling em segundo plano (sem WebSocket): não trava botões nem limpa erro de ação.
-    const timer = setInterval(async () => {
-      try {
-        await load(() => active)
-      } catch (e) {
-        if (active) setPollError(e.message)
-      }
-    }, POLLING_MS)
-    return () => {
-      active = false
-      clearInterval(timer)
-    }
+    run(load)
   }, [])
+
+  // Spec 020: polling em segundo plano; não trava botões nem limpa erro de ação.
+  const { error: pollError } = usePolling(load, POLLING_MS, { enabled: !busy })
 
   const advance = (item) =>
     run(async () => {
