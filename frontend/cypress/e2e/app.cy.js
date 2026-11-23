@@ -130,6 +130,10 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.url()
       .then((url) => url.split('/').pop())
       .as('orderId')
+    cy.contains('h1', 'Comanda da mesa')
+      .invoke('text')
+      .then((text) => text.match(/\d+/)[0])
+      .as('mesa')
 
     // Spec 012: o card do item abre o modal de quantidade e observação.
     cy.get('.menu-list .menu-pick').first().click()
@@ -148,6 +152,53 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
 
     cy.get('@orderId').then((orderId) => {
       concluirPedidoNaCozinha(orderId)
+      pedirConta(orderId)
+
+      // Spec 019: a conta pedida aparece como "Aguardando pagamento" no Caixa e no Salão.
+      fazerLogin('caixa@mesafacil.com')
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`).should('contain', 'Aguardando pagamento')
+      sair()
+
+      fazerLogin('garcom@mesafacil.com')
+      cy.url().should('include', '/tables')
+      cy.contains('.legend', 'Aguardando pagamento')
+      cy.get('@mesa').then((mesa) => {
+        cy.get('button.table-card.awaiting')
+          .filter((_, card) => card.querySelector('strong').textContent === mesa)
+          .should('have.length', 1)
+          .and('contain', 'Conta pedida')
+          .click()
+      })
+      cy.url().should('include', `/orders/${orderId}`)
+
+      // O cliente pediu mais um item: reabre a conta, lança e envia à cozinha.
+      cy.contains('button', 'Reabrir conta').click()
+      cy.get('dialog[open]').within(() => {
+        cy.get('textarea[name="reason"]').type('Cliente pediu mais um item')
+        cy.contains('button', 'Reabrir conta').click()
+      })
+      cy.contains('[role="status"]', 'Conta reaberta').should('be.visible')
+      cy.get('.menu-list .menu-pick').first().click()
+      cy.get('dialog[open]').within(() => cy.contains('button', 'Adicionar à comanda').click())
+      cy.get('dialog[open]').should('not.exist')
+      cy.contains('button', /Enviar para a cozinha/i).click()
+      cy.contains('button', 'Pedir a conta').should('be.disabled')
+      sair()
+
+      concluirPedidoNaCozinha(orderId)
+      pedirConta(orderId)
+
+      // O caixa também reabre: a tag some da lista e o garçom pede a conta de novo.
+      fazerLogin('caixa@mesafacil.com')
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`).click()
+      cy.contains('.order-status-line', 'Aguardando pagamento')
+      cy.contains('.order-status-line button', 'Reabrir conta').click()
+      cy.get('dialog[open]').within(() => cy.contains('button', 'Reabrir conta').click())
+      cy.contains('[role="status"]', 'reaberta').should('be.visible')
+      cy.contains('.order-status-line', 'Na cozinha')
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`).should('not.contain', 'Aguardando pagamento')
+      sair()
+
       pedirConta(orderId)
       pagarEFecharNoCaixa(orderId)
     })

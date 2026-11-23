@@ -30,6 +30,8 @@ export default function Tables() {
   const isManager = hasRole(user, 'manager')
   const canOpenOrder = hasRole(user, 'waiter', 'manager')
   const occupiedCount = tables?.filter((table) => table.status === 'occupied').length
+  // Spec 019: mesas com a conta pedida, esperando o caixa.
+  const awaitingCount = tables?.filter((table) => table.orderStatus === 'ready_to_pay').length
 
   function openTable(table) {
     if (table.status === 'occupied') {
@@ -97,7 +99,7 @@ export default function Tables() {
             <StatCard
               label="Mesas ocupadas"
               value={occupiedCount}
-              hint="em atendimento"
+              hint={awaitingCount ? `${awaitingCount} aguardando pagamento` : 'em atendimento'}
               valueClassName="red-text"
             />
           </div>
@@ -113,6 +115,9 @@ export default function Tables() {
               </span>
               <span>
                 <i className="dot occupied" /> Ocupada
+              </span>
+              <span>
+                <i className="dot awaiting" /> Aguardando pagamento
               </span>
             </div>
           </div>
@@ -137,17 +142,29 @@ export default function Tables() {
 
 function TableCard({ table, canOpenOrder, disabled, onClick }) {
   const occupied = table.status === 'occupied'
+  // Spec 019: conta pedida, esperando o caixa.
+  const awaiting = table.orderStatus === 'ready_to_pay'
+  const label = awaiting ? 'Aguardando pagamento' : occupied ? 'Ocupada' : 'Livre'
+  const action = awaiting
+    ? 'Conta pedida · ver comanda →'
+    : occupied
+      ? 'Ver comanda →'
+      : canOpenOrder
+        ? 'Iniciar atendimento +'
+        : 'Somente visualização'
 
   return (
-    <button className={`table-card ${table.status}`} disabled={disabled} onClick={onClick}>
+    <button
+      className={`table-card ${table.status}${awaiting ? ' awaiting' : ''}`}
+      disabled={disabled}
+      onClick={onClick}
+    >
       <span className="table-top">
         <span>MESA</span>
-        <span className="table-status">{occupied ? 'Ocupada' : 'Livre'}</span>
+        <span className="table-status">{label}</span>
       </span>
       <strong>{table.number}</strong>
-      <small>
-        {occupied ? 'Ver comanda →' : canOpenOrder ? 'Iniciar atendimento +' : 'Somente visualização'}
-      </small>
+      <small>{action}</small>
     </button>
   )
 }

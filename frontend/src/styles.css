@@ -368,6 +368,10 @@ button:disabled {
 .dot.occupied {
   background: #dc5a4c;
 }
+/* Spec 019: conta pedida, aguardando o caixa. */
+.dot.awaiting {
+  background: var(--warning);
+}
 .table-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
@@ -393,10 +397,21 @@ button:disabled {
   border-color: #f2d7d3;
   color: #a9322a;
 }
+.table-card.occupied.awaiting {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+.table-card.awaiting .table-status {
+  font-weight: 800;
+  text-align: right;
+  line-height: 1.25;
+}
 .table-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 8px;
   font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 1px;
@@ -669,6 +684,23 @@ button:disabled {
 .cash-table small {
   font-size: var(--fs-xs);
   color: var(--text-muted);
+}
+.cash-table {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.status-tag.awaiting {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning);
 }
 .toggle-line {
   display: flex;
@@ -1463,11 +1495,21 @@ footer span {
 }
 /* Issue #106: o caixa vê em que etapa o pedido está antes de tentar encerrar. */
 .order-status-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 10px;
   padding: 8px 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   font-size: var(--fs-xs);
+}
+/* Spec 019 */
+.order-status-line .reopen-btn {
+  min-height: var(--touch);
+  background: var(--surface);
 }
 .order-status-line.ready {
   background: var(--success-soft);

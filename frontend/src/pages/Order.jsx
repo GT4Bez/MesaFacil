@@ -9,6 +9,7 @@ import Toast, { useToast } from '../components/Toast'
 import { hasRole } from '../utils/access'
 import { api } from '../services/api'
 import { formatMoney, ITEM_STATUS_LABELS, ORDER_STATUS_LABELS } from '../utils/format'
+import { reopenConflictMessage } from '../utils/reopen'
 
 const ALL_CATEGORIES = 'Todos'
 const ACTIVE_ORDER_STATUSES = ['open', 'in_kitchen', 'ready_to_pay']
@@ -21,10 +22,13 @@ export default function Order() {
   const [cancelTarget, setCancelTarget] = useState(null)
   // Item do cardápio sendo adicionado (modal de quantidade e observação, spec 012).
   const [addTarget, setAddTarget] = useState(null)
+  // Spec 019: modal de reabertura da conta pedida.
+  const [reopening, setReopening] = useState(false)
   const { showToast, toastProps } = useToast()
   const { busy, error, clearError, run } = useAction()
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
+  const canReopen = hasRole(user, 'waiter', 'cashier', 'manager')
 
   function openCancel(target) {
     clearError()
@@ -37,7 +41,9 @@ export default function Order() {
   }
 
   async function loadOrder() {
-    setOrder(await api.get(`/orders/${id}`))
+    const data = await api.get(`/orders/${id}`)
+    setOrder(data)
+    return data
   }
 
   useEffect(() => {
@@ -81,6 +87,37 @@ export default function Order() {
       : change(() =>
           api.patch(`/order-items/${cancelTarget.item.id}/status`, { status: 'canceled', reason }),
         )
+
+  function openReopen() {
+    clearError()
+    setReopening(true)
+  }
+
+  function closeReopen() {
+    clearError()
+    setReopening(false)
+  }
+
+  // Spec 019: a conta volta ao atendimento; os pagamentos já feitos continuam valendo.
+  // A comanda é recarregada mesmo quando a reabertura falha (ex.: o caixa reabriu antes → 409),
+  // para a tela não ficar mostrando um status que já mudou.
+  async function confirmReopen(reason) {
+    const reopened = await run(() => api.post(`/orders/${id}/reopen`, { reason: reason || null }))
+    const current = await loadOrder().catch(() => null)
+    if (reopened) {
+      showToast(
+        current
+          ? 'Conta reaberta: já dá para lançar mais itens'
+          : 'Conta reaberta. Atualize a página para ver a comanda.',
+      )
+      return true
+    }
+    const conflict = reopenConflictMessage(current?.status)
+    if (!conflict) return false
+    clearError()
+    showToast(conflict)
+    return true
+  }
 
   if (!order) {
     return error ? (
@@ -132,7 +169,7 @@ export default function Order() {
           {order.cancellation.reason}
         </div>
       )}
-      {error && !cancelTarget && !addTarget && <div className="alert error">{error}</div>}
+      {error && !cancelTarget && !addTarget && !reopening && <div className="alert error">{error}</div>}
 
       <div className="order-layout">
         <Menu menu={menu} onPick={openAdd} />
@@ -175,13 +212,21 @@ export default function Order() {
             >
               Enviar para a cozinha →
             </button>
-            <button
-              className="outline-btn full"
-              disabled={busy || !kitchenDone}
-              onClick={() => setStatus('ready_to_pay')}
-            >
-              Pedir a conta
-            </button>
+            {order.status === 'ready_to_pay' ? (
+              canReopen && (
+                <button className="outline-btn full" disabled={busy} onClick={openReopen}>
+                  Reabrir conta
+                </button>
+              )
+            ) : (
+              <button
+                className="outline-btn full"
+                disabled={busy || !kitchenDone}
+                onClick={() => setStatus('ready_to_pay')}
+              >
+                Pedir a conta
+              </button>
+            )}
           </div>
           {billHint && <small className="hint">{billHint}</small>}
         </section>
@@ -191,6 +236,21 @@ export default function Order() {
         <AddItemModal item={addTarget} busy={busy} error={error} onConfirm={addItem} onClose={closeAdd} />
       )}
       <Toast {...toastProps} />
+
+      {reopening && (
+        <ReasonModal
+          title={`Reabrir a conta da mesa ${order.table.number}`}
+          description="A comanda volta ao atendimento para lançar mais itens. Os pagamentos já registrados continuam valendo."
+          confirmLabel="Reabrir conta"
+          placeholder="Ex.: cliente pediu sobremesa"
+          optional
+          maxLength={200}
+          busy={busy}
+          error={error}
+          onConfirm={confirmReopen}
+          onClose={closeReopen}
+        />
+      )}
 
       {cancelTarget && (
         <ReasonModal
@@ -220,7 +280,9 @@ function nextStepHint(status, activeItems) {
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
   const pending = activeItems.filter((item) => item.status === 'pending').length
   const inKitchen = activeItems.filter((item) => ['sent', 'preparing'].includes(item.status)).length
-  if (status === 'ready_to_pay') return 'Conta pedida: o pagamento e o encerramento são feitos no caixa.'
+  if (status === 'ready_to_pay') {
+    return 'Conta pedida: o pagamento é feito no caixa. Reabra a conta para lançar mais itens.'
+  }
   if (!ACTIVE_ORDER_STATUSES.includes(status)) return null
   if (!activeItems.length) return 'Adicione itens do cardápio à comanda.'
   if (pending) return `Envie ${plural(pending, 'item pendente', 'itens pendentes')} para a cozinha antes de pedir a conta.`
