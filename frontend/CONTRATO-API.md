@@ -21,6 +21,10 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `POST /auth/login` — body `{ "email": "garcom@mesafacil.com", "password": "123" }`.
   Resposta: `{ "token": "jwt", "user": { "id": "1", "name": "Nome", "email": "...", "role": "waiter" } }`.
   Papéis: `waiter`, `kitchen`, `cashier`, `manager`.
+- **Limite de tentativas (RN-19):** 5 senhas erradas em 15 minutos bloqueiam por 15 minutos o login (por e-mail),
+  a autorização do gerente (por caixa que pede) e a troca da própria senha (por usuário). Durante o bloqueio, a rota
+  responde `429` com `code: "TOO_MANY_ATTEMPTS"` e "Muitas tentativas. Tente novamente em N minutos.", mesmo com a
+  senha certa. O `429` não encerra a sessão. Redefinir a senha pelo admin desbloqueia o usuário.
 
 ## Usuários e conta (RN-16)
 
@@ -35,7 +39,8 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `GET /me` — usuário logado (todos os papéis).
 - `PATCH /me/password` — `{ currentPassword, newPassword }` → `{ id }`; revoga o token atual (novo login).
 - Erros: `403` papel; `404` usuário inexistente; `409` e-mail repetido, último admin ativo ou
-  autodesativação/autorrebaixamento; `422` validação (nome 1–100, e-mail válido, senha 8–72) ou senha atual errada.
+  autodesativação/autorrebaixamento; `422` validação (nome 1–100, e-mail válido, senha 8–72) ou senha atual errada;
+  `429` troca de senha bloqueada por tentativas (RN-19).
 
 ## Turno e mesas
 
@@ -93,7 +98,7 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
   `{ "reason": "Cliente não recebeu o prato", "approver": { "email": "gerente@mesafacil.com", "password": "..." } }`.
   Resposta `{ "id": "21", "status": "canceled", "approvedBy": { "id": "4", "name": "Gerente" } }` (RN-17).
   Erros: `422` sem motivo/autorização; `403` "Autorização do gerente inválida." (não encerra a sessão);
-  `404` item inexistente; `409` item já cancelado, pedido inativo ou pago acima do novo total.
+  `429` autorização bloqueada por tentativas (RN-19); `404` item inexistente; `409` item já cancelado, pedido inativo ou pago acima do novo total.
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).
 - Cancelar o pedido: `{ "status": "canceled", "reason": "cliente desistiu" }` — só `manager` (`403`),
