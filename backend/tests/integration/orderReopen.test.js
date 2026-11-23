@@ -119,7 +119,7 @@ describe('Mesa aguardando pagamento e reabertura da conta (spec 019)', () => {
     await serve(orderId, picanha)
     const conflict = await reopen(orderId)
     assert.equal(conflict.status, 409, 'in_kitchen')
-    assert.equal(conflict.json.error, 'Transição de status do pedido inválida.')
+    assert.equal(conflict.json.error, 'Só dá para reabrir uma conta que está "Aguardando pagamento". Este pedido está "Na cozinha".')
 
     await askBill(orderId)
     await api('POST', `/orders/${orderId}/payments`, { role: 'cashier', body: { amount: 89.9, method: 'pix' } })

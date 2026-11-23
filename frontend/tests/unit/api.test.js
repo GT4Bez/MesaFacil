@@ -38,6 +38,31 @@ describe('api client', () => {
 
   it('retorna mensagem amigável quando há falha de rede', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'))
-    await expect(api.get('/shifts/active')).rejects.toThrow('Não foi possível conectar ao servidor.')
+    await expect(api.get('/shifts/active')).rejects.toThrow(
+      'Sem conexão com o servidor. Verifique a internet e tente de novo.',
+    )
+  })
+
+  // Spec 021: resposta sem o envelope (ex.: o túnel devolve HTML) ganha mensagem pelo status.
+  it.each([
+    [502, 'O servidor está indisponível no momento (reiniciando ou fora do ar). Tente de novo em alguns segundos.'],
+    [504, 'O servidor demorou demais para responder. Tente de novo em alguns segundos.'],
+    [413, 'Os dados enviados são grandes demais para o servidor.'],
+    [418, 'O servidor respondeu com erro 418 e não explicou o motivo. Tente de novo.'],
+  ])('status %i sem envelope → mensagem informativa', async (status, message) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('<html>Bad gateway</html>', { status }))
+    await expect(api.get('/tables')).rejects.toThrow(message)
+  })
+
+  it('com envelope, a mensagem da API tem prioridade', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({ success: false, error: 'Ainda faltam R$ 10,00 para quitar o pedido.' }, 409),
+    )
+    await expect(api.get('/tables')).rejects.toThrow('Ainda faltam R$ 10,00 para quitar o pedido.')
+  })
+
+  it('download sem envelope também usa a mensagem por status', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 503 }))
+    await expect(api.download('/x.csv')).rejects.toThrow(/indisponível no momento/)
   })
 })

@@ -197,7 +197,7 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
     const pay = (amount) => api('POST', `/orders/${orderId}/payments`, { role: 'cashier', body: { amount, method: 'pix' } })
     const tinyPay = await pay(0.001)
     assert.equal(tinyPay.status, 422)
-    assert.equal(tinyPay.json.error, 'Valor do pagamento inválido.')
+    assert.equal(tinyPay.json.error, 'O valor do pagamento deve ser um número maior que zero.')
     assert.equal((await pay(1e12)).status, 422)
   })
 

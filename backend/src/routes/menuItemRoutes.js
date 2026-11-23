@@ -17,7 +17,7 @@ router.use(authenticateToken);
 router.get('/', async (req, res) => {
   const all = req.query.all === 'true';
   if (all && !hasRole(req.user, 'manager')) {
-    throw new ForbiddenError('Você não possui permissão para esta ação.');
+    throw new ForbiddenError('Só Gerente pode ver os itens fora de linha.');
   }
   ok(res, await menuItemService.list({ all }));
 });

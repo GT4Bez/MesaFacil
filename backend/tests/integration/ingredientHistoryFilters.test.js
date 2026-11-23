@@ -231,7 +231,7 @@ describe('Histórico do insumo por período, turno e CSV (spec 018)', () => {
     assert.equal(big.csvLimit, 10000)
     await assert.rejects(
       new IngredientService(undefined, undefined, undefined, undefined, { csvLimit: 10000 }).exportMovements(carne.id, { from: 'x' }),
-      /from deve ser/,
+      /A data inicial \(from\) deve ser uma data e hora válida/,
     )
   })
 })

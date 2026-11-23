@@ -145,7 +145,7 @@ describe('AuthService.verifyApprover (RN-17)', () => {
     for (const [user, credentials] of failures) {
       await assert.rejects(makeService(user).service.verifyApprover(credentials, cashier), (error) => {
         assert.ok(error instanceof ForbiddenError)
-        assert.equal(error.message, 'Autorização do gerente inválida.')
+        assert.equal(error.message, 'Autorização recusada: e-mail ou senha do gerente incorretos, ou o usuário não é um gerente ativo.')
         return true
       })
     }
