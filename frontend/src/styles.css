@@ -1887,3 +1887,33 @@ footer span {
     gap: 4px;
   }
 }
+
+/* Botão "Atualizar": o ícone gira enquanto a tela busca dados (manual ou automático). */
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.refresh-icon {
+  display: inline-block;
+  line-height: 1;
+  font-size: 1.15em;
+}
+.refresh-icon.spinning {
+  animation: refresh-spin 0.7s linear infinite;
+}
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refresh-icon.spinning {
+    animation: refresh-pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes refresh-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

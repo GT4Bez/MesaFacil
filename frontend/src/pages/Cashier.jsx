@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { usePolling } from '../hooks/usePolling'
-import { PollWarning, UpdatedAt } from '../components/RefreshStatus'
+import { PollWarning, RefreshButton, UpdatedAt } from '../components/RefreshStatus'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../services/api'
 import { hasRole } from '../utils/access'
@@ -97,7 +97,7 @@ export default function Cashier() {
     }
   }
 
-  const { error: pollError } = usePolling(refresh, POLLING_MS, {
+  const { error: pollError, refreshing } = usePolling(refresh, POLLING_MS, {
     enabled: !busy && !cancelAction.busy && !reopenAction.busy && !cancelTarget && !reopening,
   })
 
@@ -199,9 +199,12 @@ export default function Cashier() {
         </div>
         <div className="refresh-group">
           <UpdatedAt at={updatedAt} />
-          <button className="outline-btn" disabled={busy} onClick={() => run(loadTables)}>
-            ↻ Atualizar mesas
-          </button>
+          <RefreshButton
+            onRefresh={() => run(loadTables)}
+            disabled={busy}
+            polling={refreshing}
+            label="Atualizar mesas"
+          />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
+import { RefreshButton } from '../components/RefreshStatus'
 import { api } from '../services/api'
 import StatCard from '../components/StatCard'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
@@ -79,9 +80,7 @@ export default function ShiftAdmin() {
           <h1>Turno e relatório</h1>
           <p>Abra e encerre o turno e acompanhe o fechamento financeiro.</p>
         </div>
-        <button className="outline-btn" disabled={busy} onClick={() => run(() => load())}>
-          ↻ Atualizar
-        </button>
+        <RefreshButton onRefresh={() => run(() => load())} disabled={busy} />
       </div>
 
       {error && <div className="alert error">{error}</div>}
