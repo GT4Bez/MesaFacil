@@ -8,6 +8,7 @@ import {
   BadRequestError,
   DomainValidationError,
   ForbiddenError,
+  TooManyAttemptsError,
   UnauthorizedError,
 } from '../../src/errors/AppError.js'
 
@@ -22,7 +23,27 @@ const dbUser = {
   token_version: 3,
 }
 
-function makeService(user = dbUser) {
+const cashier = { id: '9' }
+
+// Limite de tentativas (RN-19) em memória: registra as chamadas e bloqueia as chaves de `locked`.
+function makeThrottle(locked = []) {
+  const events = []
+  return {
+    events,
+    async assertNotLocked(scope, key) {
+      events.push(['check', scope, String(key)])
+      if (locked.includes(`${scope}:${key}`)) throw new TooManyAttemptsError('Muitas tentativas. Tente novamente em 15 minutos.')
+    },
+    async registerFailure(scope, key, options) {
+      events.push(['failure', scope, String(key), options])
+    },
+    async reset(scope, key) {
+      events.push(['reset', scope, String(key)])
+    },
+  }
+}
+
+function makeService(user = dbUser, throttle = makeThrottle()) {
   const calls = []
   const repo = {
     async findByEmail(email) {
@@ -30,7 +51,7 @@ function makeService(user = dbUser) {
       return email === user?.email ? user : null
     },
   }
-  return { service: new AuthService(repo), calls }
+  return { service: new AuthService(repo, throttle), calls, throttle }
 }
 
 describe('AuthService.login', () => {
@@ -106,14 +127,14 @@ describe('AuthService.login', () => {
 describe('AuthService.verifyApprover (RN-17)', () => {
   test('gerente ativo com senha certa autoriza; e-mail é normalizado', async () => {
     const { service, calls } = makeService()
-    const approved = await service.verifyApprover({ email: '  GERENTE@mesafacil.com ', password: '123' })
+    const approved = await service.verifyApprover({ email: '  GERENTE@mesafacil.com ', password: '123' }, cashier)
     assert.deepEqual(approved, { id: '7', name: 'Mariana Gerente' })
     assert.deepEqual(calls, ['gerente@mesafacil.com'])
   })
 
   test('campos ausentes → 422; qualquer outra falha → 403 com a mesma mensagem', async () => {
-    await assert.rejects(makeService().service.verifyApprover({}), DomainValidationError)
-    await assert.rejects(makeService().service.verifyApprover({ email: 'a@b.c', password: '' }), DomainValidationError)
+    await assert.rejects(makeService().service.verifyApprover({}, cashier), DomainValidationError)
+    await assert.rejects(makeService().service.verifyApprover({ email: 'a@b.c', password: '' }, cashier), DomainValidationError)
 
     const failures = [
       [dbUser, { email: dbUser.email, password: 'errada' }],
@@ -122,7 +143,7 @@ describe('AuthService.verifyApprover (RN-17)', () => {
       [null, { email: dbUser.email, password: '123' }],
     ]
     for (const [user, credentials] of failures) {
-      await assert.rejects(makeService(user).service.verifyApprover(credentials), (error) => {
+      await assert.rejects(makeService(user).service.verifyApprover(credentials, cashier), (error) => {
         assert.ok(error instanceof ForbiddenError)
         assert.equal(error.message, 'Autorização do gerente inválida.')
         return true
@@ -132,6 +153,49 @@ describe('AuthService.verifyApprover (RN-17)', () => {
 
   test('admin também autoriza', async () => {
     const { service } = makeService({ ...dbUser, role: 'admin' })
-    assert.equal((await service.verifyApprover({ email: dbUser.email, password: '123' })).id, '7')
+    assert.equal((await service.verifyApprover({ email: dbUser.email, password: '123' }, cashier)).id, '7')
+  })
+})
+
+describe('AuthService com limite de tentativas (RN-19)', () => {
+  test('login: falha conta pelo e-mail normalizado (com o dono, se existir); acerto zera', async () => {
+    const { service, throttle } = makeService()
+    await service.login({ email: ' GERENTE@mesafacil.com', password: 'x' }).catch(() => {})
+    await service.login({ email: 'ninguem@mesafacil.com', password: 'x' }).catch(() => {})
+    await service.login({ email: 'gerente@mesafacil.com', password: '123' })
+    assert.deepEqual(throttle.events, [
+      ['check', 'login', 'gerente@mesafacil.com'],
+      ['failure', 'login', 'gerente@mesafacil.com', { userId: 7n }],
+      ['check', 'login', 'ninguem@mesafacil.com'],
+      ['failure', 'login', 'ninguem@mesafacil.com', { userId: null }],
+      ['check', 'login', 'gerente@mesafacil.com'],
+      ['reset', 'login', 'gerente@mesafacil.com'],
+    ])
+  })
+
+  test('login bloqueado → 429 sem consultar o usuário, mesmo com a senha certa', async () => {
+    const { service, calls } = makeService(dbUser, makeThrottle(['login:gerente@mesafacil.com']))
+    await assert.rejects(service.login({ email: dbUser.email, password: '123' }), TooManyAttemptsError)
+    assert.deepEqual(calls, [])
+  })
+
+  test('campos em branco não contam como falha', async () => {
+    const { service, throttle } = makeService()
+    await service.login({ email: '', password: '' }).catch(() => {})
+    await service.verifyApprover({}, cashier).catch(() => {})
+    assert.deepEqual(throttle.events, [])
+  })
+
+  test('autorização: a chave é o caixa que pede; falha audita o e-mail tentado', async () => {
+    const { service, throttle } = makeService()
+    await service.verifyApprover({ email: 'GERENTE@mesafacil.com', password: 'x' }, cashier).catch(() => {})
+    assert.deepEqual(throttle.events, [
+      ['check', 'approval', '9'],
+      ['failure', 'approval', '9', { userId: '9', details: { approverEmail: 'gerente@mesafacil.com' } }],
+    ])
+
+    const locked = makeService(dbUser, makeThrottle(['approval:9']))
+    await assert.rejects(locked.service.verifyApprover({ email: dbUser.email, password: '123' }, cashier), TooManyAttemptsError)
+    assert.deepEqual(locked.calls, [])
   })
 })

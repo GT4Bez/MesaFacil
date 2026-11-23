@@ -127,12 +127,15 @@ describe('Cancelamento de item no caixa com autorização do gerente (RN-17)', (
       { email: 'ninguem@mesafacil.com', password: TEST_PASSWORD },
     ]
     for (const attempt of attempts) {
+      // São 7 falhas seguidas: zera o limite de tentativas (RN-19, coberto em authThrottle.test.js).
+      await query(`DELETE FROM auth_throttles`)
       const res = await authorizedCancel(picanha, { reason: 'Erro', approver: attempt })
       assert.equal(res.status, 403, JSON.stringify(attempt))
       assert.equal(res.json.error, INVALID)
     }
 
     // Autorização inválida vem antes do 404: não revela se o item existe.
+    await query(`DELETE FROM auth_throttles`)
     const missing = await authorizedCancel('999999', { reason: 'Erro', approver: approver('manager', 'x') })
     assert.equal(missing.status, 403)
 
