@@ -1,3 +1,0 @@
-﻿id;data;tipo;quantidade;unidade;custo_unitario;saldo_depois;quem_lancou;motivo;turno;pedido;mesa;item_vendido;qtd_vendida
-13;2026-11-23T18:54:04.747Z;entrada;1;kg;69,9;13;Gerente;;2;;;;
-14;2026-11-23T18:54:06.810Z;venda;-0,4;kg;69,9;12,6;Garçom;;2;7;1;Picanha na Chapa;1
