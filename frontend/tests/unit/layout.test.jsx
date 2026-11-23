@@ -66,7 +66,7 @@ describe('Layout (spec 012)', () => {
       expect(visible, role).toBeLessThanOrEqual(MOBILE_SLOTS)
     }
     expect(overflowOf(menuFor('cashier'))).toEqual([])
-    expect(overflowOf(menuFor('admin')).map((s) => s.short)).toEqual(['Cardápio', 'Insumos', 'Turno', 'Auditoria', 'Conta'])
+    expect(overflowOf(menuFor('admin')).map((s) => s.short)).toEqual(['Cardápio', 'Insumos', 'Turno', 'Auditoria', 'Ajustes', 'Conta'])
   })
 
   it('"Mais" abre a lista das telas excedentes, marca a atual e fecha ao navegar', () => {
@@ -85,6 +85,7 @@ describe('Layout (spec 012)', () => {
       '⚖Insumos',
       '◷Turno e relatório',
       '☷Auditoria',
+      '⚒Configurações',
       '⚙Minha conta',
     ])
     expect(within(dialog).getByRole('link', { name: /Turno e relatório/ })).toHaveAttribute('aria-current', 'page')

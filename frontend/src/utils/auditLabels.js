@@ -9,9 +9,12 @@ export const AUDIT_CATEGORIES = [
   { value: 'shift', label: 'Turno' },
   { value: 'catalog', label: 'Cardápio e estoque' },
   { value: 'security', label: 'Segurança' },
+  { value: 'settings', label: 'Configurações' },
   { value: 'users', label: 'Usuários', adminOnly: true },
 ]
 
+// Spec 022: nomes das configurações na trilha.
+const SETTING_LABELS = { max_item_quantity_per_launch: 'Máximo por lançamento' }
 const USER_FIELD_LABELS = { name: 'nome', email: 'e-mail', role: 'papel', active: 'ativo' }
 
 const join = (...parts) => parts.filter(Boolean).join(' · ')
@@ -99,6 +102,10 @@ const DESCRIBERS = {
   'auth.password_change_locked': () => ({
     title: 'Troca de senha bloqueada',
     summary: 'Excesso de tentativas da senha atual',
+  }),
+  'setting.updated': ({ details }) => ({
+    title: 'Alterou configuração',
+    summary: `${SETTING_LABELS[details.key] ?? details.key}: ${details.from} → ${details.to}`,
   }),
   'user.created': ({ details, target }) => ({
     title: 'Criou usuário',

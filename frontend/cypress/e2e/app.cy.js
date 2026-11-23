@@ -285,6 +285,51 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     })
   })
 
+  it('admin limita o lançamento do garçom a 3 unidades iguais (RN-21, spec 022)', () => {
+    garantirTurnoAberto()
+    const apiUrl = Cypress.expose('API_URL') || 'http://localhost:3001'
+
+    fazerLogin('admin@mesafacil.com')
+    cy.contains('a', 'Configurações').click()
+    cy.url().should('include', '/admin/settings')
+    cy.get('input[name="maxItemQuantityPerLaunch"]').clear().type('3')
+    cy.contains('button', 'Salvar').click()
+    cy.contains('[role="status"]', 'Configuração salva.').should('be.visible')
+    cy.contains(/Alterado por Administrador em/).should('be.visible')
+    sair()
+
+    fazerLogin('garcom@mesafacil.com')
+    abrirPrimeiraMesaLivre()
+    cy.url()
+      .then((url) => url.split('/').pop())
+      .as('orderId')
+    cy.get('.menu-list .menu-pick').first().click()
+    cy.get('dialog[open]').within(() => {
+      cy.contains('Máximo de 3 por lançamento.')
+      for (let i = 0; i < 5; i++) {
+        cy.get('button[aria-label="Aumentar quantidade"]').then(($btn) => {
+          if (!$btn.prop('disabled')) cy.wrap($btn).click()
+        })
+      }
+      cy.get('.stepper-value').should('have.text', '3')
+      cy.get('button[aria-label="Aumentar quantidade"]').should('be.disabled')
+    })
+
+    // Volta o limite ao padrão e libera a mesa para os próximos cenários.
+    cy.request('POST', `${apiUrl}/auth/login`, { email: 'admin@mesafacil.com', password: '123' }).then(({ body }) => {
+      const headers = { Authorization: `Bearer ${body.data.token}` }
+      cy.request({ method: 'PATCH', url: `${apiUrl}/settings`, headers, body: { maxItemQuantityPerLaunch: 10 } })
+      cy.get('@orderId').then((orderId) =>
+        cy.request({
+          method: 'PATCH',
+          url: `${apiUrl}/orders/${orderId}/status`,
+          headers,
+          body: { status: 'canceled', reason: 'Limpeza E2E' },
+        }),
+      )
+    })
+  })
+
   it('sangria pelo caixa sem ver o esperado, com o gerente autorizando acima do limite; gerente vê o esperado (RN-13, RN-18)', () => {
     garantirTurnoAberto()
     const motivo = `Cofre E2E ${Date.now()}`

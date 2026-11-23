@@ -18,6 +18,8 @@ export default function Order() {
   const { id } = useParams()
   const [order, setOrder] = useState(null)
   const [menu, setMenu] = useState([])
+  // RN-21 (spec 022): máximo de unidades iguais por lançamento do garçom; null = sem limite na tela.
+  const [launchLimit, setLaunchLimit] = useState(null)
   // null, { kind: 'order' } ou { kind: 'item', item }: o que o gerente está cancelando.
   const [cancelTarget, setCancelTarget] = useState(null)
   // Item do cardápio sendo adicionado (modal de quantidade e observação, spec 012).
@@ -49,6 +51,15 @@ export default function Order() {
   useEffect(() => {
     run(() => Promise.all([loadOrder(), api.get('/menu-items').then(setMenu)]))
   }, [id])
+
+  // Só o garçom tem o limite. Se a leitura falhar, a API continua barrando acima do limite.
+  useEffect(() => {
+    if (user?.role !== 'waiter') return
+    api.get('/settings').then(
+      (settings) => setLaunchLimit(settings.maxItemQuantityPerLaunch),
+      () => setLaunchLimit(null),
+    )
+  }, [user?.role])
 
   const change = (request) =>
     run(async () => {
@@ -233,7 +244,14 @@ export default function Order() {
       </div>
 
       {addTarget && (
-        <AddItemModal item={addTarget} busy={busy} error={error} onConfirm={addItem} onClose={closeAdd} />
+        <AddItemModal
+          item={addTarget}
+          maxQuantity={launchLimit}
+          busy={busy}
+          error={error}
+          onConfirm={addItem}
+          onClose={closeAdd}
+        />
       )}
       <Toast {...toastProps} />
 
@@ -341,7 +359,7 @@ function Menu({ menu, onPick }) {
 }
 
 // O total é só uma prévia: o preço vale o do momento do lançamento, congelado no backend (RN-09).
-function AddItemModal({ item, busy, error, onConfirm, onClose }) {
+function AddItemModal({ item, maxQuantity = null, busy, error, onConfirm, onClose }) {
   const [quantity, setQuantity] = useState(1)
 
   function handleSubmit(event) {
@@ -360,8 +378,11 @@ function AddItemModal({ item, busy, error, onConfirm, onClose }) {
         {error && <div className="alert error">{error}</div>}
         <div className="quantity-field">
           <span>Quantidade</span>
-          <QuantityStepper value={quantity} onChange={setQuantity} disabled={busy} />
+          <QuantityStepper value={quantity} onChange={setQuantity} max={maxQuantity ?? 99} disabled={busy} />
         </div>
+        {maxQuantity && (
+          <small className="hint quantity-limit">Máximo de {maxQuantity} por lançamento.</small>
+        )}
         <label>
           Observação
           <textarea name="notes" rows="2" maxLength={255} placeholder="Ex.: sem cebola, bem passado" />
