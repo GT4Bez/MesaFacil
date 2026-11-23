@@ -24,6 +24,67 @@ export class StockRepository {
     return this.database.withTransaction(callback);
   }
 
+  // Leitura num snapshot único (spec 016): saldo acumulado e `consistent` olham o mesmo estado.
+  snapshot(callback) {
+    return this.database.withTransaction(async (db) => {
+      await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      return callback(db);
+    });
+  }
+
+  // Spec 016: histórico do insumo, do mais recente para o mais antigo. O saldo depois de cada
+  // movimento é a soma acumulada de TODOS os tipos, calculada antes do filtro e do cursor.
+  async findMovements(ingredientId, { limit, before = null, type = null }, db = this.database) {
+    const { rows } = await db.query(
+      `WITH history AS (
+         SELECT sm.*, SUM(sm.quantity) OVER (ORDER BY sm.id) AS balance_after
+         FROM stock_movements sm
+         WHERE sm.ingredient_id = $1
+       )
+       SELECT h.id, h.type, h.quantity, h.unit_cost, h.balance_after, h.created_at, h.reason, h.shift_id,
+              u.name AS by, oi.order_id, oi.quantity AS item_quantity, t.number AS table_number, mi.name AS menu_item
+       FROM history h
+       JOIN users u ON u.id = h.user_id
+       LEFT JOIN order_items oi ON oi.id = h.order_item_id
+       LEFT JOIN orders o ON o.id = oi.order_id
+       LEFT JOIN tables t ON t.id = o.table_id
+       LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+       WHERE ($2::text IS NULL OR h.type = $2) AND ($3::bigint IS NULL OR h.id < $3)
+       ORDER BY h.id DESC
+       LIMIT $4`,
+      [ingredientId, type, before, limit]
+    );
+    return rows.map((row) => ({
+      id: String(row.id),
+      type: row.type,
+      quantity: Number(row.quantity),
+      unitCost: Number(row.unit_cost),
+      balanceAfter: Number(row.balance_after),
+      createdAt: row.created_at,
+      by: row.by,
+      reason: row.reason,
+      shiftId: row.shift_id === null ? null : String(row.shift_id),
+      sale: row.order_id === null ? null : {
+        orderId: String(row.order_id),
+        tableNumber: row.table_number,
+        menuItem: row.menu_item,
+        itemQuantity: row.item_quantity
+      }
+    }));
+  }
+
+  // Spec 016: o estoque bate com a soma de todos os movimentos (insumo sem movimentos: 0 = 0).
+  async isConsistent(ingredientId, db = this.database) {
+    const { rows } = await db.query(
+      `SELECT i.stock_quantity = COALESCE((SELECT SUM(quantity) FROM stock_movements WHERE ingredient_id = i.id), 0)
+                AS consistent
+       FROM ingredients i
+       WHERE i.id = $1`,
+      [ingredientId]
+    );
+    return rows[0]?.consistent ?? null;
+  }
+
   async findIngredients(db = this.database) {
     const { rows } = await db.query(`SELECT ${INGREDIENT_COLUMNS} FROM ingredients ORDER BY lower(name)`);
     return rows.map(toIngredient);

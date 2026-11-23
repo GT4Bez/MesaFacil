@@ -14,6 +14,30 @@ const roundQuantity = (value) => Math.round(value * 1000) / 1000;
 const toQuantity = (value) =>
   typeof value === 'number' && Number.isFinite(value) ? roundQuantity(value) : null;
 const cleanText = (value) => (typeof value === 'string' ? value.trim() : '');
+const MOVEMENT_TYPES = ['purchase', 'adjustment', 'sale'];
+const DEFAULT_PAGE = 50;
+const MAX_PAGE = 100;
+
+// Spec 016: parâmetros da consulta do histórico (strings da query; ausentes usam o padrão).
+function parseHistoryQuery({ limit, before, type } = {}) {
+  const parsed = { limit: DEFAULT_PAGE, before: null, type: null };
+  if (limit !== undefined) {
+    const value = typeof limit === 'string' && /^\d{1,3}$/.test(limit) ? Number(limit) : NaN;
+    if (!(value >= 1 && value <= MAX_PAGE)) throw new DomainValidationError(`limit deve ser um inteiro de 1 a ${MAX_PAGE}.`);
+    parsed.limit = value;
+  }
+  if (before !== undefined) {
+    if (typeof before !== 'string' || !/^[1-9]\d{0,17}$/.test(before)) {
+      throw new DomainValidationError('before deve ser o id de um movimento.');
+    }
+    parsed.before = before;
+  }
+  if (type !== undefined) {
+    if (!MOVEMENT_TYPES.includes(type)) throw new DomainValidationError('type inválido: use purchase, adjustment ou sale.');
+    parsed.type = type;
+  }
+  return parsed;
+}
 
 function parseIngredient(body = {}, { partial }) {
   const fields = {};
@@ -67,6 +91,24 @@ export class IngredientService {
 
   list() {
     return this.stock.findIngredients();
+  }
+
+  // Spec 016: histórico paginado por cursor (`before`), lido num snapshot único.
+  async listMovements(id, query) {
+    const { limit, before, type } = parseHistoryQuery(query);
+    return this.stock.snapshot(async (db) => {
+      const ingredient = await this.stock.findIngredient(id, {}, db);
+      if (!ingredient) throw new NotFoundError('Insumo não encontrado.');
+      // Um a mais para saber se há próxima página.
+      const page = await this.stock.findMovements(id, { limit: limit + 1, before, type }, db);
+      const movements = page.slice(0, limit);
+      return {
+        ingredient,
+        consistent: await this.stock.isConsistent(id, db),
+        movements,
+        nextBefore: page.length > limit ? movements.at(-1).id : null
+      };
+    });
   }
 
   async create(body) {
