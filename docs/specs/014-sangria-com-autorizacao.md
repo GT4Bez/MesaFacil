@@ -15,17 +15,18 @@ Para fechar a brecha, a resposta que o caixa recebe **não pode depender do espe
 1. **Limite de sangria do caixa:** `CASH_WITHDRAWAL_APPROVAL_LIMIT` no `.env`, com padrão `200.00`.
    - O valor é público. `GET /shifts/active` passa a trazer `withdrawalApprovalLimit`, para a tela saber quando pedir a autorização.
    - Limite inválido na subida (não numérico ou negativo) impede o backend de iniciar, como as outras variáveis em `env.js`.
-2. **Caixa, sangria até o limite:** entra só com valor e motivo (RN-13), **sem comparar com o esperado**.
+2. **Caixa, sangria até o limite:** entra só com valor e motivo (RN-13), **sem comparar com o esperado** (se mandar `approver`, o campo é ignorado e `approved_by` fica `null`).
    - O caixa recebe sempre a mesma resposta, com ou sem dinheiro na gaveta.
    - O esperado pode ficar negativo. Nesse caso, o relatório mostra o valor negativo e a contagem cega mostra a diferença.
 3. **Caixa, sangria acima do limite:** exige `approver: { email, password }` de um `manager`/`admin` ativo, conferido por `AuthService.verifyApprover` (RN-17).
-   - Sem autorização → `422` "Sangria acima de R$ 200,00 exige a autorização do gerente." (com o limite configurado).
+   - Campos básicos (`type`, `amount > 0` e `reason`) são validados primeiro (`422`), antes de checar `approver`.
+   - Sem `approver` (ausente ou `null`) → barrado antes de `verifyApprover` com `422` "Sangria acima de R$ 200,00 exige a autorização do gerente." (com o limite configurado). Com `approver` presente mas `email`/`password` em branco → `422` pelo próprio `verifyApprover`.
    - Autorização inválida → `403` "Autorização do gerente inválida.", sem encerrar a sessão do caixa.
    - A verificação acontece **antes** de travar o turno. Assim, não segura o lock nem revela `404`/`409` antes da autorização.
 4. **Sangria autorizada ou feita pelo gerente:** continua com a checagem da RN-13 (`422` se passar do esperado).
    - A recusa ainda é uma pista, mas só aparece com o gerente presente, que já vê o esperado na tela Turno (RN-13).
-5. **Gerente e admin logados** fazem sangria como hoje: sem limite, com a checagem do esperado e `expectedCash` na resposta. Se mandarem `approver`, o campo é ignorado.
-6. **Reforço** não muda: não tem limite nem autorização, porque não depende do esperado.
+5. **Gerente e admin logados** (checados via `hasRole` tanto no backend quanto no formulário compartilhado `CashMovementForm`) fazem sangria como hoje: sem limite, com a checagem do esperado e `expectedCash` na resposta. Se mandarem `approver`, o campo é ignorado.
+6. **Reforço** não muda: não tem limite nem autorização, porque não depende do esperado (se mandar `approver`, é ignorado e `approved_by` fica `null`).
 7. **Registro:**
    - a sangria autorizada grava `cash_movements.approved_by` (o autorizador);
    - a auditoria `cash.withdrawal` traz `approvedBy: { id, name }` em `details`, com `user_id` = caixa;
@@ -85,10 +86,10 @@ Movimentos (`GET /shifts/:id/cash-movements` e o bloco `cash.movements` do relat
 - [ ] Reforço sem mudança; `approved_by` em reforço é barrado pelo banco.
 - [ ] `GET /shifts/active` traz `withdrawalApprovalLimit`.
 - [ ] Teste da sondagem: o caixa tenta sangrias de 10 em 10 até o limite e recebe sempre `201`, sem `422` que dependa do saldo.
-- [ ] Testes de integração (backend), Vitest (bloco de autorização aparece acima do limite) e Cypress (sangria acima do limite com o gerente autorizando no Caixa).
+- [ ] Testes de integração (backend), Vitest (bloco de autorização aparece acima do limite) e Cypress (sangria acima do limite com o gerente autorizando no Caixa), atualizando os testes existentes que esperavam recusa `422` do saldo para `cashier` (`cashMovements.test.js`, `cashMovements.test.jsx` e o cenário `9999999` em `app.cy.js`).
 - [ ] Docs atualizados:
-  - `docs/ESPECIFICACAO.md`: RN-18 na §3.3 e na matriz (§4);
-  - spec 008: a limitação conhecida passa a apontar para esta spec;
+  - `docs/ESPECIFICACAO.md`: RN-18 na §3.3 e na matriz (§4), além de ajustar a redação da RN-13 sobre sangria do caixa;
+  - specs 007 e 008: atualizar a nota da RN-13 (007) e apontar a limitação conhecida (008) para esta spec;
   - `frontend/CONTRATO-API.md`, `.env.example`, `docs/ROTEIRO-DEMO.md` e `scripts/demo-regras.sh`.
 
 ## Fora de escopo
