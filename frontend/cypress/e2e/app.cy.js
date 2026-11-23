@@ -108,7 +108,14 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('h1', 'Usuários').should('be.visible')
     garantirSemScrollHorizontal()
 
-    cy.visit('/admin/shift')
+    // 8 telas do admin: 4 na barra inferior e o resto em "Mais" (sem rolagem na barra).
+    cy.get('nav[aria-label="Menu principal"]').then(($nav) => {
+      expect($nav[0].scrollWidth).to.be.at.most($nav[0].clientWidth)
+    })
+    cy.get('button[aria-label="Mais telas"]').click()
+    cy.get('dialog[open]').contains('a', 'Turno e relatório').click()
+    cy.get('dialog[open]').should('not.exist')
+    cy.url().should('include', '/admin/shift')
     cy.contains('h1', 'Turno e relatório').should('be.visible')
     garantirSemScrollHorizontal()
   })
