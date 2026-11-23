@@ -3,6 +3,7 @@ import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
 import { StockRepository } from '../repositories/StockRepository.js';
 import { AuditLogService } from './AuditLogService.js';
 import { AuthService } from './AuthService.js';
+import { SettingsService } from './SettingsService.js';
 import { hasRole } from '../auth/roles.js';
 import {
   BadRequestError,
@@ -55,8 +56,10 @@ export class OrderService {
     menuItemRepository = new MenuItemRepository(),
     auditLogService = new AuditLogService(),
     authService = new AuthService(),
-    stockRepository = new StockRepository()
+    stockRepository = new StockRepository(),
+    settingsService = new SettingsService()
   ) {
+    this.settings = settingsService;
     this.orders = orderRepository;
     this.menuItems = menuItemRepository;
     this.audit = auditLogService;
@@ -104,11 +107,20 @@ export class OrderService {
     };
   }
 
-  async addItem(orderId, { menuItemId, quantity = 1, notes } = {}) {
+  async addItem(orderId, { menuItemId, quantity = 1, notes } = {}, user = null) {
     if (!menuItemId) throw new BadRequestError('Informe o item do cardápio.');
     if (!isPositiveInteger(quantity)) throw new DomainValidationError(QUANTITY_MESSAGE);
 
     return this.orders.transaction(async (db) => {
+      // RN-21 (spec 022): o garçom lança no máximo N unidades iguais por vez; gerente e admin, sem limite.
+      if (user?.role === 'waiter') {
+        const max = await this.settings.maxItemQuantityPerLaunch(db);
+        if (quantity > max) {
+          throw new DomainValidationError(
+            `Cada lançamento do garçom pode ter no máximo ${max} unidades do mesmo item. Para mais, faça outro lançamento ou peça ao gerente.`
+          );
+        }
+      }
       const order = await this.#lockOrder(orderId, db);
       if (!['open', 'in_kitchen'].includes(order.status)) {
         throw new ConflictError(this.#closedForItems(order.status));

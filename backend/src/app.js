@@ -11,6 +11,7 @@ import ingredientRoutes from './routes/ingredientRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import meRoutes from './routes/meRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 import { errorMiddleware } from './middlewares/errorMiddleware.js';
 
 const app = express();
@@ -27,6 +28,7 @@ app.use('/ingredients', ingredientRoutes);
 app.use('/users', userRoutes);
 app.use('/me', meRoutes);
 app.use('/audit-logs', auditRoutes);
+app.use('/settings', settingsRoutes);
 app.use(orderRoutes);
 app.use(errorMiddleware);
 

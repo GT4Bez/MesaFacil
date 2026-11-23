@@ -98,7 +98,8 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `PATCH /menu-items/:id` — qualquer subconjunto de `{ name, category, price, available }`.
   Não existe `DELETE`: o item sai de linha com `available: false` e o preço já lançado em pedidos não muda (RN-09).
 - Erros: `403` papel, `404` item inexistente, `422` validação (nome 1–100, categoria 1–50, preço ≥ 0).
-- `POST /orders/:id/items` — body `{ "menuItemId": 1, "quantity": 2, "notes": "sem cebola" }`.
+- `POST /orders/:id/items` — body `{ "menuItemId": 1, "quantity": 2, "notes": "sem cebola" }`. RN-21 (spec 022): para o garçom, `quantity`
+  vai até o limite de `GET /settings` (padrão 10); acima → `422`. Gerente e admin não têm o limite.
 - `PATCH /order-items/:id/quantity` — body `{ "quantity": 2 }`; só para item `pending` (RN-04).
 - `PATCH /order-items/:id/status` — body `{ "status": "canceled" }` remove um item `pending`.
   Item já enviado: só `manager`, com `{ "status": "canceled", "reason": "..." }` (RN-05; `403`/`422`).
@@ -146,11 +147,19 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - A baixa de estoque acontece sozinha no envio à cozinha; o relatório do turno traz o bloco
   `cmv: { revenue, cost, grossMargin, marginPercent, losses, soldItems, itemsWithRecipe }`.
 
+## Configurações (RN-21, spec 022)
+
+- `GET /settings` (qualquer usuário logado) → `{ maxItemQuantityPerLaunch: 10, updatedAt, updatedBy }` (`updatedBy` é o nome de
+  quem alterou por último; `null` enquanto vale o padrão).
+- `PATCH /settings` (só `admin`; outros papéis → `403`) — body `{ "maxItemQuantityPerLaunch": 15 }` (inteiro de 1 a 99) →
+  as configurações atualizadas. Valor fora da faixa ou corpo sem campo conhecido → `422`. Cada mudança gera
+  `setting.updated` na auditoria com `{ key, from, to }` (categoria `settings`).
+
 ## Auditoria (gerente, RN-20)
 
 - `GET /audit-logs?limit=50&before=88&category=cash&userId=4&shiftId=7&from=…&to=…` — trilha de auditoria (spec 017),
   do mais recente para o mais antigo: `{ entries: [{ id, action, createdAt, shiftId, user: { id, name, role }, entity,
-  entityId, details, target }], nextBefore }`. `category` = `cancellations` | `cash` | `shift` | `catalog` | `security` |
+  entityId, details, target }], nextBefore }`. `category` = `cancellations` | `orders` | `cash` | `shift` | `catalog` | `security` | `settings` |
   `users` (só admin; `manager` → `403`). `from`/`to` em ISO 8601 com fuso (`to` exclusivo). Parâmetros inválidos → `422`.
   `target`: `{ orderId, tableNumber }` (pedido), `{ orderId, tableNumber, menuItem }` (item), `{ name }` (cardápio),
   `{ name, unit }` (insumo), `{ name, role }` (usuário) ou `null` (turno e caixa). As ações `user.*` nunca vêm para o

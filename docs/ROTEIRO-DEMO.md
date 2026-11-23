@@ -68,6 +68,7 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-05 | Garçom cancelando item enviado; gerente sem motivo | `403`, `422` |
 | RN-06 | Pedir a conta com item em preparo | `409` |
 | RN-07 | Encerrar com saldo em aberto | `409` |
+| RN-21 | Garçom lançando 11 unidades iguais (limite 10); gerente lançando 11; gerente mudando o limite | `422`, `201`, `403` |
 | RN-08 | Garçom ligando a taxa; caixa ligando a taxa | `403`; conta de `98,89` = `89,90` + 10%, sem o item cancelado |
 | RN-12 | Pix acima do saldo; dinheiro acima do saldo; pagar pedido quitado; desligar a taxa já paga | `422`; `201` com `changeAmount: 11.11`; `409`; `409` |
 | RN-11 | Garçom cancelando pedido; gerente sem motivo | `403`, `422` |
@@ -103,6 +104,7 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-18 | `ShiftService.addCashMovement` (limite do `env.js`; `AuthService.verifyApprover` antes do `FOR UPDATE`; esperado só com gerente presente) | `cash_movements.approved_by`, `cash_movements_approval_check` | `cashWithdrawalApproval.test.js` |
 | RN-19 | `AuthThrottleService` em `AuthService.login`/`verifyApprover` e `UserService.changeOwnPassword`/`resetPassword` | `auth_throttles` (upsert atômico), `audit_logs_action_check` | `authThrottle.test.js` |
 | RN-20 | `AuditQueryService` (categorias em `domain/auditCategories.js`) e `AuditLogRepository` | `audit_logs_user_idx`, `audit_logs_action_idx` | `auditLogs.test.js` |
+| RN-21 | `OrderService.addItem`, `SettingsService` e `SettingsRepository` | `settings_key_check`, `settings.key` único | `settings.test.js` |
 | RN-16 | `hasRole`, `authenticateToken` (confere `active`/`token_version`), `UserService` | `users_role_check`, `users_email_normalized_check`, trava `FOR UPDATE` nos admins ativos | `users.test.js` |
 
 Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Executando os Testes Automatizados" no [README](../README.md).
