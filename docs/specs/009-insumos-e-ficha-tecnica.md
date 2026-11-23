@@ -67,3 +67,4 @@ Erros: `422` validação (inclusive insumo repetido na ficha e valores além do 
 ## Fora de escopo
 
 - Múltiplos locais de estoque, ordens de produção, fornecedores, conversão de unidades, custo médio, inventário completo.
+- Histórico de movimentos por insumo: tratado na [spec 016](016-historico-de-insumo.md).

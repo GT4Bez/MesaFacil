@@ -1,6 +1,6 @@
 # 016 — Histórico de movimentos do insumo
 
-> Status: proposta · Regras: RN-15 (extensão) · Tela: Insumos
+> Status: aprovada · Regras: RN-15 (extensão) · Tela: Insumos
 
 ## Contexto
 
