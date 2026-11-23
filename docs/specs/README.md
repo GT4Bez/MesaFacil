@@ -28,6 +28,7 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 | 013 | [Cancelamento de item no caixa com autorização do gerente](013-cancelamento-autorizado-no-caixa.md) | Fase 2 | 005, 006, 012 |
 | 014 | [Sangria do caixa com limite e autorização do gerente](014-sangria-com-autorizacao.md) | Fase 2 | 007, 008, 013 |
 | 015 | [Limite de tentativas de senha](015-limite-de-tentativas.md) | Fase 2 | 011, 013, 014 |
+| 016 | [Histórico de movimentos do insumo](016-historico-de-insumo.md) | Fase 2 | 009, 012 |
 
 **MVP** fecha as regras obrigatórias RN-01 a RN-10 e as telas mínimas. **Fase 2** (pós-MVP) só é retomada depois do MVP entregue e com acordo da equipe; as regras novas são numeradas na ordem de implementação (RN-11 é a da spec 005).
 
