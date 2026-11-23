@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import { AUDIT_CATEGORIES, describeAudit } from '../utils/auditLabels'
+import { setDayRange } from '../utils/dates'
 import { ROLE_LABELS } from '../utils/format'
 
 const EMPTY_FILTERS = { category: null, userId: '', shiftId: '', from: '', to: '' }
@@ -10,21 +11,12 @@ const EMPTY_FILTERS = { category: null, userId: '', shiftId: '', from: '', to: '
 const formatDateTime = (value) =>
   new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
-// Dia escolhido (horário local do navegador) → instante ISO com fuso. O "Até" inclui o dia inteiro.
-const startOfDay = (day) => new Date(`${day}T00:00:00`)
-const dayAfter = (day) => {
-  const date = startOfDay(day)
-  date.setDate(date.getDate() + 1)
-  return date
-}
-
 export function auditUrl(filters, before = null) {
   const params = new URLSearchParams()
   if (filters.category) params.set('category', filters.category)
   if (filters.userId) params.set('userId', filters.userId)
   if (filters.shiftId) params.set('shiftId', filters.shiftId)
-  if (filters.from) params.set('from', startOfDay(filters.from).toISOString())
-  if (filters.to) params.set('to', dayAfter(filters.to).toISOString())
+  setDayRange(params, filters)
   if (before) params.set('before', before)
   const query = params.toString()
   return `/audit-logs${query ? `?${query}` : ''}`

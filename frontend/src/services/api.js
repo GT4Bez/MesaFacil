@@ -9,10 +9,8 @@ export const setUnauthorizedHandler = (handler) => {
   onUnauthorized = handler
 }
 
-// A API responde sempre no envelope { success, data } ou { success, error }.
-async function request(method, path, body) {
+async function send(method, path, body) {
   const token = localStorage.getItem(TOKEN_KEY)
-
   let response
   try {
     response = await fetch(`${API_URL}${path}`, {
@@ -26,13 +24,31 @@ async function request(method, path, body) {
   } catch {
     throw new Error('Não foi possível conectar ao servidor.')
   }
-
-  const payload = await response.json().catch(() => null)
   if (response.status === 401 && token && path !== '/auth/login') onUnauthorized?.()
-  if (!response.ok) {
-    throw new Error(payload?.error || `Erro ${response.status}. Tente novamente.`)
-  }
+  return response
+}
+
+// Os erros vêm sempre no envelope { success: false, error }.
+async function failure(response) {
+  const payload = await response.json().catch(() => null)
+  return new Error(payload?.error || `Erro ${response.status}. Tente novamente.`)
+}
+
+// A API responde sempre no envelope { success, data } ou { success, error }.
+async function request(method, path, body) {
+  const response = await send(method, path, body)
+  if (!response.ok) throw await failure(response)
+  const payload = await response.json().catch(() => null)
   return payload?.data
+}
+
+// Spec 018: arquivo (ex.: CSV) com o token; o nome vem do Content-Disposition.
+async function download(path) {
+  const response = await send('GET', path)
+  if (!response.ok) throw await failure(response)
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? path.split('?')[0].split('/').pop()
+  return { blob: await response.blob(), filename }
 }
 
 export const api = {
@@ -40,4 +56,17 @@ export const api = {
   post: (path, body) => request('POST', path, body),
   patch: (path, body) => request('PATCH', path, body),
   put: (path, body) => request('PUT', path, body),
+  download,
+}
+
+// Entrega ao navegador um arquivo baixado com `api.download`.
+export function saveFile({ blob, filename }) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
