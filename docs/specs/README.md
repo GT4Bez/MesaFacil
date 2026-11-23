@@ -33,6 +33,7 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 | 018 | [Histórico do insumo por período, por turno e em CSV](018-historico-por-periodo-e-csv.md) | Fase 2 | 016, 017 |
 | 019 | [Mesa "Aguardando pagamento" e reabertura da conta](019-aguardando-pagamento-e-reabertura.md) | Fase 2 | 003, 006, 017 |
 | 020 | [Atualização automática do Salão e do Caixa](020-atualizacao-automatica.md) | Fase 2 | 003, 019 |
+| 021 | [Mensagens de erro informativas](021-mensagens-de-erro-informativas.md) | Fase 2 | todas |
 
 **MVP** fecha as regras obrigatórias RN-01 a RN-10 e as telas mínimas. **Fase 2** (pós-MVP) só é retomada depois do MVP entregue e com acordo da equipe; as regras novas são numeradas na ordem de implementação (RN-11 é a da spec 005).
 
