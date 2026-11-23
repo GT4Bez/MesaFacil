@@ -30,7 +30,7 @@ O caso mais visível é a comanda: ao tocar no "+" (30 px) de um item do cardáp
 3. A quantidade de item pendente usa o mesmo seletor −/+, que salva a cada toque (RN-04 inalterada).
 4. Texto com no mínimo 12 px; texto de apoio com contraste ≥ 4,5:1.
 5. Alvos de toque com no mínimo 44 × 44 px.
-6. Celular (≤ 650 px): navegação numa barra inferior fixa com ícone **e** rótulo, `aria-label` e `aria-current`.
+6. Celular (≤ 650 px): navegação numa barra inferior fixa com ícone **e** rótulo, `aria-label` e `aria-current`. A barra tem **no máximo 5 posições**: com mais telas (gerente e admin), as 4 primeiras ficam na barra e o resto vai para **"Mais"**, que abre a lista no painel do modal e fica marcado quando a tela atual está nele. Assim a barra cabe sem rolagem até em 320 px.
 7. Cores, raios, sombras e tamanhos de fonte vêm de variáveis CSS em `:root` (tokens).
 8. KDS legível a distância: item com 16 px e observação em destaque.
 
@@ -48,7 +48,7 @@ Componentes novos em `frontend/src/components/`: `Modal` (base sobre `<dialog>`)
 - [ ] Admin do cardápio e Usuários: novo/editar/redefinir senha em modal; a lista ocupa a largura toda.
 - [ ] Nenhuma regra CSS com fonte < 12 px; texto de apoio com contraste ≥ 4,5:1.
 - [ ] Botões de ícone e chips com ≥ 44 px.
-- [ ] Celular (375 px): barra inferior com rótulos, sem rolagem horizontal em nenhuma tela.
+- [ ] Celular (375 px): barra inferior com rótulos, sem rolagem horizontal em nenhuma tela, nem dentro da própria barra ("Mais" para gerente e admin).
 - [ ] Testes de tela (Vitest) para `Modal`, `QuantityStepper` e o fluxo de adicionar item; Cypress atualizado (incluindo um cenário a 375 px).
 
 ## Fora de escopo

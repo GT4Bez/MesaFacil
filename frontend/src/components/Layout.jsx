@@ -1,10 +1,24 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ROLE_LABELS } from '../utils/format'
 import { menuFor } from '../utils/access'
+import Modal from './Modal'
+
+// Celular: a barra inferior tem no máximo 5 posições. Com mais telas, as 4 primeiras ficam na
+// barra e o resto vai para "Mais", que abre a lista num painel. No desktop a lista é completa.
+export const MOBILE_SLOTS = 5
+
+export const overflowOf = (screens) => (screens.length > MOBILE_SLOTS ? screens.slice(MOBILE_SLOTS - 1) : [])
 
 export default function Layout() {
   const { user, logout } = useAuth()
+  const { pathname } = useLocation()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const screens = menuFor(user.role)
+  const overflow = overflowOf(screens)
+  const overflowPaths = new Set(overflow.map((screen) => screen.path))
+  const moreActive = overflow.some((screen) => pathname.startsWith(screen.path))
 
   return (
     <div className="app-shell">
@@ -20,8 +34,13 @@ export default function Layout() {
         <div className="side-label">MENU PRINCIPAL</div>
         {/* No celular (spec 012) vira barra inferior com ícone e rótulo curto. */}
         <nav aria-label="Menu principal">
-          {menuFor(user.role).map((screen) => (
-            <NavLink key={screen.path} to={screen.path} aria-label={screen.label}>
+          {screens.map((screen) => (
+            <NavLink
+              key={screen.path}
+              to={screen.path}
+              aria-label={screen.label}
+              className={overflowPaths.has(screen.path) ? 'nav-overflow' : undefined}
+            >
               <span className="nav-icon" aria-hidden="true">
                 {screen.icon}
               </span>
@@ -33,6 +52,22 @@ export default function Layout() {
               </span>
             </NavLink>
           ))}
+          {overflow.length > 0 && (
+            <button
+              type="button"
+              className={`nav-more${moreActive ? ' active' : ''}`}
+              aria-label="Mais telas"
+              aria-haspopup="dialog"
+              onClick={() => setMoreOpen(true)}
+            >
+              <span className="nav-icon" aria-hidden="true">
+                ⋯
+              </span>
+              <span className="nav-short" aria-hidden="true">
+                Mais
+              </span>
+            </button>
+          )}
         </nav>
 
         <div className="sidebar-bottom">
@@ -66,6 +101,21 @@ export default function Layout() {
           Mesa Fácil <span>•</span> Sistema de gestão de restaurante
         </footer>
       </main>
+
+      {moreOpen && (
+        <Modal title="Mais telas" onClose={() => setMoreOpen(false)}>
+          <div className="more-menu">
+            {overflow.map((screen) => (
+              <NavLink key={screen.path} to={screen.path} onClick={() => setMoreOpen(false)}>
+                <span className="nav-icon" aria-hidden="true">
+                  {screen.icon}
+                </span>
+                {screen.label}
+              </NavLink>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
