@@ -3,7 +3,8 @@ import { useEffect, useId, useRef } from 'react'
 // Modal base (spec 012) sobre <dialog> nativo: foco preso no modal, Esc fecha e o fundo fica
 // escurecido e desfocado. Clique fora ou no × também fecha, exceto durante o envio (`busy`).
 // Ao fechar, o foco volta para o elemento que abriu o modal (se ele ainda existir).
-export default function Modal({ title, description, busy = false, onClose, children }) {
+// `wide`: variante mais larga no desktop (tabelas, spec 016); no celular continua o painel inferior.
+export default function Modal({ title, description, busy = false, wide = false, onClose, children }) {
   const dialogRef = useRef(null)
   const titleId = useId()
   // Só fecha pelo fundo se o clique também começou no fundo: arrastar uma seleção de texto
@@ -43,7 +44,7 @@ export default function Modal({ title, description, busy = false, onClose, child
   return (
     <dialog
       ref={dialogRef}
-      className="modal"
+      className={wide ? 'modal modal-wide' : 'modal'}
       aria-labelledby={titleId}
       onCancel={handleCancel}
       onPointerDown={handlePointerDown}

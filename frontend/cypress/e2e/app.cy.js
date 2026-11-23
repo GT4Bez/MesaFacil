@@ -349,6 +349,18 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       // A ficha do seed usa 0,400 kg de picanha por prato.
       estoquePicanha().should('be.closeTo', antes - 0.4, 0.0001)
     })
+
+    // Spec 016: o histórico mostra a baixa da venda (com o pedido de origem) e a entrada.
+    cy.get('article[aria-label="Picanha"]').within(() => cy.contains('button', 'Histórico').click())
+    cy.get('dialog[open]').within(() => {
+      cy.contains('h2', 'Histórico · Picanha')
+      cy.get('@orderId').then((orderId) => {
+        cy.get('tbody tr').first().should('contain', 'Venda').and('contain', `Pedido ${orderId}`).and('contain', '−0,4 kg')
+      })
+      cy.contains('button', 'Entradas').click()
+      cy.get('tbody tr').first().should('contain', 'Entrada').and('contain', '+1 kg')
+      cy.get('tbody tr').should('not.contain', 'Venda')
+    })
   })
 
   it('fechamento com conferência cega: caixa conta, gerente confere e encerra (RN-14)', () => {
