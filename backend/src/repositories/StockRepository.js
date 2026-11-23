@@ -14,6 +14,16 @@ const toIngredient = (row) => row && {
   belowMin: Number(row.stock_quantity) < Number(row.min_stock)
 };
 
+// Specs 016 e 018: filtros opcionais do histórico sobre o alias da tabela; acrescenta os valores em `params`.
+function movementFilters({ type = null, from = null, to = null, shiftId = null } = {}, params, alias) {
+  const where = [];
+  if (type !== null) where.push(`${alias}.type = $${params.push(type)}`);
+  if (from !== null) where.push(`${alias}.created_at >= $${params.push(from)}`);
+  if (to !== null) where.push(`${alias}.created_at < $${params.push(to)}`);
+  if (shiftId !== null) where.push(`${alias}.shift_id = $${params.push(shiftId)}`);
+  return where;
+}
+
 // RN-15 (spec 009): insumos, ficha técnica e movimentos de estoque.
 export class StockRepository {
   constructor(database = DatabaseConnection.getInstance()) {
@@ -32,9 +42,12 @@ export class StockRepository {
     });
   }
 
-  // Spec 016: histórico do insumo, do mais recente para o mais antigo. O saldo depois de cada
-  // movimento é a soma acumulada de TODOS os tipos, calculada antes do filtro e do cursor.
-  async findMovements(ingredientId, { limit, before = null, type = null }, db = this.database) {
+  // Specs 016 e 018: histórico do insumo. O saldo depois de cada movimento é a soma acumulada de
+  // TODOS os movimentos, calculada antes do filtro e do cursor. `order: 'asc'` atende a exportação CSV.
+  async findMovements(ingredientId, { limit, before = null, order = 'desc', ...filters }, db = this.database) {
+    const params = [ingredientId];
+    const where = movementFilters(filters, params, 'h');
+    if (before !== null) where.push(`h.id < $${params.push(before)}`);
     const { rows } = await db.query(
       `WITH history AS (
          SELECT sm.*, SUM(sm.quantity) OVER (ORDER BY sm.id) AS balance_after
@@ -49,10 +62,10 @@ export class StockRepository {
        LEFT JOIN orders o ON o.id = oi.order_id
        LEFT JOIN tables t ON t.id = o.table_id
        LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
-       WHERE ($2::text IS NULL OR h.type = $2) AND ($3::bigint IS NULL OR h.id < $3)
-       ORDER BY h.id DESC
-       LIMIT $4`,
-      [ingredientId, type, before, limit]
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY h.id ${order === 'asc' ? 'ASC' : 'DESC'}
+       LIMIT $${params.push(limit)}`,
+      params
     );
     return rows.map((row) => ({
       id: String(row.id),
@@ -71,6 +84,23 @@ export class StockRepository {
         itemQuantity: row.item_quantity
       }
     }));
+  }
+
+  // Spec 018: resumo do recorte inteiro, não só da página.
+  async summarizeMovements(ingredientId, filters, db = this.database) {
+    const params = [ingredientId];
+    const where = movementFilters(filters, params, 'sm');
+    const { rows } = await db.query(
+      `SELECT COUNT(*)::int AS count,
+              COALESCE(SUM(sm.quantity) FILTER (WHERE sm.quantity > 0), 0) AS inflow,
+              COALESCE(SUM(sm.quantity) FILTER (WHERE sm.quantity < 0), 0) AS outflow
+       FROM stock_movements sm
+       WHERE ${['sm.ingredient_id = $1', ...where].join(' AND ')}`,
+      params
+    );
+    const inflow = Number(rows[0].inflow);
+    const outflow = Number(rows[0].outflow);
+    return { count: rows[0].count, in: inflow, out: outflow, net: Math.round((inflow + outflow) * 1000) / 1000 };
   }
 
   // Spec 016: o estoque bate com a soma de todos os movimentos (insumo sem movimentos: 0 = 0).

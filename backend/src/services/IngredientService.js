@@ -5,6 +5,8 @@ import { AuditLogService } from './AuditLogService.js';
 import { ConflictError, DomainValidationError, NotFoundError } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
 import { MAX_PG_MONEY, roundMoney, toMoney } from '../domain/money.js';
+import { parseDateRange, parseId, parseLimit } from '../domain/query.js';
+import { csvFilename, movementsToCsv } from '../domain/movementsCsv.js';
 
 const UNITS = ['un', 'kg', 'l'];
 const MAX_STOCK = 999999999.999;
@@ -18,26 +20,17 @@ const MOVEMENT_TYPES = ['purchase', 'adjustment', 'sale'];
 const DEFAULT_PAGE = 50;
 const MAX_PAGE = 100;
 
-// Spec 016: parâmetros da consulta do histórico (strings da query; ausentes usam o padrão).
-function parseHistoryQuery({ limit, before, type } = {}) {
-  const parsed = { limit: DEFAULT_PAGE, before: null, type: null };
-  if (limit !== undefined) {
-    const value = typeof limit === 'string' && /^\d{1,3}$/.test(limit) ? Number(limit) : NaN;
-    if (!(value >= 1 && value <= MAX_PAGE)) throw new DomainValidationError(`limit deve ser um inteiro de 1 a ${MAX_PAGE}.`);
-    parsed.limit = value;
+const CSV_LIMIT = 10000;
+
+// Specs 016 e 018: filtros do histórico (strings da query; ausentes ficam null).
+function parseHistoryFilters({ type, from, to, shiftId } = {}) {
+  if (type !== undefined && !MOVEMENT_TYPES.includes(type)) {
+    throw new DomainValidationError('type inválido: use purchase, adjustment ou sale.');
   }
-  if (before !== undefined) {
-    if (typeof before !== 'string' || !/^[1-9]\d{0,17}$/.test(before)) {
-      throw new DomainValidationError('before deve ser o id de um movimento.');
-    }
-    parsed.before = before;
-  }
-  if (type !== undefined) {
-    if (!MOVEMENT_TYPES.includes(type)) throw new DomainValidationError('type inválido: use purchase, adjustment ou sale.');
-    parsed.type = type;
-  }
-  return parsed;
+  return { type: type ?? null, ...parseDateRange({ from, to }), shiftId: parseId(shiftId, 'shiftId') };
 }
+
+const hasFilter = (filters) => Object.values(filters).some((value) => value !== null);
 
 function parseIngredient(body = {}, { partial }) {
   const fields = {};
@@ -81,8 +74,10 @@ export class IngredientService {
     stockRepository = new StockRepository(),
     menuItemRepository = new MenuItemRepository(),
     shiftRepository = new ShiftRepository(),
-    auditLogService = new AuditLogService()
+    auditLogService = new AuditLogService(),
+    { csvLimit = CSV_LIMIT } = {}
   ) {
+    this.csvLimit = csvLimit;
     this.stock = stockRepository;
     this.menuItems = menuItemRepository;
     this.shifts = shiftRepository;
@@ -93,21 +88,38 @@ export class IngredientService {
     return this.stock.findIngredients();
   }
 
-  // Spec 016: histórico paginado por cursor (`before`), lido num snapshot único.
-  async listMovements(id, query) {
-    const { limit, before, type } = parseHistoryQuery(query);
+  // Specs 016 e 018: histórico paginado por cursor (`before`), com filtros e resumo, num snapshot único.
+  async listMovements(id, query = {}) {
+    const limit = parseLimit(query.limit, { fallback: DEFAULT_PAGE, max: MAX_PAGE });
+    const before = parseId(query.before, 'before');
+    const filters = parseHistoryFilters(query);
     return this.stock.snapshot(async (db) => {
-      const ingredient = await this.stock.findIngredient(id, {}, db);
-      if (!ingredient) throw new NotFoundError('Insumo não encontrado.');
+      const ingredient = await this.#findIngredient(id, db);
       // Um a mais para saber se há próxima página.
-      const page = await this.stock.findMovements(id, { limit: limit + 1, before, type }, db);
+      const page = await this.stock.findMovements(id, { ...filters, limit: limit + 1, before }, db);
       const movements = page.slice(0, limit);
       return {
         ingredient,
         consistent: await this.stock.isConsistent(id, db),
+        summary: hasFilter(filters) ? await this.stock.summarizeMovements(id, filters, db) : null,
         movements,
         nextBefore: page.length > limit ? movements.at(-1).id : null
       };
+    });
+  }
+
+  // Spec 018: o recorte inteiro em CSV, do mais antigo para o mais recente.
+  async exportMovements(id, query = {}) {
+    const filters = parseHistoryFilters(query);
+    return this.stock.snapshot(async (db) => {
+      const ingredient = await this.#findIngredient(id, db);
+      const movements = await this.stock.findMovements(id, { ...filters, limit: this.csvLimit + 1, order: 'asc' }, db);
+      if (movements.length > this.csvLimit) {
+        throw new DomainValidationError(
+          `O recorte tem mais de ${this.csvLimit.toLocaleString('pt-BR')} movimentos. Diminua o período.`
+        );
+      }
+      return { filename: csvFilename(ingredient.name), csv: movementsToCsv(movements, ingredient.unit) };
     });
   }
 
@@ -248,6 +260,12 @@ export class IngredientService {
       margin,
       marginPercent: menuItem.price > 0 ? Math.round((margin / menuItem.price) * 1000) / 10 : null
     };
+  }
+
+  async #findIngredient(id, db) {
+    const ingredient = await this.stock.findIngredient(id, {}, db);
+    if (!ingredient) throw new NotFoundError('Insumo não encontrado.');
+    return ingredient;
   }
 
   async #lockIngredient(id, db) {

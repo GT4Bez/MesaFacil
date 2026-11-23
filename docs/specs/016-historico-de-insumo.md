@@ -85,6 +85,6 @@ Sem migration. Usa o índice `stock_movements_ingredient_idx`, já existente.
 
 ## Fora de escopo
 
-- Exportar para CSV, filtrar por período ou por turno e mostrar gráficos.
+- Exportar para CSV e filtrar por período ou por turno (tratados na [spec 018](018-historico-por-periodo-e-csv.md)); mostrar gráficos.
 - Corrigir divergências históricas automaticamente (o gerente usa o ajuste para acertar o saldo operacional atual, o que não apaga divergência pré-existente no somatório).
 - Histórico consolidado de todos os insumos numa só tela.

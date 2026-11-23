@@ -120,6 +120,16 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
   (padrão 50), `before` = id do último movimento recebido, `type` = `purchase` | `adjustment` | `sale` (inválidos → `422`).
   `balanceAfter` considera todos os tipos, mesmo com filtro; `consistent: false` quando o estoque não bate com a soma
   dos movimentos; `nextBefore: null` na última página. Insumo inexistente → `404`.
+  Spec 018: `from` e `to` (ISO 8601 com fuso; `to` exclusivo) e `shiftId` filtram a lista e combinam com `type`, `limit`
+  e `before`. Com algum filtro (`type`, `from`, `to` ou `shiftId`), a resposta traz `summary: { count, in, out, net }`
+  sobre o recorte inteiro (zerado se vazio); sem filtro, `summary: null`. Data sem fuso, `from >= to` ou `shiftId`
+  não numérico → `422`; turno inexistente → lista vazia.
+- `GET /ingredients/:id/movements.csv?from=…&to=…&shiftId=…&type=…` — o mesmo recorte em CSV (spec 018), do mais antigo
+  para o mais recente: BOM UTF-8, `;`, vírgula decimal, `\r\n`, data em ISO 8601 UTC e
+  `Content-Disposition: attachment; filename="historico-<insumo>-<AAAA-MM-DD>.csv"`. Colunas: `id;data;tipo;quantidade;
+  unidade;custo_unitario;saldo_depois;quem_lancou;motivo;turno;pedido;mesa;item_vendido;qtd_vendida`. Texto livre que
+  começa com `=`, `+`, `-`, `@`, tab ou quebra de linha recebe `'` na frente. Mais de 10.000 linhas → `422`. Os erros
+  (`401`, `403`, `404`, `422`) vêm no envelope JSON.
 - `GET /menu-items/:id/recipe` / `PUT /menu-items/:id/recipe` (`{ "items": [{ "ingredientId": "1", "quantity": 0.4 }] }`) →
   `{ menuItemId, price, items: [{ ingredientId, name, unit, quantity, unitCost, cost, active }], cost, margin, marginPercent }`.
   Insumo repetido ou quantidade ≤ 0 → `422`; insumo inativo → `409`.
