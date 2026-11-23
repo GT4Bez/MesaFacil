@@ -41,7 +41,7 @@ describe('Histórico de movimentos do insumo (spec 016)', () => {
   test('insumo sem movimentos: lista vazia e consistente', async () => {
     const res = await history(carne.id)
     assert.equal(res.status, 200)
-    assert.deepEqual(res.json.data, { ingredient: carne, consistent: true, movements: [], nextBefore: null })
+    assert.deepEqual(res.json.data, { ingredient: carne, consistent: true, summary: null, movements: [], nextBefore: null })
   })
 
   test('ordem, saldo depois de cada movimento, origem da venda e turno', async () => {
