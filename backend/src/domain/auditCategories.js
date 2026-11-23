@@ -2,6 +2,7 @@
 // Ação nova na migration precisa entrar aqui (o teste de integração confere).
 export const AUDIT_CATEGORIES = Object.freeze({
   cancellations: ['order_item.canceled', 'order.canceled'],
+  orders: ['order.reopened'],
   cash: ['cash.withdrawal', 'cash.reinforcement'],
   shift: ['shift.opened', 'shift.counted', 'shift.closed'],
   catalog: ['menu_item.price_changed', 'stock.adjusted'],

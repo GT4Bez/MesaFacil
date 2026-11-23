@@ -147,8 +147,8 @@ describe('Fluxo de mesas, turnos, pedidos, itens e caixa', () => {
 
     const tables = await api('GET', '/tables', { role: 'waiter' })
     assert.deepEqual(tables.json.data, [
-      { id: tableIds[0], number: 1, status: 'occupied', activeOrderId: orderId },
-      { id: tableIds[1], number: 2, status: 'available', activeOrderId: null },
+      { id: tableIds[0], number: 1, status: 'occupied', activeOrderId: orderId, orderStatus: 'open' },
+      { id: tableIds[1], number: 2, status: 'available', activeOrderId: null, orderStatus: null },
     ])
   })
 

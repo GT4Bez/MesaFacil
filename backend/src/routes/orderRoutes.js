@@ -16,6 +16,10 @@ router.get('/orders/:id', authenticateToken, async (req, res) => ok(res, await o
 router.patch('/orders/:id/status', authenticateToken, async (req, res) =>
   ok(res, await orderService.updateStatus(req.params.id, req.body, req.user)));
 
+// Spec 019: reabrir a conta pedida (garçom, caixa e gerente).
+router.post('/orders/:id/reopen', authenticateToken, requireRole('waiter', 'cashier', 'manager'), async (req, res) =>
+  ok(res, await orderService.reopen(req.params.id, req.body, req.user)));
+
 router.post('/orders/:id/items', authenticateToken, requireRole('waiter', 'manager'), async (req, res) =>
   ok(res, await orderService.addItem(req.params.id, req.body), 201));
 

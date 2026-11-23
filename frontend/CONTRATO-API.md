@@ -71,8 +71,9 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
   methods: [{ method, declared, expected, difference }] }` (`methods` sempre em `cash`, `card`, `pix`;
   `reason` é o motivo do gerente no encerramento; `stale` só faz sentido com o turno aberto e indica que
   houve pagamento ou movimento depois da contagem).
-- `GET /tables` — array de `{ id, number, status, activeOrderId }`, com `status` igual a
-  `available` ou `occupied` e `activeOrderId` preenchido nas mesas ocupadas.
+- `GET /tables` — array de `{ id, number, status, activeOrderId, orderStatus }`, com `status` igual a
+  `available` ou `occupied`, `activeOrderId` preenchido nas mesas ocupadas e `orderStatus` com o status do pedido ativo
+  (`open`, `in_kitchen`, `ready_to_pay`; `null` na mesa livre). `ready_to_pay` aparece como "Aguardando pagamento" (spec 019).
 - `POST /orders` — body `{ "tableId": 1 }`; resposta `{ "id": 123 }`. `409` se a mesa já tiver
   pedido aberto (RN-01) ou se não houver turno aberto (RN-02).
 
@@ -104,6 +105,9 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
   `429` autorização bloqueada por tentativas (RN-19); `404` item inexistente; `409` item já cancelado, pedido inativo ou pago acima do novo total.
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).
+- `POST /orders/:id/reopen` (`waiter`, `cashier` e `manager`; spec 019) — body `{ "reason": "Faltou a sobremesa" }` (opcional, até
+  200 caracteres) → `{ id, status: "in_kitchen" }`. Só a partir de `ready_to_pay` (`409` nos demais); pagamentos já
+  registrados permanecem. Gera o registro de auditoria `order.reopened` com `{ reason, paidAmount }`.
 - Cancelar o pedido: `{ "status": "canceled", "reason": "cliente desistiu" }` — só `manager` (`403`),
   motivo obrigatório (`422`), `409` se houver pagamento registrado. Cancela os itens ativos e libera a mesa (RN-11).
 
