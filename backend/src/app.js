@@ -10,6 +10,7 @@ import menuItemRoutes from './routes/menuItemRoutes.js';
 import ingredientRoutes from './routes/ingredientRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import meRoutes from './routes/meRoutes.js';
+import auditRoutes from './routes/auditRoutes.js';
 import { errorMiddleware } from './middlewares/errorMiddleware.js';
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/menu-items', menuItemRoutes);
 app.use('/ingredients', ingredientRoutes);
 app.use('/users', userRoutes);
 app.use('/me', meRoutes);
+app.use('/audit-logs', auditRoutes);
 app.use(orderRoutes);
 app.use(errorMiddleware);
 

@@ -126,6 +126,18 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - A baixa de estoque acontece sozinha no envio à cozinha; o relatório do turno traz o bloco
   `cmv: { revenue, cost, grossMargin, marginPercent, losses, soldItems, itemsWithRecipe }`.
 
+## Auditoria (gerente, RN-20)
+
+- `GET /audit-logs?limit=50&before=88&category=cash&userId=4&shiftId=7&from=…&to=…` — trilha de auditoria (spec 017),
+  do mais recente para o mais antigo: `{ entries: [{ id, action, createdAt, shiftId, user: { id, name, role }, entity,
+  entityId, details, target }], nextBefore }`. `category` = `cancellations` | `cash` | `shift` | `catalog` | `security` |
+  `users` (só admin; `manager` → `403`). `from`/`to` em ISO 8601 com fuso (`to` exclusivo). Parâmetros inválidos → `422`.
+  `target`: `{ orderId, tableNumber }` (pedido), `{ orderId, tableNumber, menuItem }` (item), `{ name }` (cardápio),
+  `{ name, unit }` (insumo), `{ name, role }` (usuário) ou `null` (turno e caixa). As ações `user.*` nunca vêm para o
+  `manager`.
+- `GET /audit-logs/actors` — `{ actors: [{ id, name, role, active }] }`: quem tem ao menos um registro visível, para o
+  filtro "Quem fez".
+
 ## Cozinha (KDS)
 
 - `GET /kitchen/orders` — `kitchen` e `manager`. Itens `sent` e `preparing` de pedidos ativos, agrupados por

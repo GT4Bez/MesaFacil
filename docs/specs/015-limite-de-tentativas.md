@@ -103,7 +103,7 @@ com status `429`, por meio de uma nova subclasse de `AppError`, `TooManyAttempts
 - Bloqueio por IP. Atrás do túnel, o IP do cliente exige confiar em cabeçalhos do proxy, e no restaurante todos os terminais saem pelo mesmo IP.
 - Cabeçalho HTTP `Retry-After` (o tempo restante já vai na mensagem e o frontend não faz retry automático).
 - CAPTCHA, atraso progressivo e aviso por e-mail.
-- Tela de auditoria para ver os bloqueios (ficam em `audit_logs`).
+- Tela de auditoria para ver os bloqueios (ficam em `audit_logs`; tratada na [spec 017](017-tela-de-auditoria.md), categoria "Segurança").
 - **Limitações aceitas:**
   - por ser por e-mail, o bloqueio do login pode ser provocado por terceiros, com 5 senhas erradas no e-mail de alguém (até 15 min, ou até o admin redefinir a senha; se o único admin ficar bloqueado, aguarda os 15 min);
   - `PUT /users/:id/password` não zera `approval` (se o único caixa bloquear a autorização, o gerente pode operar com a própria conta no terminal durante os 15 min).
