@@ -114,6 +114,12 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `PATCH /ingredients/:id` — subconjunto de `{ name, minStock, unitCost, active }`; mudar `unit` → `422`.
 - `POST /ingredients/:id/purchases` — `{ "quantity": 20, "unitCost": 6.4 }` → `201` com o insumo (custo passa a ser o da compra).
 - `POST /ingredients/:id/adjustments` — `{ "countedQuantity": 18.25, "reason": "Perda" }` → `201`; sem diferença → `422`.
+- `GET /ingredients/:id/movements?limit=50&before=120&type=sale` — histórico do insumo (spec 016), do mais recente
+  para o mais antigo: `{ ingredient, consistent, movements: [{ id, type, quantity, unitCost, balanceAfter, createdAt, by,
+  reason, shiftId, sale: { orderId, tableNumber, menuItem, itemQuantity } | null }], nextBefore }`. `limit` de 1 a 100
+  (padrão 50), `before` = id do último movimento recebido, `type` = `purchase` | `adjustment` | `sale` (inválidos → `422`).
+  `balanceAfter` considera todos os tipos, mesmo com filtro; `consistent: false` quando o estoque não bate com a soma
+  dos movimentos; `nextBefore: null` na última página. Insumo inexistente → `404`.
 - `GET /menu-items/:id/recipe` / `PUT /menu-items/:id/recipe` (`{ "items": [{ "ingredientId": "1", "quantity": 0.4 }] }`) →
   `{ menuItemId, price, items: [{ ingredientId, name, unit, quantity, unitCost, cost, active }], cost, margin, marginPercent }`.
   Insumo repetido ou quantidade ≤ 0 → `422`; insumo inativo → `409`.
