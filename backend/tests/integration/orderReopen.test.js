@@ -10,6 +10,7 @@ describe('Mesa aguardando pagamento e reabertura da conta (spec 019)', () => {
   let tableIds
   let picanha
   let refri
+  let shiftId
 
   const api = (method, path, { role = 'manager', body } = {}) =>
     server.api(method, path, { token: role && staff[role].token, body })
@@ -42,7 +43,7 @@ describe('Mesa aguardando pagamento e reabertura da conta (spec 019)', () => {
     await resetDb()
     staff = await createStaff()
     tableIds = await createTables(2)
-    await api('POST', '/shifts', { body: { openingFloat: 0 } })
+    shiftId = (await api('POST', '/shifts', { body: { openingFloat: 0 } })).json.data.id
     picanha = await createMenuItem({ name: 'Picanha na chapa', price: 89.9 })
     refri = await createMenuItem({ name: 'Refrigerante Lata', price: 7 })
   })
@@ -140,5 +141,64 @@ describe('Mesa aguardando pagamento e reabertura da conta (spec 019)', () => {
     assert.equal((await reopen(ready, { reason: 'x'.repeat(200) })).status, 200)
     const { rows } = await query(`SELECT count(*)::int AS n FROM audit_logs WHERE action = 'order.reopened'`)
     assert.equal(rows[0].n, 1)
+  })
+
+  test('concorrência: duas reaberturas simultâneas → um 200, um 409 e um único registro de auditoria', async () => {
+    const orderId = await orderReadyToPay()
+    const results = await Promise.all([reopen(orderId, {}, 'waiter'), reopen(orderId, {}, 'cashier')])
+    assert.deepEqual(results.map((res) => res.status).sort(), [200, 409])
+    const { rows } = await query(`SELECT count(*)::int AS n FROM audit_logs WHERE action = 'order.reopened'`)
+    assert.equal(rows[0].n, 1)
+    assert.equal((await tableOf(tableIds[0])).orderStatus, 'in_kitchen')
+  })
+
+  test('paidAmount desconta o troco do pagamento em dinheiro', async () => {
+    const orderId = await orderReadyToPay()
+    const paid = await api('POST', `/orders/${orderId}/payments`, { role: 'cashier', body: { amount: 100, method: 'cash' } })
+    assert.equal(paid.json.data.changeAmount, 10.1)
+    await reopen(orderId)
+    const { rows } = await query(`SELECT details FROM audit_logs WHERE action = 'order.reopened'`)
+    assert.deepEqual(rows[0].details, { reason: null, paidAmount: 89.9 })
+  })
+
+  test('conta quitada e reaberta: sem itens novos, pede a conta de novo e encerra', async () => {
+    const orderId = await orderReadyToPay()
+    await api('POST', `/orders/${orderId}/payments`, { role: 'cashier', body: { amount: 89.9, method: 'pix' } })
+    assert.equal((await reopen(orderId)).status, 200)
+    assert.equal((await askBill(orderId)).status, 200)
+    const bill = (await api('GET', `/orders/${orderId}/bill`, { role: 'cashier' })).json.data
+    assert.equal(bill.remainingBalance, 0)
+    assert.equal((await api('PATCH', `/orders/${orderId}/status`, { role: 'cashier', body: { status: 'closed' } })).status, 200)
+  })
+
+  test('taxa de serviço ligada antes de reabrir continua valendo sobre o item novo', async () => {
+    const orderId = await orderReadyToPay()
+    assert.equal((await api('PATCH', `/orders/${orderId}/service-tax`, { role: 'cashier', body: { enabled: true } })).status, 200)
+    await reopen(orderId)
+    await serve(orderId, refri)
+    await askBill(orderId)
+    const bill = (await api('GET', `/orders/${orderId}/bill`, { role: 'cashier' })).json.data
+    assert.equal(bill.serviceTax, true)
+    assert.equal(bill.subtotal, 96.9)
+    assert.equal(bill.total, 106.59)
+  })
+
+  test('RN-02: o turno não encerra com um pedido reaberto', async () => {
+    const orderId = await orderReadyToPay()
+    await reopen(orderId)
+    const res = await api('PATCH', `/shifts/${shiftId}/close`, { body: {} })
+    assert.equal(res.status, 409)
+    assert.equal(res.json.error, 'Não é possível encerrar o turno com pedidos ativos.')
+  })
+
+  test('RN-17: depois de reabrir, cancelar item já pago continua bloqueado', async () => {
+    const orderId = (await api('POST', '/orders', { role: 'waiter', body: { tableId: tableIds[0] } })).json.data.id
+    const itemId = await serve(orderId, picanha)
+    await askBill(orderId)
+    await api('POST', `/orders/${orderId}/payments`, { role: 'cashier', body: { amount: 89.9, method: 'pix' } })
+    await reopen(orderId)
+    const res = await api('PATCH', `/order-items/${itemId}/status`, { body: { status: 'canceled', reason: 'Desistiu' } })
+    assert.equal(res.status, 409)
+    assert.match(res.json.error, /já pago/)
   })
 })
