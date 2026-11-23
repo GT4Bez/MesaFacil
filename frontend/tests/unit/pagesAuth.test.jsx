@@ -44,13 +44,16 @@ describe('Telas de Autenticação, Conta e Usuários (RN-16)', () => {
     fireEvent.change(screen.getByLabelText('Confirmar nova senha'), { target: { value: 'nova1234' } })
     fireEvent.click(screen.getByRole('button', { name: 'Trocar senha' }))
     expect(await screen.findByText('Senha atual incorreta.')).toBeInTheDocument()
+    // O erro da API descartou as senhas digitadas (RN-19): preenche de novo.
+    expect(screen.getByLabelText('Senha atual')).toHaveValue('')
 
+    fireEvent.change(screen.getByLabelText('Senha atual'), { target: { value: '123' } })
+    fireEvent.change(screen.getByLabelText('Nova senha'), { target: { value: 'nova1234' } })
     fireEvent.change(screen.getByLabelText('Confirmar nova senha'), { target: { value: 'diferente' } })
     fireEvent.click(screen.getByRole('button', { name: 'Trocar senha' }))
     expect(screen.queryByText('Senha atual incorreta.')).not.toBeInTheDocument()
     expect(screen.getByText('A confirmação não confere com a nova senha.')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('Senha atual'), { target: { value: '123' } })
     fireEvent.change(screen.getByLabelText('Confirmar nova senha'), { target: { value: 'nova1234' } })
     fireEvent.click(screen.getByRole('button', { name: 'Trocar senha' }))
     await waitFor(() => expect(localStorage.getItem(TOKEN_KEY)).toBeNull())

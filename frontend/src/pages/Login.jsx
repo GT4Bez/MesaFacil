@@ -9,9 +9,10 @@ export default function Login() {
   const { busy, error, run } = useAction()
 
   // Após o login, o roteador (App) redireciona para a tela inicial do papel.
-  function handleSubmit(event) {
+  // Com erro (inclusive o 429 do limite de tentativas, RN-19), a senha digitada é descartada.
+  async function handleSubmit(event) {
     event.preventDefault()
-    run(() => login(email, password))
+    if (!(await run(() => login(email, password)))) setPassword('')
   }
 
   return (
