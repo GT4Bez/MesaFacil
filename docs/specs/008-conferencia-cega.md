@@ -97,4 +97,4 @@ O relatório retorna `closing` no mesmo formato, mais o campo `stale`; `shift.cl
 
 - Contagem por cédula, reabertura de turno, segundo conferente.
 - Tolerância de diferença (qualquer centavo exige motivo).
-- **Limitação conhecida (anterior a esta spec):** a sangria recusa valores acima do dinheiro esperado (RN-13). Um caixa que tente várias sangrias e desfaça as aceitas com reforços consegue descobrir o esperado por tentativa. Mitigação possível numa spec futura: sangria acima de um limite exigir a autorização do gerente (como na RN-17), ou auditar as sangrias recusadas.
+- **Limitação conhecida (anterior a esta spec):** a sangria recusa valores acima do dinheiro esperado (RN-13). Um caixa que tente várias sangrias e desfaça as aceitas com reforços consegue descobrir o esperado por tentativa. **Resolvida pela [spec 014](014-sangria-com-autorizacao.md) (RN-18):** a sangria do caixa até o limite não é mais comparada com o esperado, e acima dele exige a autorização do gerente.

@@ -97,11 +97,12 @@ call PATCH "$CAIXA" "/orders/$ORDER/service-tax" '{"enabled":false}'
 step 'RN-07: saldo quitado → pedido encerrado e mesa liberada'
 call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
 
-step 'RN-13: gaveta = fundo 100,00 + dinheiro líquido 48,89 = 148,89. Sangria acima → 422 (sem revelar o valor); garçom → 403'
+step 'RN-13/RN-18: gaveta = fundo 100,00 + dinheiro líquido 48,89 = 148,89. Caixa sangra 500 sem autorização → 422 (limite de R$ 200,00); gerente sangra 500 → 422 (sem revelar o valor); garçom → 403'
 call POST "$CAIXA" "/shifts/$SHIFT/cash-movements" '{"type":"withdrawal","amount":500,"reason":"Cofre"}'
+call POST "$GERENTE" "/shifts/$SHIFT/cash-movements" '{"type":"withdrawal","amount":500,"reason":"Cofre"}'
 call POST "$GARCOM" "/shifts/$SHIFT/cash-movements" '{"type":"withdrawal","amount":10,"reason":"Cofre"}'
 
-step 'RN-13: caixa sangra 100,00 (resposta sem o esperado); gerente reforça 20,00 e vê expectedCash 68.89'
+step 'RN-13/RN-18: caixa sangra 100,00 (até o limite, sem comparar com o esperado; resposta sem o esperado); gerente reforça 20,00 e vê expectedCash 68.89'
 call POST "$CAIXA" "/shifts/$SHIFT/cash-movements" '{"type":"withdrawal","amount":100,"reason":"Cofre"}'
 call POST "$GERENTE" "/shifts/$SHIFT/cash-movements" '{"type":"reinforcement","amount":20,"reason":"Moedas para troco"}'
 

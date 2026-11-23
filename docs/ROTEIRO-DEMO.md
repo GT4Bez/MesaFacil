@@ -68,7 +68,7 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-08 | Garçom ligando a taxa; caixa ligando a taxa | `403`; conta de `98,89` = `89,90` + 10%, sem o item cancelado |
 | RN-12 | Pix acima do saldo; dinheiro acima do saldo; pagar pedido quitado; desligar a taxa já paga | `422`; `201` com `changeAmount: 11.11`; `409`; `409` |
 | RN-11 | Garçom cancelando pedido; gerente sem motivo | `403`, `422` |
-| RN-13 | Abrir turno sem fundo; sangria acima da gaveta; garçom sangrando; caixa sangra 100; gerente reforça 20 | `422`; `422` sem revelar o valor; `403`; `201` sem `expectedCash`; `201` com `expectedCash: 68.89` |
+| RN-13 | Abrir turno sem fundo; caixa sangra 500 sem autorização; gerente sangra 500; garçom sangrando; caixa sangra 100; gerente reforça 20 | `422`; `422` com o limite de R$ 200,00 (RN-18); `422` sem revelar o valor; `403`; `201` sem `expectedCash`; `201` com `expectedCash: 68.89` |
 | RN-10 | Caixa pedindo o relatório; gerente pedindo o relatório | `403`, `200` com totais por SQL e o bloco `cash` (`expected: 68.89`) |
 | RN-14 | Encerrar sem contagem; gerente contando; caixa conta dinheiro 68,00 / Pix 50,00; encerrar sem motivo; com motivo | `409`; `403`; `200` sem `expected`; `422`; `200` com diferença de `-0.89` |
 | RN-15 | Estoque depois do envio; garçom ajustando estoque; ajuste sem motivo; com motivo; relatório | Picanha `11.6`, Laranja `14`; `403`; `422`; `201` (auditado); `cmv` com custo `30.07` e perda `34.74` (suco cancelado no RN-05 + picanha cancelada no RN-17) |
@@ -97,6 +97,8 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-14 | `ShiftService.count`, `ShiftService.close` (trava `FOR UPDATE` no turno; contagem desatualizada → `409`) | `shift_counts_declared_check`, `shift_counts_unique`, coluna gerada `difference` | `shiftClosing.test.js` |
 | RN-15 | `IngredientService`, `StockRepository.recordSales` (baixa no envio, insumos travados em ordem), `ShiftReportRepository.findCmv` | `stock_movements_sale_item_check`, `stock_movements_quantity_sign_check`, `ingredients_name_unique_idx` | `ingredients.test.js` |
 | RN-17 | `AuthService.verifyApprover`, `OrderService.authorizedCancelItem` (trava `FOR UPDATE` depois da autorização), `#assertPaidFitsWithout` | `order_items.canceled_by`, `audit_logs_action_check` | `authorizedCancel.test.js` |
+| RN-18 | `ShiftService.addCashMovement` (limite do `env.js`; `AuthService.verifyApprover` antes do `FOR UPDATE`; esperado só com gerente presente) | `cash_movements.approved_by`, `cash_movements_approval_check` | `cashWithdrawalApproval.test.js` |
+| RN-19 | `AuthThrottleService` em `AuthService.login`/`verifyApprover` e `UserService.changeOwnPassword`/`resetPassword` | `auth_throttles` (upsert atômico), `audit_logs_action_check` | `authThrottle.test.js` |
 | RN-16 | `hasRole`, `authenticateToken` (confere `active`/`token_version`), `UserService` | `users_role_check`, `users_email_normalized_check`, trava `FOR UPDATE` nos admins ativos | `users.test.js` |
 
 Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Executando os Testes Automatizados" no [README](../README.md).
