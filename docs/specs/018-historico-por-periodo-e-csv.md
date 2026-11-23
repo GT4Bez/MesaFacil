@@ -30,7 +30,7 @@ Esta spec estende a mesma rota e o mesmo modal, sem mudar o cálculo do saldo ne
    - `out`: soma das quantidades negativas (valor negativo);
    - `net`: `in + out`.
 
-   Sem filtro, `summary` é `null`. O cálculo fica no mesmo snapshot `REPEATABLE READ` da spec 016.
+   Se o filtro ativo não retornar movimentos, `summary` vem zerado (`{ count: 0, in: 0, out: 0, net: 0 }`). Sem nenhum filtro ativo, `summary` é `null`. O cálculo fica no mesmo snapshot `REPEATABLE READ` da spec 016.
 4. **Exportação CSV:** `GET /ingredients/:id/movements.csv`, com os mesmos papéis e os mesmos filtros (`type`, `from`, `to`, `shiftId`), sem `limit` nem `before`.
    - Exporta todos os movimentos do recorte, do **mais antigo para o mais recente** (ordem de planilha).
    - Limite de 10.000 linhas. Acima disso → `422` com a mensagem "O recorte tem mais de 10.000 movimentos. Diminua o período."
@@ -39,10 +39,10 @@ Esta spec estende a mesma rota e o mesmo modal, sem mudar o cálculo do saldo ne
    - `Content-Type: text/csv; charset=utf-8`, com BOM UTF-8 no início;
    - `Content-Disposition: attachment; filename="historico-<nome-do-insumo>-<AAAA-MM-DD>.csv"`, com o nome em minúsculas, sem acento e com hífens, e a data de hoje no servidor;
    - separador `;`, decimais com vírgula e sem separador de milhar; linhas terminadas em `\r\n`;
-   - data e hora em ISO 8601 com fuso (`2026-11-23T19:42:10-03:00`), para não depender do fuso de quem abre;
+   - data e hora em ISO 8601 com fuso (`Z` ou `±HH:MM`, ex.: `2026-11-23T19:42:10-03:00` ou `.toISOString()` em UTC), para não depender do fuso de quem abre;
    - colunas, nesta ordem: `id;data;tipo;quantidade;unidade;custo_unitario;saldo_depois;quem_lancou;motivo;turno;pedido;mesa;item_vendido;qtd_vendida`;
    - `tipo` em português (`entrada`, `ajuste`, `venda`); campos vazios ficam vazios (sem `null`).
-6. **Segurança do CSV:** os campos de texto livre (`quem_lancou`, `motivo` e `item_vendido`) que começarem com `=`, `+`, `-`, `@`, tab ou `\r` recebem um `'` na frente, para a planilha não executar fórmula. Campos com `;`, aspas ou quebra de linha vão entre aspas, com as aspas internas duplicadas. As colunas numéricas não passam pelo prefixo, porque são geradas pelo servidor.
+6. **Segurança do CSV:** os campos de texto livre (`quem_lancou`, `motivo` e `item_vendido`) que começarem com `=`, `+`, `-`, `@`, tab, `\r` ou `\n` recebem um `'` na frente, para a planilha não executar fórmula. Campos com `;`, aspas ou quebra de linha vão entre aspas, com as aspas internas duplicadas. As colunas numéricas não passam pelo prefixo, porque são geradas pelo servidor.
 
 ## Modelo de dados
 
@@ -85,7 +85,7 @@ O modal "Histórico" (spec 016) ganha:
 - **"Exportar CSV":** baixa o arquivo com os filtros atuais.
   - O download usa `fetch` com o token e um `Blob` (o link direto não enviaria o `Authorization`). O nome do arquivo vem do `Content-Disposition`.
   - O `services/api.js` ganha `api.download(path)`, que devolve `{ blob, filename }` no sucesso e lança o mesmo erro da API no `4xx`/`5xx`.
-  - Enquanto baixa, o botão mostra "Exportando..." e fica desabilitado. Um erro (por exemplo, o `422` de mais de 10.000 linhas) aparece no modal.
+  - Enquanto baixa, o botão mostra "Exportando..." e fica desabilitado (em estado próprio, sem esconder ou travar o "Carregar mais" da lista). Um erro (por exemplo, o `422` de mais de 10.000 linhas) aparece no modal.
 - Trocar qualquer filtro recarrega a lista do início, como o filtro por tipo já faz.
 - No celular, os filtros quebram em linhas, e o botão "Exportar CSV" fica no fim do painel.
 
