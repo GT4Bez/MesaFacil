@@ -6,9 +6,12 @@ import { useEffect, useRef, useState } from 'react'
 // - pausa com `enabled: false` (ação em andamento ou modal aberto);
 // - `isActive()` fica falso depois de desmontar ou pausar: a tela descarta a resposta atrasada.
 // Devolve `error`: a mensagem da última falha em segundo plano, limpa na próxima atualização bem-sucedida.
+// e `refreshing`, verdadeiro enquanto a atualização em segundo plano está em andamento.
 export function usePolling(callback, intervalMs, { enabled = true } = {}) {
   const saved = useRef(callback)
   const [error, setError] = useState('')
+  // Verdadeiro enquanto uma atualização em segundo plano está em andamento (anima o botão "Atualizar").
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     saved.current = callback
@@ -29,6 +32,7 @@ export function usePolling(callback, intervalMs, { enabled = true } = {}) {
     async function tick() {
       if (!active || running) return
       running = true
+      setRefreshing(true)
       try {
         await saved.current(isActive)
         if (active) setError('')
@@ -36,6 +40,7 @@ export function usePolling(callback, intervalMs, { enabled = true } = {}) {
         if (active) setError(e.message)
       } finally {
         running = false
+        setRefreshing(false)
         schedule()
       }
     }
@@ -53,5 +58,5 @@ export function usePolling(callback, intervalMs, { enabled = true } = {}) {
     }
   }, [intervalMs, enabled])
 
-  return { error }
+  return { error, refreshing }
 }
