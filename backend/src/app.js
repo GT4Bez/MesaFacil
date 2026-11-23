@@ -15,7 +15,8 @@ import { errorMiddleware } from './middlewares/errorMiddleware.js';
 
 const app = express();
 
-app.use(cors({ origin: env.corsOrigins }));
+// Spec 018: o navegador só lê o nome do CSV (Content-Disposition) se o header for exposto.
+app.use(cors({ origin: env.corsOrigins, exposedHeaders: ['Content-Disposition'] }));
 app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/tables', tableRoutes);

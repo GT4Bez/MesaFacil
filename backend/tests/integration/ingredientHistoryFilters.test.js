@@ -208,6 +208,12 @@ describe('Histórico do insumo por período, turno e CSV (spec 018)', () => {
     assert.equal(missing.status, 404)
     assert.equal(missing.json.success, false)
     assert.equal((await csv('', 'admin')).status, 200)
+
+    // O frontend roda em outra origem: o nome do arquivo precisa ser exposto pelo CORS.
+    const cross = await fetch(`${server.base}/ingredients/${carne.id}/movements.csv`, {
+      headers: { Authorization: `Bearer ${staff.manager.token}`, Origin: 'http://localhost:5173' },
+    })
+    assert.match(cross.headers.get('access-control-expose-headers') ?? '', /Content-Disposition/i)
   })
 
   test('CSV: acima do limite de linhas → 422 (limite injetado no service)', async () => {
