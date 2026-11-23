@@ -3,6 +3,8 @@ import { ShiftReportRepository } from '../repositories/ShiftReportRepository.js'
 import { CashMovementRepository } from '../repositories/CashMovementRepository.js';
 import { COUNT_METHODS, ShiftCountRepository } from '../repositories/ShiftCountRepository.js';
 import { AuditLogService } from './AuditLogService.js';
+import { AuthService } from './AuthService.js';
+import { env } from '../config/env.js';
 import { hasRole } from '../auth/roles.js';
 import { ConflictError, DomainValidationError, NotFoundError } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
@@ -10,6 +12,8 @@ import { MAX_PG_MONEY, roundMoney, toMoney } from '../domain/money.js';
 
 const cleanText = (value) => (typeof value === 'string' ? value.trim() : '');
 const MOVEMENT_ACTIONS = { withdrawal: 'cash.withdrawal', reinforcement: 'cash.reinforcement' };
+const formatBRL = (value) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value).replace(/\s/g, ' ');
 
 export class ShiftService {
   constructor(
@@ -17,17 +21,23 @@ export class ShiftService {
     auditLogService = new AuditLogService(),
     shiftReportRepository = new ShiftReportRepository(),
     cashMovementRepository = new CashMovementRepository(),
-    shiftCountRepository = new ShiftCountRepository()
+    shiftCountRepository = new ShiftCountRepository(),
+    authService = new AuthService(),
+    withdrawalApprovalLimit = env.cashWithdrawalApprovalLimit
   ) {
     this.shifts = shiftRepository;
     this.audit = auditLogService;
     this.reports = shiftReportRepository;
     this.cash = cashMovementRepository;
     this.counts = shiftCountRepository;
+    this.auth = authService;
+    this.withdrawalLimit = withdrawalApprovalLimit;
   }
 
-  findActive() {
-    return this.shifts.findActive();
+  // RN-18: o limite de sangria é público, para a tela saber quando pedir a autorização.
+  async findActive() {
+    const shift = await this.shifts.findActive();
+    return shift && { ...shift, withdrawalApprovalLimit: this.withdrawalLimit };
   }
 
   // RN-02: o índice parcial shifts_single_open_idx impede dois turnos abertos.
@@ -114,7 +124,9 @@ export class ShiftService {
 
   // RN-13: sangria e reforço. O turno fica travado (FOR UPDATE) para que movimentos simultâneos
   // não passem do saldo nem entrem depois do fechamento. O esperado só volta para gerente/admin.
-  async addCashMovement(shiftId, { type, amount, reason } = {}, user) {
+  // RN-18 (spec 014): a sangria do caixa até o limite não é comparada com o esperado, para que a
+  // resposta não revele o saldo; acima dele, o gerente autoriza na hora e a checagem volta a valer.
+  async addCashMovement(shiftId, { type, amount, reason, approver } = {}, user) {
     const action = MOVEMENT_ACTIONS[type];
     if (!action) throw new DomainValidationError('Tipo de movimento inválido: use sangria ou reforço.');
     const value = toMoney(amount);
@@ -124,18 +136,31 @@ export class ShiftService {
     const cleaned = typeof reason === 'string' ? reason.trim() : '';
     if (!cleaned) throw new DomainValidationError('Informe o motivo do movimento.');
 
+    const isManager = hasRole(user, 'manager');
+    let approvedBy = null;
+    if (type === 'withdrawal' && !isManager && value > this.withdrawalLimit) {
+      if (approver === undefined || approver === null) {
+        throw new DomainValidationError(
+          `Sangria acima de ${formatBRL(this.withdrawalLimit)} exige a autorização do gerente.`
+        );
+      }
+      // Antes de travar o turno: sem lock segurado nem 404/409 antes da autorização (como na RN-17).
+      approvedBy = await this.auth.verifyApprover(approver, user);
+    }
+    const checkBalance = type === 'withdrawal' && (isManager || approvedBy !== null);
+
     return this.shifts.transaction(async (db) => {
       const shift = await this.shifts.findById(shiftId, { lock: true }, db);
       if (!shift) throw new NotFoundError('Turno não encontrado.');
       if (shift.status === 'closed') throw new ConflictError('O turno já está encerrado.');
 
-      if (type === 'withdrawal' && value > (await this.cash.findCashSummary(shift.id, db)).expected) {
-        // Mensagem genérica: o valor esperado não pode vazar para o caixa (conferência cega, spec 008).
+      if (checkBalance && value > (await this.cash.findCashSummary(shift.id, db)).expected) {
+        // Mensagem genérica: o valor esperado não aparece na resposta (conferência cega, spec 008).
         throw new DomainValidationError('A sangria é maior que o dinheiro disponível na gaveta.');
       }
 
       const movement = await this.cash.create(
-        { shiftId: shift.id, userId: user.id, type, amount: value, reason: cleaned },
+        { shiftId: shift.id, userId: user.id, type, amount: value, reason: cleaned, approvedBy: approvedBy?.id ?? null },
         db
       );
       await this.audit.record(
@@ -145,13 +170,14 @@ export class ShiftService {
           action,
           entity: 'cash_movement',
           entityId: movement.id,
-          details: { amount: value, reason: cleaned }
+          details: { amount: value, reason: cleaned, ...(approvedBy && { approvedBy }) }
         },
         db
       );
 
-      if (!hasRole(user, 'manager')) return movement;
-      return { ...movement, expectedCash: (await this.cash.findCashSummary(shift.id, db)).expected };
+      const result = { ...movement, approvedBy };
+      if (!isManager) return result;
+      return { ...result, expectedCash: (await this.cash.findCashSummary(shift.id, db)).expected };
     });
   }
 

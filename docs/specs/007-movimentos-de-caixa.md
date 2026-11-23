@@ -11,7 +11,7 @@ O turno abre e fecha, mas o sistema não sabe quanto dinheiro deveria estar na g
 1. Abrir turno exige `openingFloat` (número ≥ 0, pode ser 0); ausente/inválido → `422`. O fundo vira um movimento `opening_float`.
 2. Sangria (`withdrawal`) e reforço (`reinforcement`): `cashier` ou `manager` (e `admin`, RN-16), turno aberto (`409` se fechado), `amount > 0` (arredondado a 2 casas, como nos pagamentos), motivo obrigatório (`422`).
 3. Dinheiro esperado na gaveta = fundo + Σ (`amount − change_amount`) dos pagamentos em dinheiro de pedidos não cancelados do turno − Σ sangrias + Σ reforços. Turno sem fundo registrado (anterior a esta spec) conta fundo 0.
-4. Sangria maior que o dinheiro esperado na gaveta → `422`, com mensagem que **não** revela o valor esperado. O movimento trava o turno (`FOR UPDATE`) para que duas sangrias simultâneas não passem do saldo nem entrem depois do fechamento.
+4. Sangria maior que o dinheiro esperado na gaveta → `422`, com mensagem que **não** revela o valor esperado. *(Desde a spec 014, RN-18: vale para gerente/admin e para a sangria autorizada; a do caixa até o limite não é comparada com o esperado.)* O movimento trava o turno (`FOR UPDATE`) para que duas sangrias simultâneas não passem do saldo nem entrem depois do fechamento.
 5. Cada movimento (exceto o fundo, que vai em `shift.opened`) gera auditoria (`cash.withdrawal` / `cash.reinforcement`) na mesma transação.
 6. Pagamentos pertencem ao turno pelo pedido (`orders.shift_id`).
 7. O dinheiro esperado só é exposto a `manager`/`admin` (RN-10), para não esvaziar a conferência cega da spec 008.

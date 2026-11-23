@@ -1,6 +1,6 @@
 # 014 — Sangria do caixa com limite e autorização do gerente
 
-> Status: proposta · Regras: RN-13, RN-14, RN-17, **RN-18 (nova)** · Telas: Caixa e Turno
+> Status: aprovada · Regras: RN-13, RN-14, RN-17, **RN-18 (nova)** · Telas: Caixa e Turno
 
 ## Contexto
 

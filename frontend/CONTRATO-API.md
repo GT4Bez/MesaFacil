@@ -44,12 +44,15 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 
 ## Turno e mesas
 
-- `GET /shifts/active` — `{ id, status: "open", countedAt }` ou `null` quando não há turno aberto. `countedAt` é o horário da contagem cega (ou `null`), sem valores (RN-14).
+- `GET /shifts/active` — `{ id, status: "open", countedAt, withdrawalApprovalLimit }` ou `null` quando não há turno aberto. `countedAt` é o horário da contagem cega (ou `null`), sem valores (RN-14); `withdrawalApprovalLimit` é o limite da sangria do caixa sem autorização (RN-18).
 - `POST /shifts` — abre o turno (gerente). Body `{ "openingFloat": 100 }` (fundo de troco, `≥ 0`; ausente/inválido → `422`, RN-13).
 - `POST /shifts/:id/cash-movements` — sangria/reforço (caixa e gerente). Body `{ "type": "withdrawal" | "reinforcement", "amount": 50, "reason": "Cofre" }`.
+  RN-18: sangria do `cashier` acima de `withdrawalApprovalLimit` exige `"approver": { "email", "password" }` de um gerente/admin
+  (`422` sem ele, com o limite na mensagem; `403` "Autorização do gerente inválida."; `429` pela RN-19). Até o limite, a sangria
+  do caixa não é comparada com o esperado. A resposta traz `approvedBy: { id, name }` ou `null`.
   Resposta `201` `{ id, type, amount, reason, createdAt }`; só para gerente/admin vem também `expectedCash`.
-  `422` sem motivo, valor inválido ou sangria maior que a gaveta (a mensagem não revela o valor); `409` turno encerrado.
-- `GET /shifts/:id/cash-movements` — `[{ id, type, amount, reason, by, createdAt }]` (caixa e gerente), o fundo primeiro; nunca traz o esperado.
+  `422` sem motivo, valor inválido ou sangria do gerente/autorizada maior que a gaveta (a mensagem não revela o valor); `409` turno encerrado.
+- `GET /shifts/:id/cash-movements` — `[{ id, type, amount, reason, by, approvedBy, createdAt }]` (caixa e gerente), o fundo primeiro; nunca traz o esperado. `approvedBy` é o nome de quem autorizou a sangria (RN-18) ou `null`.
 - `PUT /shifts/:id/count` — contagem cega do caixa (`cashier`; gerente → `403`). Body
   `{ "declared": { "cash": 412.5, "card": 980, "pix": 310 }, "note": "opcional" }`. Resposta `{ shiftId, countedAt, declared, note }`,
   **sem o esperado**. `422` declarado ausente/negativo; `409` turno encerrado ou com pedido ativo. Recontar substitui (RN-14).
