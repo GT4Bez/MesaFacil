@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAction } from '../hooks/useAction'
 import { api } from '../services/api'
 import Modal from '../components/Modal'
+import IngredientHistoryModal from '../components/IngredientHistoryModal'
 import Toast, { useToast } from '../components/Toast'
 import { formatMoney, formatQuantity, UNIT_LABELS } from '../utils/format'
 
@@ -13,6 +14,8 @@ export default function Ingredients() {
   const [ingredients, setIngredients] = useState(null)
   // Modal aberto: { kind: 'form' | 'purchase' | 'adjustment', ingredient, values }
   const [dialog, setDialog] = useState(null)
+  // Spec 016: insumo com o histórico aberto.
+  const [historyFor, setHistoryFor] = useState(null)
   const { showToast, toastProps } = useToast()
   const { busy, error, clearError, run } = useAction()
 
@@ -149,6 +152,9 @@ export default function Ingredients() {
                 >
                   Editar
                 </button>
+                <button className="outline-btn" disabled={busy} onClick={() => setHistoryFor(item)}>
+                  Histórico
+                </button>
               </div>
             </article>
           ))}
@@ -167,6 +173,7 @@ export default function Ingredients() {
       {dialog && (
         <IngredientDialog dialog={dialog} busy={busy} error={error} onChange={setValue} onSubmit={submit} onClose={close} />
       )}
+      {historyFor && <IngredientHistoryModal ingredient={historyFor} onClose={() => setHistoryFor(null)} />}
       <Toast {...toastProps} />
     </>
   )

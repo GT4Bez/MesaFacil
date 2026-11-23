@@ -1267,6 +1267,10 @@ footer span {
   color: var(--text);
   animation: modal-in 160ms ease-out;
 }
+/* Spec 016: modal largo para tabelas (o celular continua com o painel inferior, abaixo). */
+.modal-wide {
+  width: min(880px, calc(100vw - 32px));
+}
 /* Spec 012: o resto da página fica escurecido e desfocado enquanto o modal está aberto. */
 .modal::backdrop {
   background: rgb(36 31 32 / 0.4);
@@ -1616,5 +1620,82 @@ footer span {
 @media (max-width: 650px) {
   .shift-banner a.dark-btn {
     white-space: nowrap;
+  }
+}
+
+/* Spec 016: histórico de movimentos do insumo. */
+.history-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.history-summary strong {
+  font-size: 20px;
+}
+.history-filters {
+  margin: 0 0 12px;
+}
+.history-filters .category {
+  min-height: var(--touch);
+}
+.history-table th:last-child,
+.history-table td.history-detail {
+  text-align: left;
+}
+.history-table td small {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  margin-top: 2px;
+}
+.history-table .qty-in {
+  color: var(--success);
+  font-weight: 700;
+}
+.history-table .qty-out {
+  color: var(--brand);
+  font-weight: 700;
+}
+.history-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+.history-more .outline-btn {
+  min-height: var(--touch);
+}
+@media (max-width: 650px) {
+  /* Cada movimento vira um cartão. */
+  .history-table thead {
+    display: none;
+  }
+  .history-table,
+  .history-table tbody,
+  .history-table tr,
+  .history-table td {
+    display: block;
+    width: 100%;
+  }
+  .history-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--divider);
+  }
+  .history-table td {
+    padding: 0;
+    border: 0;
+  }
+  .history-table td.history-detail {
+    grid-column: 1 / -1;
+  }
+  .history-table td.history-balance::before {
+    content: 'Saldo ';
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
   }
 }
