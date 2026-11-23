@@ -239,6 +239,52 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('Cancelamento E2E').should('be.visible')
   })
 
+  it('caixa vê a mesa pedir a conta sem recarregar a página (spec 020)', () => {
+    garantirTurnoAberto()
+    const apiUrl = Cypress.expose('API_URL') || 'http://localhost:3001'
+    const tokens = {}
+    const as = (role) => ({ Authorization: `Bearer ${tokens[role]}` })
+    const req = (role, method, path, body) =>
+      cy.request({ method, url: `${apiUrl}${path}`, headers: as(role), body }).its('body.data')
+
+    for (const [role, email] of [['garcom', 'garcom'], ['cozinha', 'cozinha'], ['gerente', 'gerente']]) {
+      cy.request('POST', `${apiUrl}/auth/login`, { email: `${email}@mesafacil.com`, password: '123' }).then(({ body }) => {
+        tokens[role] = body.data.token
+      })
+    }
+
+    // Pedido pronto para pedir a conta, montado pela API.
+    cy.then(() => req('garcom', 'GET', '/tables')).then((tables) => {
+      const free = tables.find((table) => table.status === 'available')
+      req('garcom', 'POST', '/orders', { tableId: free.id }).then(({ id: orderId }) => {
+        cy.wrap(orderId).as('orderId')
+        req('garcom', 'GET', '/menu-items').then((menu) =>
+          req('garcom', 'POST', `/orders/${orderId}/items`, { menuItemId: menu[0].id }),
+        ).then(({ id: itemId }) => {
+          req('garcom', 'PATCH', `/orders/${orderId}/status`, { status: 'in_kitchen' })
+          req('cozinha', 'PATCH', `/order-items/${itemId}/status`, { status: 'preparing' })
+          req('cozinha', 'PATCH', `/order-items/${itemId}/status`, { status: 'ready' })
+        })
+      })
+    })
+
+    fazerLogin('caixa@mesafacil.com')
+    cy.get('@orderId').then((orderId) => {
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`).should('not.contain', 'Aguardando pagamento')
+      cy.contains('.updated-at', 'Atualizado às')
+
+      // O garçom pede a conta em outro terminal; o Caixa atualiza sozinho em até 10 s.
+      req('garcom', 'PATCH', `/orders/${orderId}/status`, { status: 'ready_to_pay' })
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`, { timeout: 15000 }).should(
+        'contain',
+        'Aguardando pagamento',
+      )
+
+      // Libera a mesa para os próximos cenários.
+      req('gerente', 'PATCH', `/orders/${orderId}/status`, { status: 'canceled', reason: 'Limpeza E2E' })
+    })
+  })
+
   it('sangria pelo caixa sem ver o esperado, com o gerente autorizando acima do limite; gerente vê o esperado (RN-13, RN-18)', () => {
     garantirTurnoAberto()
     const motivo = `Cofre E2E ${Date.now()}`

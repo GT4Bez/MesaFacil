@@ -2,29 +2,39 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAction } from '../hooks/useAction'
+import { usePolling } from '../hooks/usePolling'
 import { api } from '../services/api'
+import { PollWarning, UpdatedAt } from '../components/RefreshStatus'
 import StatCard from '../components/StatCard'
 import { hasRole } from '../utils/access'
+
+const POLLING_MS = 10000
 
 export default function Tables() {
   const [tables, setTables] = useState(null)
   const [shift, setShift] = useState(null)
   const { user } = useAuth()
+  const [updatedAt, setUpdatedAt] = useState(null)
   const { busy, error, run } = useAction()
   const navigate = useNavigate()
 
-  async function load() {
+  async function load(isActive = () => true) {
     const [tableData, activeShift] = await Promise.all([
       api.get('/tables'),
       api.get('/shifts/active'),
     ])
+    if (!isActive()) return
     setTables(tableData)
     setShift(activeShift)
+    setUpdatedAt(new Date())
   }
 
   useEffect(() => {
     run(load)
   }, [])
+
+  // Spec 020: mesas, tags e turno mudam sozinhos (pausa durante uma ação).
+  const { error: pollError } = usePolling(load, POLLING_MS, { enabled: !busy })
 
   const shiftOpen = shift?.status === 'open'
   const isManager = hasRole(user, 'manager')
@@ -52,12 +62,16 @@ export default function Tables() {
           <h1>Salão e mesas</h1>
           <p>Acompanhe a ocupação e inicie novos atendimentos.</p>
         </div>
-        <button className="outline-btn" disabled={busy} onClick={() => run(load)}>
-          ↻ Atualizar
-        </button>
+        <div className="refresh-group">
+          <UpdatedAt at={updatedAt} />
+          <button className="outline-btn" disabled={busy} onClick={() => run(load)}>
+            ↻ Atualizar
+          </button>
+        </div>
       </div>
 
       {error && <div className="alert error">{error}</div>}
+      {!error && <PollWarning error={pollError} />}
 
       {!tables ? (
         !error && <div className="empty-state">Carregando mesas...</div>
