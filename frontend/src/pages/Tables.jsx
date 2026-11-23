@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAction } from '../hooks/useAction'
 import { usePolling } from '../hooks/usePolling'
 import { api } from '../services/api'
-import { PollWarning, UpdatedAt } from '../components/RefreshStatus'
+import { PollWarning, RefreshButton, UpdatedAt } from '../components/RefreshStatus'
 import StatCard from '../components/StatCard'
 import { hasRole } from '../utils/access'
 
@@ -34,7 +34,7 @@ export default function Tables() {
   }, [])
 
   // Spec 020: mesas, tags e turno mudam sozinhos (pausa durante uma ação).
-  const { error: pollError } = usePolling(load, POLLING_MS, { enabled: !busy })
+  const { error: pollError, refreshing } = usePolling(load, POLLING_MS, { enabled: !busy })
 
   const shiftOpen = shift?.status === 'open'
   const isManager = hasRole(user, 'manager')
@@ -64,9 +64,7 @@ export default function Tables() {
         </div>
         <div className="refresh-group">
           <UpdatedAt at={updatedAt} />
-          <button className="outline-btn" disabled={busy} onClick={() => run(load)}>
-            ↻ Atualizar
-          </button>
+          <RefreshButton onRefresh={() => run(load)} disabled={busy} polling={refreshing} />
         </div>
       </div>
 
