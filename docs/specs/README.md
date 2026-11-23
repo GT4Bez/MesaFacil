@@ -29,6 +29,8 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 | 014 | [Sangria do caixa com limite e autorização do gerente](014-sangria-com-autorizacao.md) | Fase 2 | 007, 008, 013 |
 | 015 | [Limite de tentativas de senha](015-limite-de-tentativas.md) | Fase 2 | 011, 013, 014 |
 | 016 | [Histórico de movimentos do insumo](016-historico-de-insumo.md) | Fase 2 | 009, 012 |
+| 017 | [Tela de auditoria](017-tela-de-auditoria.md) | Fase 2 | 005, 011, 015 |
+| 018 | [Histórico do insumo por período, por turno e em CSV](018-historico-por-periodo-e-csv.md) | Fase 2 | 016, 017 |
 
 **MVP** fecha as regras obrigatórias RN-01 a RN-10 e as telas mínimas. **Fase 2** (pós-MVP) só é retomada depois do MVP entregue e com acordo da equipe; as regras novas são numeradas na ordem de implementação (RN-11 é a da spec 005).
 
