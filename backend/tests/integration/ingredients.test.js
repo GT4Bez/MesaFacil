@@ -21,8 +21,8 @@ describe('Insumos, ficha técnica, baixa automática e CMV (RN-15)', () => {
 
   const createOrder = async (tableId = tableIds[0]) =>
     (await api('POST', '/orders', { role: 'waiter', body: { tableId } })).json.data.id
-  const addItem = async (orderId, menuItemId, quantity = 1) =>
-    (await api('POST', `/orders/${orderId}/items`, { role: 'waiter', body: { menuItemId, quantity } })).json.data.id
+  const addItem = async (orderId, menuItemId, quantity = 1, role = 'waiter') =>
+    (await api('POST', `/orders/${orderId}/items`, { role, body: { menuItemId, quantity } })).json.data.id
   const send = (orderId) => api('PATCH', `/orders/${orderId}/status`, { role: 'waiter', body: { status: 'in_kitchen' } })
 
   before(async () => {
@@ -243,7 +243,8 @@ describe('Insumos, ficha técnica, baixa automática e CMV (RN-15)', () => {
 
     await saveRecipe(menu.suco, [{ ingredientId: sal.id, quantity: 1000 }])
     const orderId = await createOrder()
-    await addItem(orderId, menu.suco, 2000000)
+    // Gerente não tem o limite por lançamento do garçom (RN-21).
+    await addItem(orderId, menu.suco, 2000000, 'manager')
     // 2.000.000 × 1.000 kg não cabe na coluna: o envio inteiro volta atrás com 422.
     assert.equal((await send(orderId)).status, 422)
     const { rows } = await query(`SELECT status FROM order_items WHERE order_id = $1`, [orderId])

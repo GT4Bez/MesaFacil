@@ -7,6 +7,7 @@ export const AUDIT_CATEGORIES = Object.freeze({
   shift: ['shift.opened', 'shift.counted', 'shift.closed'],
   catalog: ['menu_item.price_changed', 'stock.adjusted'],
   security: ['auth.login_locked', 'auth.approval_locked', 'auth.password_change_locked'],
+  settings: ['setting.updated'],
   users: ['user.created', 'user.updated', 'user.password_reset', 'user.password_changed']
 });
 
