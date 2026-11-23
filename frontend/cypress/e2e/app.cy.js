@@ -288,6 +288,24 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
         })
       })
     })
+
+    // RN-20: a auditoria do gerente mostra o cancelamento autorizado por ele.
+    sair()
+    fazerLogin('gerente@mesafacil.com')
+    cy.contains('nav a', 'Auditoria').click({ force: true })
+    cy.contains('h1', 'Auditoria')
+    cy.contains('button', 'Cancelamentos').click()
+    cy.get('@orderId').then((orderId) => {
+      const doPedido = `:contains("Pedido ${orderId} ·")`
+      cy.get('.audit-entry')
+        .filter(doPedido)
+        .filter(':contains("Cancelou item")')
+        .should('have.length', 1)
+        .and('contain', 'Motivo: Cliente não recebeu o prato')
+        .and('contain', 'autorizado por Gerente')
+        .and('contain', 'Caixa')
+      cy.get('.audit-entry').filter(doPedido).filter(':contains("Cancelou pedido")').should('have.length', 1)
+    })
   })
 
   it('insumos: entrada, ficha técnica e baixa automática no envio à cozinha (RN-15)', () => {

@@ -99,6 +99,7 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-17 | `AuthService.verifyApprover`, `OrderService.authorizedCancelItem` (trava `FOR UPDATE` depois da autorização), `#assertPaidFitsWithout` | `order_items.canceled_by`, `audit_logs_action_check` | `authorizedCancel.test.js` |
 | RN-18 | `ShiftService.addCashMovement` (limite do `env.js`; `AuthService.verifyApprover` antes do `FOR UPDATE`; esperado só com gerente presente) | `cash_movements.approved_by`, `cash_movements_approval_check` | `cashWithdrawalApproval.test.js` |
 | RN-19 | `AuthThrottleService` em `AuthService.login`/`verifyApprover` e `UserService.changeOwnPassword`/`resetPassword` | `auth_throttles` (upsert atômico), `audit_logs_action_check` | `authThrottle.test.js` |
+| RN-20 | `AuditQueryService` (categorias em `domain/auditCategories.js`) e `AuditLogRepository` | `audit_logs_user_idx`, `audit_logs_action_idx` | `auditLogs.test.js` |
 | RN-16 | `hasRole`, `authenticateToken` (confere `active`/`token_version`), `UserService` | `users_role_check`, `users_email_normalized_check`, trava `FOR UPDATE` nos admins ativos | `users.test.js` |
 
 Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Executando os Testes Automatizados" no [README](../README.md).

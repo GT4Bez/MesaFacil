@@ -29,6 +29,7 @@ describe('access matrix (specs 004 e 011)', () => {
       '/admin/menu',
       '/admin/ingredients',
       '/admin/shift',
+      '/admin/audit',
       '/account',
     ])
   })

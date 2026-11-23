@@ -11,6 +11,7 @@ export const SCREENS = {
   menuAdmin: { path: '/admin/menu', label: 'Admin do cardápio', short: 'Cardápio', icon: '☰', roles: ['manager'] },
   ingredients: { path: '/admin/ingredients', label: 'Insumos', short: 'Insumos', icon: '⚖', roles: ['manager'] },
   shiftAdmin: { path: '/admin/shift', label: 'Turno e relatório', short: 'Turno', icon: '◷', roles: ['manager'] },
+  audit: { path: '/admin/audit', label: 'Auditoria', short: 'Auditoria', icon: '☷', roles: ['manager'] },
   account: { path: '/account', label: 'Minha conta', short: 'Conta', icon: '⚙', roles: ALL_ROLES },
 }
 

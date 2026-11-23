@@ -22,7 +22,7 @@ Cancelar item enviado já exige gerente e motivo (RN-05), mas cancelar o **pedid
 
 As specs da Fase 2 (movimentos de caixa, conferência cega, estoque) acrescentam suas ações com uma migration que amplia o `CHECK`, junto da funcionalidade.
 
-5. Não há tela de auditoria: os registros aparecem no relatório do turno (spec 010).
+5. Não há tela de auditoria: os registros aparecem no relatório do turno (spec 010). A tela de consulta veio depois, na [spec 017](017-tela-de-auditoria.md).
 
 ## Modelo de dados
 
@@ -81,4 +81,4 @@ Botão "Cancelar pedido" (só gerente) na comanda abre modal com motivo obrigat�
 
 ## Fora de escopo
 
-- Tela de consulta de auditoria, estorno de pagamento.
+- Tela de consulta de auditoria (tratada na [spec 017](017-tela-de-auditoria.md)), estorno de pagamento.
