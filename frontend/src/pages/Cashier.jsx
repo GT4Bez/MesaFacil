@@ -232,7 +232,7 @@ function CashDrawer({ canCount }) {
       {shift === null && <div className="empty-state">Nenhum turno aberto.</div>}
       {shift && (
         <>
-          <CashMovementForm shiftId={shift.id} onRegistered={load} />
+          <CashMovementForm shiftId={shift.id} approvalLimit={shift.withdrawalApprovalLimit} onRegistered={load} />
           <CashMovementTable movements={movements} />
           {/* RN-14: contagem cega no fim do turno, sem nenhum valor esperado na tela. */}
           <h3 className="subheading">Contagem de fechamento</h3>

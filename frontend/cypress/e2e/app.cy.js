@@ -188,24 +188,40 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('Cancelamento E2E').should('be.visible')
   })
 
-  it('sangria pelo caixa sem ver o esperado; gerente vê o dinheiro esperado (RN-13)', () => {
+  it('sangria pelo caixa sem ver o esperado, com o gerente autorizando acima do limite; gerente vê o esperado (RN-13, RN-18)', () => {
     garantirTurnoAberto()
     const motivo = `Cofre E2E ${Date.now()}`
 
     fazerLogin('caixa@mesafacil.com')
     cy.contains('section', 'Gaveta: sangria e reforço').within(() => {
-      cy.get('select[name="type"]').select('withdrawal')
-      cy.get('input[name="amount"]').type('9999999')
-      cy.get('input[name="reason"]').type('Acima da gaveta')
+      // Reforço garante dinheiro na gaveta para a sangria autorizada (que volta a checar o esperado).
+      cy.get('select[name="type"]').select('reinforcement')
+      cy.get('input[name="amount"]').type('300')
+      cy.get('input[name="reason"]').type('Troco do banco')
       cy.contains('button', 'Registrar movimento').click()
-      // RN-18: acima do limite, o caixa precisa da autorização do gerente (o saldo não é revelado).
-      cy.contains('Sangria acima de R$ 200,00 exige a autorização do gerente.').should('be.visible')
+      cy.contains('Reforço registrado com sucesso!').should('be.visible')
 
-      cy.get('input[name="amount"]').clear().type('10')
-      cy.get('input[name="reason"]').clear().type(motivo)
+      // RN-18: acima do limite, o gerente autoriza no mesmo terminal (senha errada primeiro).
+      cy.get('select[name="type"]').select('withdrawal')
+      cy.get('input[name="amount"]').type('250')
+      cy.contains('fieldset', 'Autorização do gerente').should('be.visible')
+      cy.get('input[name="reason"]').type(`${motivo} autorizada`)
+      cy.get('input[name="approverEmail"]').type('gerente@mesafacil.com')
+      cy.get('input[name="approverPassword"]').type('senha-errada')
+      cy.contains('button', 'Registrar movimento').click()
+      cy.contains('Autorização do gerente inválida.').should('be.visible')
+      cy.get('input[name="approverPassword"]').should('have.value', '').type('123')
       cy.contains('button', 'Registrar movimento').click()
       cy.contains('Sangria registrada com sucesso!').should('be.visible')
-      cy.contains('td', motivo).should('be.visible')
+      cy.contains('td', `${motivo} autorizada`).should('contain', 'autorizada por Gerente')
+
+      // Até o limite, a sangria do caixa entra só com valor e motivo.
+      cy.get('input[name="amount"]').type('10')
+      cy.contains('fieldset', 'Autorização do gerente').should('not.exist')
+      cy.get('input[name="reason"]').type(motivo)
+      cy.contains('button', 'Registrar movimento').click()
+      cy.contains('Sangria registrada com sucesso!').should('be.visible')
+      cy.contains('td', new RegExp(`^${motivo}`)).should('be.visible')
     })
     cy.contains(/esperado/i).should('not.exist')
     sair()

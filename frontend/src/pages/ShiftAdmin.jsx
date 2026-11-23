@@ -142,7 +142,11 @@ export default function ShiftAdmin() {
               onClose={closeShift}
               cashForm={
                 activeShift?.id === report.shift.id && (
-                  <CashMovementForm shiftId={activeShift.id} onRegistered={() => load()} />
+                  <CashMovementForm
+                    shiftId={activeShift.id}
+                    approvalLimit={activeShift.withdrawalApprovalLimit}
+                    onRegistered={() => load()}
+                  />
                 )
               }
             />
