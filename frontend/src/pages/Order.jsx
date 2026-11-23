@@ -9,6 +9,7 @@ import Toast, { useToast } from '../components/Toast'
 import { hasRole } from '../utils/access'
 import { api } from '../services/api'
 import { formatMoney, ITEM_STATUS_LABELS, ORDER_STATUS_LABELS } from '../utils/format'
+import { reopenConflictMessage } from '../utils/reopen'
 
 const ALL_CATEGORIES = 'Todos'
 const ACTIVE_ORDER_STATUSES = ['open', 'in_kitchen', 'ready_to_pay']
@@ -40,7 +41,9 @@ export default function Order() {
   }
 
   async function loadOrder() {
-    setOrder(await api.get(`/orders/${id}`))
+    const data = await api.get(`/orders/${id}`)
+    setOrder(data)
+    return data
   }
 
   useEffect(() => {
@@ -96,10 +99,24 @@ export default function Order() {
   }
 
   // Spec 019: a conta volta ao atendimento; os pagamentos já feitos continuam valendo.
+  // A comanda é recarregada mesmo quando a reabertura falha (ex.: o caixa reabriu antes → 409),
+  // para a tela não ficar mostrando um status que já mudou.
   async function confirmReopen(reason) {
-    const reopened = await change(() => api.post(`/orders/${id}/reopen`, { reason: reason || null }))
-    if (reopened) showToast('Conta reaberta: já dá para lançar mais itens')
-    return reopened
+    const reopened = await run(() => api.post(`/orders/${id}/reopen`, { reason: reason || null }))
+    const current = await loadOrder().catch(() => null)
+    if (reopened) {
+      showToast(
+        current
+          ? 'Conta reaberta: já dá para lançar mais itens'
+          : 'Conta reaberta. Atualize a página para ver a comanda.',
+      )
+      return true
+    }
+    const conflict = reopenConflictMessage(current?.status)
+    if (!conflict) return false
+    clearError()
+    showToast(conflict)
+    return true
   }
 
   if (!order) {
@@ -227,6 +244,7 @@ export default function Order() {
           confirmLabel="Reabrir conta"
           placeholder="Ex.: cliente pediu sobremesa"
           optional
+          maxLength={200}
           busy={busy}
           error={error}
           onConfirm={confirmReopen}

@@ -187,6 +187,19 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
 
       concluirPedidoNaCozinha(orderId)
       pedirConta(orderId)
+
+      // O caixa também reabre: a tag some da lista e o garçom pede a conta de novo.
+      fazerLogin('caixa@mesafacil.com')
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`).click()
+      cy.contains('.order-status-line', 'Aguardando pagamento')
+      cy.contains('.order-status-line button', 'Reabrir conta').click()
+      cy.get('dialog[open]').within(() => cy.contains('button', 'Reabrir conta').click())
+      cy.contains('[role="status"]', 'reaberta').should('be.visible')
+      cy.contains('.order-status-line', 'Na cozinha')
+      cy.contains('button.cash-table', `Comanda ativa · #${orderId}`).should('not.contain', 'Aguardando pagamento')
+      sair()
+
+      pedirConta(orderId)
       pagarEFecharNoCaixa(orderId)
     })
 

@@ -7,6 +7,7 @@ import AuthorizedCancelModal from '../components/AuthorizedCancelModal'
 import ReasonModal from '../components/ReasonModal'
 import Toast, { useToast } from '../components/Toast'
 import { formatMoney, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../utils/format'
+import { reopenConflictMessage } from '../utils/reopen'
 import { CashMovementForm, CashMovementTable } from '../components/CashMovements'
 import { ShiftCountForm } from '../components/ShiftClosing'
 
@@ -39,7 +40,9 @@ export default function Cashier() {
   }
 
   async function loadBill() {
-    setBill(await api.get(`/orders/${orderId}/bill`))
+    const data = await api.get(`/orders/${orderId}/bill`)
+    setBill(data)
+    return data
   }
 
   useEffect(() => {
@@ -113,18 +116,23 @@ export default function Cashier() {
   }
 
   // Spec 019: a conta volta ao atendimento; os pagamentos registrados continuam valendo.
+  // A conta e a lista são recarregadas mesmo quando a reabertura falha (ex.: o garçom reabriu antes → 409).
   async function confirmReopen(reason) {
     const table = tables.find((candidate) => candidate.activeOrderId === orderId)
-    const ok = await reopenAction.run(async () => {
-      await api.post(`/orders/${orderId}/reopen`, { reason: reason || null })
-      await Promise.all([loadBill(), loadTables()])
-    })
+    const ok = await reopenAction.run(() => api.post(`/orders/${orderId}/reopen`, { reason: reason || null }))
+    const [current] = await Promise.all([loadBill().catch(() => null), loadTables().catch(() => null)])
     if (ok) {
       setSuccess('')
       setLastChange(0)
-      showToast(table ? `Conta da mesa ${table.number} reaberta` : 'Conta reaberta')
+      const done = table ? `Conta da mesa ${table.number} reaberta` : 'Conta reaberta'
+      showToast(current ? done : `${done}. Atualize a página para ver o extrato.`)
+      return true
     }
-    return ok
+    const conflict = reopenConflictMessage(current?.status)
+    if (!conflict) return false
+    reopenAction.clearError()
+    showToast(conflict)
+    return true
   }
 
   async function closeOrder() {
@@ -219,6 +227,7 @@ export default function Cashier() {
           confirmLabel="Reabrir conta"
           placeholder="Ex.: cliente pediu sobremesa"
           optional
+          maxLength={200}
           busy={reopenAction.busy}
           error={reopenAction.error}
           onConfirm={confirmReopen}

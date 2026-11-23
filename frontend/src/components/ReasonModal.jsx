@@ -12,6 +12,7 @@ export default function ReasonModal({
   onClose,
   optional = false,
   placeholder = 'Ex.: cliente desistiu',
+  maxLength = null,
 }) {
   async function handleSubmit(event) {
     event.preventDefault()
@@ -19,6 +20,12 @@ export default function ReasonModal({
     const reason = field.value.trim()
     if (!reason && !optional) {
       field.value = ''
+      field.reportValidity()
+      return
+    }
+    // O limite vale para o texto sem os espaços das pontas, como na API.
+    if (maxLength && reason.length > maxLength) {
+      field.setCustomValidity(`Use até ${maxLength} caracteres (hoje: ${reason.length}).`)
       field.reportValidity()
       return
     }
@@ -35,8 +42,8 @@ export default function ReasonModal({
             name="reason"
             rows="3"
             required={!optional}
-            maxLength={optional ? 200 : undefined}
             autoFocus
+            onInput={(event) => event.currentTarget.setCustomValidity('')}
             placeholder={placeholder}
           />
         </label>
