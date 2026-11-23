@@ -15,6 +15,11 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 
 - Sucesso: `{ "success": true, "data": ... }` — os formatos abaixo descrevem o conteúdo de `data`.
 - Erro: `{ "success": false, "error": "mensagem" }` — o frontend exibe `error` ao usuário.
+- Spec 021: `error` é escrito para quem usa a tela. Diz o que aconteceu e o próximo passo, com os mesmos rótulos da
+  interface (ex.: "Só Caixa ou Gerente podem encerrar o pedido. Você entrou como Garçom."; "Ainda faltam R$ 46,90 para
+  quitar o pedido."; "A conta já foi pedida (Aguardando pagamento). Reabra a conta para lançar mais itens."). Erro
+  inesperado (`500`) traz também `reference` (8 caracteres), repetido na mensagem e no log do servidor. Quando a resposta
+  não tem o envelope (ex.: `502` do proxy), o `api.js` monta a mensagem pelo status.
 
 ## Autenticação
 
@@ -48,7 +53,7 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `POST /shifts` — abre o turno (gerente). Body `{ "openingFloat": 100 }` (fundo de troco, `≥ 0`; ausente/inválido → `422`, RN-13).
 - `POST /shifts/:id/cash-movements` — sangria/reforço (caixa e gerente). Body `{ "type": "withdrawal" | "reinforcement", "amount": 50, "reason": "Cofre" }`.
   RN-18: sangria do `cashier` acima de `withdrawalApprovalLimit` exige `"approver": { "email", "password" }` de um gerente/admin
-  (`422` sem ele, com o limite na mensagem; `403` "Autorização do gerente inválida."; `429` pela RN-19). Até o limite, a sangria
+  (`422` sem ele, com o limite na mensagem; `403` "Autorização recusada: e-mail ou senha do gerente incorretos, ou o usuário não é um gerente ativo."; `429` pela RN-19). Até o limite, a sangria
   do caixa não é comparada com o esperado. A resposta traz `approvedBy: { id, name }` ou `null`.
   Resposta `201` `{ id, type, amount, reason, createdAt }`; só para gerente/admin vem também `expectedCash`.
   `422` sem motivo, valor inválido ou sangria do gerente/autorizada maior que a gaveta (a mensagem não revela o valor); `409` turno encerrado.
@@ -101,7 +106,7 @@ redireciona para a home. O backend continua respondendo `403` como barreira real
 - `POST /order-items/:id/authorized-cancel` — só `cashier` (e `admin`). Body
   `{ "reason": "Cliente não recebeu o prato", "approver": { "email": "gerente@mesafacil.com", "password": "..." } }`.
   Resposta `{ "id": "21", "status": "canceled", "approvedBy": { "id": "4", "name": "Gerente" } }` (RN-17).
-  Erros: `422` sem motivo/autorização; `403` "Autorização do gerente inválida." (não encerra a sessão);
+  Erros: `422` sem motivo/autorização; `403` "Autorização recusada: e-mail ou senha do gerente incorretos, ou o usuário não é um gerente ativo." (não encerra a sessão);
   `429` autorização bloqueada por tentativas (RN-19); `404` item inexistente; `409` item já cancelado, pedido inativo ou pago acima do novo total.
 - `PATCH /orders/:id/status` — body `{ "status": "in_kitchen" | "ready_to_pay" | "closed" }`.
   Transição inválida deve ser rejeitada (RN-03, RN-06, RN-07).

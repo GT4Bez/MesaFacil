@@ -6,7 +6,7 @@ import { startServer } from '../support/server.js'
 import { TEST_PASSWORD } from '../support/env.js'
 
 const LIMIT_MESSAGE = 'Sangria acima de R$ 200,00 exige a autorização do gerente.'
-const INVALID = 'Autorização do gerente inválida.'
+const INVALID = 'Autorização recusada: e-mail ou senha do gerente incorretos, ou o usuário não é um gerente ativo.'
 
 describe('Sangria do caixa com limite e autorização do gerente (RN-18)', () => {
   let server

@@ -36,10 +36,10 @@ export class AuditQueryService {
   #category(value, isAdmin) {
     if (value === undefined) return null;
     if (typeof value !== 'string' || !Object.hasOwn(AUDIT_CATEGORIES, value)) {
-      throw new DomainValidationError(`category inválida: use ${Object.keys(AUDIT_CATEGORIES).join(', ')}.`);
+      throw new DomainValidationError(`Categoria (category) inválida: use ${Object.keys(AUDIT_CATEGORIES).join(', ')}.`);
     }
     if (!isAdmin && ADMIN_ONLY_CATEGORIES.includes(value)) {
-      throw new ForbiddenError('Só o admin consulta a administração de usuários.');
+      throw new ForbiddenError('Só o Administrador pode ver os registros de usuários.');
     }
     return value;
   }

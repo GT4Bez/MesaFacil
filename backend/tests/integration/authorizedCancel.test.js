@@ -5,7 +5,7 @@ import { createStaff, createTables, createMenuItem, createUser } from '../suppor
 import { startServer } from '../support/server.js'
 import { TEST_PASSWORD } from '../support/env.js'
 
-const INVALID = 'Autorização do gerente inválida.'
+const INVALID = 'Autorização recusada: e-mail ou senha do gerente incorretos, ou o usuário não é um gerente ativo.'
 const OVERPAID = 'O valor já pago passaria do novo total da conta. Estorno não é suportado.'
 
 describe('Cancelamento de item no caixa com autorização do gerente (RN-17)', () => {

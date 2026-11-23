@@ -3,6 +3,7 @@ import { UserRepository } from '../repositories/UserRepository.js';
 import { AuditLogService } from './AuditLogService.js';
 import { AuthThrottleService } from './AuthThrottleService.js';
 import { ROLES } from '../auth/roles.js';
+import { orList, ROLE_LABELS } from '../domain/labels.js';
 import { ConflictError, DomainValidationError, NotFoundError } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
 
@@ -17,12 +18,12 @@ function parseName(value) {
 
 function parseEmail(value) {
   const email = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (!EMAIL_PATTERN.test(email) || email.length > 255) throw new DomainValidationError('E-mail inválido.');
+  if (!EMAIL_PATTERN.test(email) || email.length > 255) throw new DomainValidationError('E-mail inválido: use o formato nome@dominio.com (até 255 caracteres).');
   return email;
 }
 
 function parseRole(value) {
-  if (!ROLES.includes(value)) throw new DomainValidationError('Papel inválido.');
+  if (!ROLES.includes(value)) throw new DomainValidationError(`Papel inválido: use ${orList(ROLES.map((role) => `${role} (${ROLE_LABELS[role]})`))}.`);
   return value;
 }
 
@@ -35,7 +36,7 @@ function parsePassword(value) {
 }
 
 function parseActive(value) {
-  if (typeof value !== 'boolean') throw new DomainValidationError('Situação inválida.');
+  if (typeof value !== 'boolean') throw new DomainValidationError('A situação deve ser true (ativo) ou false (inativo).');
   return value;
 }
 
@@ -57,7 +58,7 @@ export class UserService {
     const filters = {};
     if (role !== undefined) filters.role = parseRole(role);
     if (active !== undefined) {
-      if (!['true', 'false'].includes(active)) throw new DomainValidationError('Filtro de situação inválido.');
+      if (!['true', 'false'].includes(active)) throw new DomainValidationError('Filtro de situação inválido: use active=true ou active=false.');
       filters.active = active === 'true';
     }
     return this.users.findAll(filters);

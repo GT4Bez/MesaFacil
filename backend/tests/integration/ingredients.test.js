@@ -239,7 +239,7 @@ describe('Insumos, ficha técnica, baixa automática e CMV (RN-15)', () => {
     assert.equal((await api('POST', `/ingredients/${sal.id}/purchases`, { body: { quantity: 600000000, unitCost: 1 } })).status, 201)
     const overflow = await api('POST', `/ingredients/${sal.id}/purchases`, { body: { quantity: 500000000, unitCost: 1 } })
     assert.equal(overflow.status, 422)
-    assert.equal(overflow.json.error, 'Valor fora do limite permitido.')
+    assert.equal(overflow.json.error, 'Um valor passou do limite permitido (número grande demais). Confira as quantidades e valores.')
 
     await saveRecipe(menu.suco, [{ ingredientId: sal.id, quantity: 1000 }])
     const orderId = await createOrder()

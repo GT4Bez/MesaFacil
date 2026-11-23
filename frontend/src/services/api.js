@@ -22,16 +22,34 @@ async function send(method, path, body) {
       body: body && JSON.stringify(body),
     })
   } catch {
-    throw new Error('Não foi possível conectar ao servidor.')
+    throw new Error(OFFLINE_MESSAGE)
   }
   if (response.status === 401 && token && path !== '/auth/login') onUnauthorized?.()
   return response
 }
 
-// Os erros vêm sempre no envelope { success: false, error }.
+// Spec 021: quando a resposta não traz o envelope (ex.: o túnel devolve 502 em HTML), a mensagem
+// explica o que provavelmente aconteceu em vez de só mostrar o número.
+export const OFFLINE_MESSAGE = 'Sem conexão com o servidor. Verifique a internet e tente de novo.'
+const UNAVAILABLE = 'O servidor está indisponível no momento (reiniciando ou fora do ar). Tente de novo em alguns segundos.'
+const STATUS_MESSAGES = {
+  401: 'Sua sessão expirou. Faça login novamente.',
+  403: 'Seu usuário não tem permissão para esta ação.',
+  404: 'Não encontrado: o endereço ou o registro não existe mais. Atualize a tela.',
+  413: 'Os dados enviados são grandes demais para o servidor.',
+  429: 'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.',
+  500: 'Erro inesperado no servidor. Tente de novo; se continuar, avise o suporte.',
+  502: UNAVAILABLE,
+  503: UNAVAILABLE,
+  504: 'O servidor demorou demais para responder. Tente de novo em alguns segundos.',
+}
+export const statusMessage = (status) =>
+  STATUS_MESSAGES[status] ?? `O servidor respondeu com erro ${status} e não explicou o motivo. Tente de novo.`
+
+// Os erros da API vêm no envelope { success: false, error }.
 async function failure(response) {
   const payload = await response.json().catch(() => null)
-  return new Error(payload?.error || `Erro ${response.status}. Tente novamente.`)
+  return new Error(payload?.error || statusMessage(response.status))
 }
 
 // A API responde sempre no envelope { success, data } ou { success, error }.

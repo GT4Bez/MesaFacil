@@ -306,7 +306,7 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       cy.get('input[name="approverEmail"]').type('gerente@mesafacil.com')
       cy.get('input[name="approverPassword"]').type('senha-errada')
       cy.contains('button', 'Registrar movimento').click()
-      cy.contains('Autorização do gerente inválida.').should('be.visible')
+      cy.contains('Autorização recusada: e-mail ou senha do gerente incorretos').should('be.visible')
       cy.get('input[name="approverPassword"]').should('have.value', '').type('123')
       cy.contains('button', 'Registrar movimento').click()
       cy.contains('Sangria registrada com sucesso!').should('be.visible')
@@ -362,7 +362,7 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       cy.get('input[name="email"]').type('gerente@mesafacil.com')
       cy.get('input[name="password"]').type('senha-errada')
       cy.contains('button', 'Cancelar item').click()
-      cy.contains('Autorização do gerente inválida.').should('be.visible')
+      cy.contains('Autorização recusada: e-mail ou senha do gerente incorretos').should('be.visible')
 
       cy.get('input[name="password"]').type('123')
       cy.contains('button', 'Cancelar item').click()

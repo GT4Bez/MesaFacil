@@ -71,7 +71,7 @@ export class AuthService {
         userId: requester.id,
         details: { approverEmail }
       });
-      throw new ForbiddenError('Autorização do gerente inválida.');
+      throw new ForbiddenError('Autorização recusada: e-mail ou senha do gerente incorretos, ou o usuário não é um gerente ativo.');
     }
     await this.throttle.reset('approval', requester.id);
     return { id: String(approver.id), name: approver.name };

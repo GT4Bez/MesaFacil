@@ -25,7 +25,7 @@ const CSV_LIMIT = 10000;
 // Specs 016 e 018: filtros do histórico (strings da query; ausentes ficam null).
 function parseHistoryFilters({ type, from, to, shiftId } = {}) {
   if (type !== undefined && !MOVEMENT_TYPES.includes(type)) {
-    throw new DomainValidationError('type inválido: use purchase, adjustment ou sale.');
+    throw new DomainValidationError('Tipo de movimento inválido: use purchase (entrada), adjustment (ajuste) ou sale (venda).');
   }
   return { type: type ?? null, ...parseDateRange({ from, to }), shiftId: parseId(shiftId, 'shiftId') };
 }
@@ -147,10 +147,10 @@ export class IngredientService {
   async addPurchase(id, { quantity, unitCost } = {}, user) {
     const amount = toQuantity(quantity);
     if (amount === null || !(amount > 0) || amount > MAX_STOCK) {
-      throw new DomainValidationError('Quantidade da entrada inválida.');
+      throw new DomainValidationError('A quantidade da entrada deve ser um número maior que zero.');
     }
     const cost = toMoney(unitCost);
-    if (cost === null || cost < 0 || cost > MAX_PG_MONEY) throw new DomainValidationError('Custo unitário inválido.');
+    if (cost === null || cost < 0 || cost > MAX_PG_MONEY) throw new DomainValidationError('O custo unitário deve ser um número igual ou maior que zero.');
 
     return this.stock.transaction(async (db) => {
       await this.#lockIngredient(id, db);

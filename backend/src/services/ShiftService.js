@@ -9,11 +9,10 @@ import { hasRole } from '../auth/roles.js';
 import { ConflictError, DomainValidationError, NotFoundError } from '../errors/AppError.js';
 import { isPgError } from '../errors/pgErrors.js';
 import { MAX_PG_MONEY, roundMoney, toMoney } from '../domain/money.js';
+import { formatBRL } from '../domain/labels.js';
 
 const cleanText = (value) => (typeof value === 'string' ? value.trim() : '');
 const MOVEMENT_ACTIONS = { withdrawal: 'cash.withdrawal', reinforcement: 'cash.reinforcement' };
-const formatBRL = (value) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value).replace(/\s/g, ' ');
 
 export class ShiftService {
   constructor(
@@ -131,7 +130,7 @@ export class ShiftService {
     if (!action) throw new DomainValidationError('Tipo de movimento inválido: use sangria ou reforço.');
     const value = toMoney(amount);
     if (value === null || !(value > 0) || value > MAX_PG_MONEY) {
-      throw new DomainValidationError('Valor do movimento inválido.');
+      throw new DomainValidationError('O valor do movimento deve ser um número maior que zero.');
     }
     const cleaned = typeof reason === 'string' ? reason.trim() : '';
     if (!cleaned) throw new DomainValidationError('Informe o motivo do movimento.');

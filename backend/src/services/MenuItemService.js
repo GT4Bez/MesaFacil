@@ -2,6 +2,7 @@ import { MenuItemRepository } from '../repositories/MenuItemRepository.js';
 import { ShiftRepository } from '../repositories/ShiftRepository.js';
 import { AuditLogService } from './AuditLogService.js';
 import { DomainValidationError, NotFoundError } from '../errors/AppError.js';
+import { formatBRL } from '../domain/labels.js';
 
 const MAX_PRICE = 99999999.99;
 const TEXT_LIMITS = { name: 100, category: 50 };
@@ -24,13 +25,13 @@ function parseMenuItem(body = {}, { partial }) {
   if (body.price !== undefined || !partial) {
     const { price } = body;
     if (typeof price !== 'number' || !Number.isFinite(price) || price < 0 || price > MAX_PRICE) {
-      throw new DomainValidationError('Preço inválido.');
+      throw new DomainValidationError(`O preço deve ser um número de R$ 0,00 a ${formatBRL(MAX_PRICE)}.`);
     }
     fields.price = roundMoney(price);
   }
 
   if (body.available !== undefined) {
-    if (typeof body.available !== 'boolean') throw new DomainValidationError('Disponibilidade inválida.');
+    if (typeof body.available !== 'boolean') throw new DomainValidationError('A disponibilidade deve ser true (no cardápio) ou false (fora de linha).');
     fields.available = body.available;
   } else if (!partial) {
     fields.available = true;

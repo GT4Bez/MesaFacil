@@ -72,3 +72,37 @@ describe('errorMiddleware com erros do banco', () => {
     assert.equal(res.body.code, 'INTERNAL_ERROR')
   })
 })
+describe('mensagens informativas (spec 021)', () => {
+  test('restrição única conhecida usa a mensagem própria; desconhecida, a genérica', () => {
+    assert.equal(
+      translatePgError(pgError('23505', { constraint: 'shift_counts_unique' })).message,
+      'A contagem deste turno já foi registrada. Atualize a tela.',
+    )
+    assert.equal(
+      translatePgError(pgError('23505', { constraint: 'outra' })).message,
+      'Já existe um cadastro com esses dados (nome, e-mail ou número repetido).',
+    )
+  })
+
+  test('erro 500 traz um código de referência, que também vai para o log', () => {
+    const logged = []
+    const original = console.error
+    console.error = (...args) => logged.push(args.join(' '))
+    const res = {
+      headersSent: false,
+      status(code) { this.code = code; return this },
+      json(body) { this.body = body; return this },
+    }
+    errorMiddleware(new Error('falha interna'), { method: 'GET', originalUrl: '/tables' }, res, () => {})
+    console.error = original
+
+    assert.equal(res.code, 500)
+    assert.match(res.body.reference, /^[0-9A-F]{8}$/)
+    assert.equal(
+      res.body.error,
+      `Erro inesperado no servidor. Tente de novo; se continuar, informe o código ${res.body.reference} ao suporte.`,
+    )
+    assert.equal(res.body.error.includes('falha interna'), false, 'não vaza a mensagem original')
+    assert.ok(logged[0].startsWith(`[erro ${res.body.reference}] GET /tables`))
+  })
+})
