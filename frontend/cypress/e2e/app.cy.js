@@ -198,7 +198,8 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       cy.get('input[name="amount"]').type('9999999')
       cy.get('input[name="reason"]').type('Acima da gaveta')
       cy.contains('button', 'Registrar movimento').click()
-      cy.contains('A sangria é maior que o dinheiro disponível na gaveta.').should('be.visible')
+      // RN-18: acima do limite, o caixa precisa da autorização do gerente (o saldo não é revelado).
+      cy.contains('Sangria acima de R$ 200,00 exige a autorização do gerente.').should('be.visible')
 
       cy.get('input[name="amount"]').clear().type('10')
       cy.get('input[name="reason"]').clear().type(motivo)

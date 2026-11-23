@@ -14,26 +14,28 @@ export class CashMovementRepository {
     this.database = database;
   }
 
-  async create({ shiftId, userId, type, amount, reason = null }, db = this.database) {
+  async create({ shiftId, userId, type, amount, reason = null, approvedBy = null }, db = this.database) {
     const { rows } = await db.query(
-      `INSERT INTO cash_movements (shift_id, user_id, type, amount, reason)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO cash_movements (shift_id, user_id, type, amount, reason, approved_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, type, amount, reason, created_at`,
-      [shiftId, userId, type, amount, reason]
+      [shiftId, userId, type, amount, reason, approvedBy]
     );
     return toMovement(rows[0]);
   }
 
   async findByShift(shiftId, db = this.database) {
     const { rows } = await db.query(
-      `SELECT cm.id, cm.type, cm.amount, cm.reason, cm.created_at, u.name AS by
+      `SELECT cm.id, cm.type, cm.amount, cm.reason, cm.created_at, u.name AS by, a.name AS approved_by
        FROM cash_movements cm
        JOIN users u ON u.id = cm.user_id
+       LEFT JOIN users a ON a.id = cm.approved_by
        WHERE cm.shift_id = $1
        ORDER BY cm.id`,
       [shiftId]
     );
-    return rows.map((row) => ({ ...toMovement(row), by: row.by }));
+    // RN-18: `approvedBy` é o nome de quem autorizou a sangria do caixa (ou null).
+    return rows.map((row) => ({ ...toMovement(row), by: row.by, approvedBy: row.approved_by }));
   }
 
   // Único cálculo do dinheiro esperado na gaveta (RN-13), usado pela sangria, pelo relatório (spec 010)

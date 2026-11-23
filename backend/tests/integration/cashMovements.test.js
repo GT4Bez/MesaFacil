@@ -94,10 +94,11 @@ describe('Movimentos de caixa: fundo, sangria e reforço (RN-13)', () => {
     assert.equal((await query('SELECT count(*)::int AS n FROM cash_movements')).rows[0].n, 1)
   })
 
-  test('sangria não passa do dinheiro esperado e o caixa nunca recebe o esperado', async () => {
+  test('sangria do gerente não passa do dinheiro esperado e o caixa nunca recebe o esperado', async () => {
     const shiftId = (await openShift(100)).json.data.id
 
-    const tooMuch = await withdraw(shiftId, 100.01)
+    // RN-13 vale para gerente/admin; a do caixa até o limite não é comparada (RN-18, cashWithdrawalApproval.test.js).
+    const tooMuch = await withdraw(shiftId, 100.01, 'manager')
     assert.equal(tooMuch.status, 422)
     assert.doesNotMatch(tooMuch.json.error, /100/)
 
@@ -106,6 +107,7 @@ describe('Movimentos de caixa: fundo, sangria e reforço (RN-13)', () => {
     assert.equal(byCashier.json.data.type, 'withdrawal')
     assert.equal(byCashier.json.data.amount, 30)
     assert.equal(byCashier.json.data.reason, 'Cofre')
+    assert.equal(byCashier.json.data.approvedBy, null)
     assert.equal('expectedCash' in byCashier.json.data, false)
 
     const reinforcement = await move(shiftId, { type: 'reinforcement', amount: 50, reason: 'Troco do banco' }, 'manager')
@@ -115,14 +117,14 @@ describe('Movimentos de caixa: fundo, sangria e reforço (RN-13)', () => {
     const byAdmin = await withdraw(shiftId, 120, 'admin')
     assert.equal(byAdmin.status, 201)
     assert.equal(byAdmin.json.data.expectedCash, 0)
-    assert.equal((await withdraw(shiftId, 0.01)).status, 422)
+    assert.equal((await withdraw(shiftId, 0.01, 'manager')).status, 422)
 
     const list = (await api('GET', `/shifts/${shiftId}/cash-movements`, { role: 'cashier' })).json.data
-    assert.deepEqual(list.map((m) => [m.type, m.amount, m.by]), [
-      ['opening_float', 100, staff.manager.name],
-      ['withdrawal', 30, staff.cashier.name],
-      ['reinforcement', 50, staff.manager.name],
-      ['withdrawal', 120, staff.admin.name],
+    assert.deepEqual(list.map((m) => [m.type, m.amount, m.by, m.approvedBy]), [
+      ['opening_float', 100, staff.manager.name, null],
+      ['withdrawal', 30, staff.cashier.name, null],
+      ['reinforcement', 50, staff.manager.name, null],
+      ['withdrawal', 120, staff.admin.name, null],
     ])
     assert.equal(list.some((m) => 'expectedCash' in m), false)
   })
@@ -159,7 +161,8 @@ describe('Movimentos de caixa: fundo, sangria e reforço (RN-13)', () => {
 
   test('duas sangrias simultâneas que juntas passam do esperado: só uma entra', async () => {
     const shiftId = (await openShift(100)).json.data.id
-    const results = await Promise.all([withdraw(shiftId, 60), withdraw(shiftId, 60, 'manager')])
+    // Gerente e admin passam pela checagem da RN-13 (a sangria do caixa até o limite não é comparada, RN-18).
+    const results = await Promise.all([withdraw(shiftId, 60, 'admin'), withdraw(shiftId, 60, 'manager')])
     assert.deepEqual(results.map((r) => r.status).sort(), [201, 422])
     const { rows } = await query(`SELECT count(*)::int AS n FROM cash_movements WHERE type = 'withdrawal'`)
     assert.equal(rows[0].n, 1)
