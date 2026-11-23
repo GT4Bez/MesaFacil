@@ -50,7 +50,7 @@ Hoje nenhuma tela mostra esses registros. Para saber quem cancelou um item, quem
 
      | `entity` | `target` |
      | :-- | :-- |
-     | `order` | `{ orderId, tableNumber }` |
+     | `order` | `{ orderId, tableNumber }` (`orderId` string, `tableNumber` number) |
      | `order_item` | `{ orderId, tableNumber, menuItem }` |
      | `menu_item` | `{ name }` (nome atual) |
      | `ingredient` | `{ name, unit }` |
@@ -103,10 +103,11 @@ Erros pelo envelope de sempre (`AppError`): `401`, `403` (`FORBIDDEN`), `422` (`
 
 ## Telas
 
-- **Nova tela "Auditoria"** em `/admin/audit` (`SCREENS.audit`, papéis `['manager']`, ícone e rótulo curto "Auditoria"). No celular, entra no menu "Mais telas" (spec 012).
+- **Nova tela "Auditoria"** em `/admin/audit` (`SCREENS.audit`, posicionada logo após `shiftAdmin` e antes de `account` em `access.js`, papéis `['manager']`, ícone e rótulo curto "Auditoria"). No celular, entra no menu "Mais telas" (spec 012) sem alterar as 4 primeiras posições da barra inferior.
 - **Filtros** no topo:
   - categoria em botões de 44 px com `aria-pressed` ("Todas", "Cancelamentos", "Caixa", "Turno", "Cardápio e estoque", "Segurança" e, só para o admin, "Usuários");
   - "Quem fez" (`select` com os `actors`, inativos marcados como "(inativo)");
+  - "Turno" (`input` numérico opcional para filtrar por `shiftId`);
   - período "De" e "Até" (`input type="date"`; o "Até" inclui o dia inteiro).
   - Trocar um filtro recarrega a lista do início.
 - **Lista** com data e hora, quem fez (nome e papel), a ação em texto e um resumo. Exemplos:
@@ -135,7 +136,7 @@ Erros pelo envelope de sempre (`AppError`): `401`, `403` (`FORBIDDEN`), `422` (`
 - [ ] **Categorias:** um teste confirma que toda ação do `CHECK` de `audit_logs` pertence a exatamente uma categoria.
 - [ ] **Testes:**
   - integração no backend (acesso, visibilidade, filtros, paginação, `actors`);
-  - Vitest (a tela carrega, o filtro de categoria troca a lista, "Carregar mais" acrescenta, o manager não vê o filtro "Usuários" e uma ação desconhecida não quebra a tela);
+  - Vitest (a tela carrega, o filtro de categoria troca a lista, "Carregar mais" acrescenta, o manager não vê o filtro "Usuários", uma ação desconhecida não quebra a tela, e atualização das listas de telas em `access.test.js` e `layout.test.jsx`);
   - Cypress (depois do cenário RN-17, a auditoria do gerente mostra o cancelamento autorizado por ele).
 - [ ] **Documentação:**
   - `docs/ESPECIFICACAO.md`: RN-20 na §3.3 e na matriz (§4);
