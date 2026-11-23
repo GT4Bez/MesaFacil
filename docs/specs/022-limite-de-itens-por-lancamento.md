@@ -23,7 +23,7 @@ O restaurante quer um teto por lançamento para o garçom, ajustável pelo admin
 ## Modelo de dados
 
 Migration `020_create_settings.sql`:
-- `settings (key VARCHAR(60) PRIMARY KEY, value JSONB NOT NULL, updated_by BIGINT REFERENCES users(id), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`, com `CHECK (key IN ('max_item_quantity_per_launch'))`;
+- `settings (id BIGINT IDENTITY PRIMARY KEY, key VARCHAR(60) NOT NULL UNIQUE, value JSONB NOT NULL, updated_by BIGINT REFERENCES users(id), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`, com `CHECK (key IN ('max_item_quantity_per_launch'))`. O `id` numérico é o `entity_id` da auditoria (`entity: 'setting'`);
 - linha inicial `('max_item_quantity_per_launch', '10')`;
 - `audit_logs_action_check` recriado com `setting.updated`.
 
