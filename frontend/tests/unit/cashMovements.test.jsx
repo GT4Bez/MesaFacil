@@ -25,9 +25,7 @@ describe('Movimentos de caixa nas telas (RN-13)', () => {
         'GET /shifts/active': () => jsonResponse({ success: true, data: { id: '5', status: 'open' } }),
         'GET /shifts/5/cash-movements': () => jsonResponse({ success: true, data: movements }),
         'POST /shifts/5/cash-movements': ({ body }) => {
-          if (body.amount > 100) {
-            return jsonResponse({ success: false, error: 'A sangria é maior que o dinheiro disponível na gaveta.' }, 422)
-          }
+          if (body.reason === 'Falha') return jsonResponse({ success: false, error: 'Valor do movimento inválido.' }, 422)
           movements = [...movements, movement('2', body.type, body.amount, body.reason, 'Caixa')]
           return jsonResponse({ success: true, data: movements.at(-1) }, 201)
         },
@@ -39,9 +37,9 @@ describe('Movimentos de caixa nas telas (RN-13)', () => {
     const drawer = (await screen.findByText('Gaveta: sangria e reforço')).closest('section')
     expect(await within(drawer).findByText('Fundo de troco')).toBeInTheDocument()
 
-    // Acima da gaveta: o erro da API aparece e nada é revelado sobre o valor esperado.
-    fillMovement(drawer, { type: 'withdrawal', amount: '150', reason: 'Cofre' })
-    expect(await within(drawer).findByText('A sangria é maior que o dinheiro disponível na gaveta.')).toBeInTheDocument()
+    // O erro da API aparece no formulário (RN-18: a sangria do caixa até o limite não depende do saldo).
+    fillMovement(drawer, { type: 'withdrawal', amount: '150', reason: 'Falha' })
+    expect(await within(drawer).findByText('Valor do movimento inválido.')).toBeInTheDocument()
 
     fillMovement(drawer, { type: 'withdrawal', amount: '40', reason: 'Cofre' })
     expect(await within(drawer).findByText('Sangria registrada com sucesso!')).toBeInTheDocument()
