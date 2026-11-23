@@ -33,7 +33,7 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
 - **RN-02 · Obrigatoriedade de turno aberto**  
   Pedidos só são criados quando existe um turno com `status = 'open'`. O turno não pode ser encerrado enquanto houver pedidos ativos vinculados a ele (`409 Conflict`).
 - **RN-03 · Máquina de estados do pedido**  
-  Fluxo linear: `open` -> `in_kitchen` -> `ready_to_pay` -> `closed`. O cancelamento (`canceled`) é permitido apenas antes de `closed`. Transições fora da ordem são rejeitadas.
+  Fluxo linear: `open` -> `in_kitchen` -> `ready_to_pay` -> `closed`. O cancelamento (`canceled`) é permitido apenas antes de `closed`. Transições fora da ordem são rejeitadas. A única volta é a reabertura da conta (`ready_to_pay` -> `in_kitchen`, `POST /orders/:id/reopen`), feita por garçom, caixa ou gerente, auditada e sem perder pagamentos ([spec 019](specs/019-aguardando-pagamento-e-reabertura.md)).
 - **RN-04 · Máquina de estados do item e trava pós-envio**  
   Fluxo do item: `pending` -> `sent` -> `preparing` -> `ready` (ou `canceled`). Após sair do estado `pending`, garçom e caixa não podem alterar quantidade ou remover o item sem autorização gerencial.
 - **RN-05 · Cancelamento de item enviado restrito ao gerente**  
@@ -73,7 +73,7 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
 - **RN-19 · Limite de tentativas de senha** ([spec 015](specs/015-limite-de-tentativas.md))  
   Login (chave: e-mail normalizado, exista ou não), autorização do gerente no caixa (chave: o caixa que pede, para não bloquear o login do gerente) e troca da própria senha (chave: o usuário) contam as falhas de senha em `auth_throttles`, com upsert atômico. 5 falhas seguidas em 15 minutos bloqueiam a chave por 15 minutos: a rota responde `429` (`TOO_MANY_ATTEMPTS`) antes de qualquer `bcrypt`, mesmo com a senha certa. Um acerto zera a chave; campos em branco não contam. O início do bloqueio grava `auth.*_locked` em `audit_logs`, numa transação própria. Redefinir a senha pelo admin desbloqueia o login e a troca de senha do usuário.
 - **RN-20 · Tela de auditoria** ([spec 017](specs/017-tela-de-auditoria.md))  
-  Gerente e admin consultam a trilha `audit_logs` só para leitura (`GET /audit-logs`), do mais recente para o mais antigo, com paginação por cursor e filtros por categoria, por quem fez, por turno e por período (ISO 8601 com fuso, `to` exclusivo); parâmetros inválidos → `422`. As ações `user.*` só aparecem para o admin (`manager` com `category=users` → `403`). Cada registro traz um resumo do alvo (pedido e mesa, item, insumo ou usuário). Não existe rota para alterar ou apagar registros.
+  Gerente e admin consultam a trilha `audit_logs` só para leitura (`GET /audit-logs`), do mais recente para o mais antigo, com paginação por cursor e filtros por categoria, por quem fez, por turno e por período (ISO 8601 com fuso, `to` exclusivo); parâmetros inválidos → `422`. As ações `user.*` só aparecem para o admin (`manager` com `category=users` → `403`). Cada registro traz um resumo do alvo (pedido e mesa, item, insumo ou usuário). A categoria "Pedidos" traz as reaberturas de conta ([spec 019](specs/019-aguardando-pagamento-e-reabertura.md)). Não existe rota para alterar ou apagar registros.
 
 ---
 
@@ -83,7 +83,7 @@ O **MesaFácil** gerencia exclusivamente o atendimento presencial em restaurante
 | :--- | :--- | :--- | :--- |
 | **RN-01** | Índice único parcial `orders_single_active_per_table_idx` + retorno `409`. | Indica mesa ocupada e direciona para a comanda existente. | Tentar criar segundo pedido em mesa ocupada. |
 | **RN-02** | Verifica turno `open` ao criar pedido e bloqueia `PATCH /shifts/:id/close` se houver pedido ativo (`409`). | Desabilita abertura de mesa livre quando o turno está fechado. | Tentar abrir pedido sem turno ou fechar turno com mesa ocupada. |
-| **RN-03** | Valida transição de status e papel em `OrderService.updateStatus`. | Exibe ações compatíveis com a etapa atual da comanda. | Forçar transição direta `open` -> `closed`. |
+| **RN-03** | Valida transição de status e papel em `OrderService.updateStatus`; reabertura em `OrderService.reopen` ([spec 019](specs/019-aguardando-pagamento-e-reabertura.md)). | Exibe ações compatíveis com a etapa atual da comanda; tag "Aguardando pagamento" no Salão e no Caixa e "Reabrir conta". | Forçar transição direta `open` -> `closed`; reabrir conta que não foi pedida (`409`). |
 | **RN-04** | Bloqueia edição de quantidade se `item.status !== 'pending'` (`409`). | Oculta controles de edição/remoção após envio à cozinha. | Tentar alterar quantidade de item `sent`. |
 | **RN-05** | Exige `role === 'manager'` (`403`) e `reason` preenchido (`422`). | Solicita justificativa em cancelamentos gerenciais. | Cancelar item enviado com perfil `waiter` (`403`) ou `manager` sem motivo (`422`). |
 | **RN-06** | Verifica se todos os itens estão `ready` ou `canceled` antes de `ready_to_pay` (`409`). | Habilita "Pedir a conta" apenas após conclusão da cozinha. | Tentar pedir a conta com item em `preparing`. |

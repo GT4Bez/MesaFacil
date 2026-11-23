@@ -18,6 +18,7 @@ const SERVICE_TAX_RATE = 0.1;
 const PAYMENT_METHODS = ['cash', 'card', 'pix'];
 const KITCHEN_FLOW = { sent: 'preparing', preparing: 'ready' };
 const MAX_PG_INT = 2147483647;
+const MAX_REOPEN_REASON = 200;
 const ORDER_TRANSITION_ROLES = {
   in_kitchen: ['waiter', 'manager'],
   ready_to_pay: ['waiter', 'manager'],
@@ -279,6 +280,37 @@ export class OrderService {
 
       await this.orders.updateStatus(orderId, status, db);
       return { id: order.id, status };
+    });
+  }
+
+  // Spec 019: a conta pedida volta ao atendimento (ready_to_pay -> in_kitchen) para lançar mais itens.
+  // Os pagamentos já registrados permanecem; a reabertura fica na auditoria.
+  async reopen(orderId, { reason } = {}, user) {
+    if (reason !== undefined && reason !== null && typeof reason !== 'string') {
+      throw new DomainValidationError('Motivo inválido.');
+    }
+    const cleaned = cleanReason(reason);
+    if (cleaned.length > MAX_REOPEN_REASON) {
+      throw new DomainValidationError(`O motivo deve ter até ${MAX_REOPEN_REASON} caracteres.`);
+    }
+
+    return this.orders.transaction(async (db) => {
+      const order = await this.#lockOrder(orderId, db);
+      if (order.status !== 'ready_to_pay') throw this.#invalidTransition();
+      const paidAmount = this.#effectivePaid(await this.orders.findPayments(orderId, db));
+      await this.orders.updateStatus(orderId, 'in_kitchen', db);
+      await this.audit.record(
+        {
+          userId: user.id,
+          shiftId: order.shiftId,
+          action: 'order.reopened',
+          entity: 'order',
+          entityId: order.id,
+          details: { reason: cleaned || null, paidAmount }
+        },
+        db
+      );
+      return { id: order.id, status: 'in_kitchen' };
     });
   }
 

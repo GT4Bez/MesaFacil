@@ -27,7 +27,7 @@ docker compose up --build
 | 6 | Cozinha | Tela **Cozinha (KDS)** (home da cozinha) | Cartão da mesa 1 com tempo de espera; atualiza sozinho a cada 5 s | KDS |
 | 7 | Gerente | Na comanda, "×" no Suco Natural já enviado | Modal exige motivo; o item fica "Cancelado" | RN-05 |
 | 8 | Cozinha | **Iniciar preparo** → **Pronto ✓** na picanha | Cartão some do KDS quando tudo fica pronto | RN-06 |
-| 9 | Garçom | **Pedir a conta** | Botão só habilita depois da cozinha | RN-06 |
+| 9 | Garçom | **Pedir a conta**; voltar ao Salão | Botão só habilita depois da cozinha; a mesa 1 aparece com a tag "Aguardando pagamento" (também no Caixa). Se faltar um item, **Reabrir conta** devolve a comanda ao atendimento | RN-03, RN-06 |
 | 10 | Caixa | **Frente de caixa** → mesa 1; marcar "Incluir 10% de taxa de serviço" | A taxa começa desligada e, marcada, fica gravada no pedido; total de R$ 98,89 sem o suco cancelado | RN-08, RN-12 |
 | 11 | Caixa | Pagar R$ 50,00 em Pix; depois digitar R$ 60,00 ainda em Pix | "Finalizar pedido e liberar mesa" bloqueado com saldo devedor; em cartão/Pix o valor é limitado ao saldo | RN-07, RN-12 |
 | 12 | Caixa | Trocar para Dinheiro, pagar R$ 60,00 e finalizar | "Troco: R$ 11,11"; o histórico mostra recebido e troco; mesa 1 volta a "Livre" | RN-07, RN-12 |
@@ -61,6 +61,8 @@ O script percorre o fluxo inteiro com `curl` e imprime cada resposta com o statu
 | RN-02 | Abrir pedido sem turno; garçom abrindo turno; encerrar turno com pedido ativo | `409`, `403`, `409` |
 | RN-01 | Segundo pedido na mesma mesa | `409` (índice único parcial no PostgreSQL) |
 | RN-03 | Pedido `open` direto para `closed` | `409` |
+| RN-03 | Reabrir conta de pedido que não está aguardando pagamento | `409` |
+| RN-03 | Cozinha reabrindo a conta; garçom reabrindo a conta pedida | `403`, `200` |
 | RN-04 | Alterar quantidade de item já enviado | `409` |
 | RN-05 | Garçom cancelando item enviado; gerente sem motivo | `403`, `422` |
 | RN-06 | Pedir a conta com item em preparo | `409` |

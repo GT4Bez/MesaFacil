@@ -52,8 +52,9 @@ PICANHA=$(id_of POST "$GARCOM" "/orders/$ORDER/items" '{"menuItemId":1,"quantity
 SUCO=$(id_of POST "$GARCOM" "/orders/$ORDER/items" '{"menuItemId":6,"quantity":2}')
 echo "itens: #$PICANHA (picanha) e #$SUCO (suco x2)"
 
-step 'RN-03: transição inválida open → closed → 409'
+step 'RN-03: transição inválida open → closed → 409; reabrir conta que não foi pedida → 409 (spec 019)'
 call PATCH "$CAIXA" "/orders/$ORDER/status" '{"status":"closed"}'
+call POST "$GARCOM" "/orders/$ORDER/reopen" '{}'
 
 step 'RN-04: depois de enviado à cozinha, o item não muda (409)'
 call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"in_kitchen"}'
@@ -76,6 +77,12 @@ step 'RN-06: a conta só é pedida com a cozinha concluída (409 → 200)'
 call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"ready_to_pay"}'
 call PATCH "$COZINHA" "/order-items/$PICANHA/status" '{"status":"preparing"}'
 call PATCH "$COZINHA" "/order-items/$PICANHA/status" '{"status":"ready"}'
+call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"ready_to_pay"}'
+
+step 'Spec 019: /tables mostra a mesa 1 aguardando pagamento; a cozinha não reabre (403); o garçom reabre (200) e pede a conta de novo'
+call GET "$GARCOM" /tables | grep -oE '[{]"id":"1",[^}]*[}]'
+call POST "$COZINHA" "/orders/$ORDER/reopen" '{}'
+call POST "$GARCOM" "/orders/$ORDER/reopen" '{"reason":"Cliente pediu mais um café"}'
 call PATCH "$GARCOM" "/orders/$ORDER/status" '{"status":"ready_to_pay"}'
 
 step 'RN-08/RN-12: taxa de 10% gravada no pedido, só caixa/gerente (garçom → 403; total 98,89 sem o item cancelado)'
