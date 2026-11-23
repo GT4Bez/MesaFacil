@@ -12,6 +12,7 @@ import ShiftAdmin from './pages/ShiftAdmin'
 import Ingredients from './pages/Ingredients'
 import Users from './pages/Users'
 import Account from './pages/Account'
+import Audit from './pages/Audit'
 import { homeFor, SCREENS } from './utils/access'
 
 export default function App() {
@@ -40,6 +41,9 @@ export default function App() {
         </Route>
         <Route element={<RoleRoute roles={SCREENS.shiftAdmin.roles} />}>
           <Route path={SCREENS.shiftAdmin.path} element={<ShiftAdmin />} />
+        </Route>
+        <Route element={<RoleRoute roles={SCREENS.audit.roles} />}>
+          <Route path={SCREENS.audit.path} element={<Audit />} />
         </Route>
         <Route element={<RoleRoute roles={SCREENS.users.roles} />}>
           <Route path={SCREENS.users.path} element={<Users />} />

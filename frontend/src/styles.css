@@ -1699,3 +1699,78 @@ footer span {
     font-size: var(--fs-xs);
   }
 }
+
+/* RN-20 (spec 017): tela de auditoria. */
+.audit-categories {
+  margin: 0 0 12px;
+}
+.audit-categories .category {
+  min-height: var(--touch);
+}
+.audit-filters {
+  align-items: flex-end;
+}
+.audit-filters input,
+.audit-filters select {
+  min-height: var(--touch);
+}
+.audit-filters input {
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 9px;
+  min-width: 0;
+  width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.audit-filters .audit-clear {
+  min-height: var(--touch);
+  flex: 0 0 auto;
+}
+.audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.audit-entry {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: 4px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--divider);
+}
+.audit-entry:last-child {
+  border-bottom: 0;
+}
+.audit-when time {
+  display: block;
+  font-weight: 700;
+}
+.audit-when small {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  margin-top: 2px;
+}
+.audit-what b {
+  display: block;
+}
+.audit-what span {
+  display: block;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+  margin-top: 2px;
+}
+@media (max-width: 650px) {
+  /* Cada registro vira um cartão. */
+  .audit-entry {
+    grid-template-columns: 1fr;
+  }
+  .audit-filters label {
+    flex: 1 1 100%;
+  }
+  .audit-filters label:has(input[type='date']) {
+    flex: 1 1 40%;
+  }
+}
