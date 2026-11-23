@@ -378,6 +378,29 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
       cy.contains('button', 'Entradas').click()
       cy.get('tbody tr').first().should('contain', 'Entrada').and('contain', '+1 kg')
       cy.get('tbody tr').should('not.contain', 'Venda')
+
+      // Spec 018: só o turno atual mostra a venda com o resumo, e o CSV traz a linha da venda.
+      cy.contains('button', 'Todos').click()
+      cy.contains('button', 'Só o turno atual').click().should('have.attr', 'aria-pressed', 'true')
+      cy.get('@orderId').then((orderId) => {
+        cy.get('tbody tr').first().should('contain', 'Venda').and('contain', `Pedido ${orderId}`)
+      })
+      cy.get('[role="status"]').should('contain', 'movimento').and('contain', 'saídas −')
+
+      cy.intercept('GET', '**/ingredients/*/movements.csv*').as('csv')
+      cy.contains('button', 'Exportar CSV').click()
+      cy.wait('@csv').then(({ request, response }) => {
+        expect(request.url).to.include('shiftId=')
+        expect(response.statusCode).to.eq(200)
+        expect(response.headers['content-disposition']).to.match(/historico-picanha-\d{4}-\d{2}-\d{2}\.csv/)
+        cy.get('@orderId').then((orderId) => {
+          const sale = String(response.body)
+            .split('\r\n')
+            .find((line) => line.includes(';venda;') && line.includes(`;${orderId};`))
+          expect(sale, 'linha da venda no CSV').to.include('-0,4;kg')
+        })
+      })
+      cy.contains('button', 'Exportar CSV').should('be.enabled')
     })
   })
 
