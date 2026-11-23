@@ -32,6 +32,10 @@ export default function Account() {
     )
     // A troca revoga o token atual: o usuário entra de novo com a senha nova.
     if (changed) logout('Senha alterada. Entre novamente com a nova senha.')
+    else {
+      // Com erro (senha atual errada ou 429 do limite de tentativas, RN-19), as senhas são descartadas.
+      for (const name of ['currentPassword', 'newPassword', 'confirmPassword']) fields[name].value = ''
+    }
   }
 
   return (
