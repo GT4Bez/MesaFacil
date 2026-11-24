@@ -161,7 +161,7 @@ export class OrderService {
       throw new BadRequestError('Status do item inválido: use "canceled", "preparing" ou "ready".');
     }
     if ((status === 'preparing' || status === 'ready') && !hasRole(user, 'kitchen', 'manager')) {
-      throw new ForbiddenError('Apenas a cozinha pode atualizar o preparo.');
+      throw new ForbiddenError(permissionMessage(['kitchen', 'manager'], user, 'atualizar o preparo dos itens'));
     }
 
     return this.orders.transaction(async (db) => {
@@ -172,7 +172,7 @@ export class OrderService {
         if (item.status !== 'pending') {
           // RN-05: item enviado só é cancelado por gerente, com motivo.
           if (!hasRole(user, 'manager')) {
-            throw new ForbiddenError('Apenas o gerente pode cancelar itens já enviados.');
+            throw new ForbiddenError(permissionMessage(['manager'], user, 'cancelar itens já enviados à cozinha'));
           }
           const cleaned = cleanReason(reason);
           if (!cleaned) throw new DomainValidationError('Informe o motivo do cancelamento.');
@@ -191,7 +191,7 @@ export class OrderService {
           );
         } else {
           if (!hasRole(user, 'waiter', 'manager')) {
-            throw new ForbiddenError('Apenas o garçom ou gerente pode remover itens pendentes.');
+            throw new ForbiddenError(permissionMessage(['waiter', 'manager'], user, 'remover itens pendentes'));
           }
           await this.#assertPaidFitsWithout(item, order, db);
           await this.orders.cancelItem(itemId, {}, db);

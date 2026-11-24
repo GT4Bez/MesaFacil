@@ -153,6 +153,10 @@ describe('KDS da cozinha (spec 003)', () => {
       for (const status of ['preparing', 'ready']) {
         const res = await api('PATCH', `/order-items/${itemIds[0]}/status`, { role, body: { status } })
         assert.equal(res.status, 403)
+        assert.equal(
+          res.json.error,
+          `Só Cozinha ou Gerente podem atualizar o preparo dos itens. Você entrou como ${role === 'waiter' ? 'Garçom' : 'Caixa'}.`,
+        )
       }
     }
   })
