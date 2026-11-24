@@ -1,21 +1,29 @@
-// Spec 023: conteúdo da página /apresentacao. Os trechos são cópias exatas do código, conferidas por
+// Specs 023 e 024: conteúdo da página /apresentacao. Os trechos são cópias exatas do código, conferidas por
 // tests/unit/presentationSnippets.test.js (arquivo e linha). Se o código mudar, atualize aqui.
 export const GROUPS = [
   {
     "id": "poo",
-    "title": "Programação Orientada a Objetos"
+    "title": "Programação Orientada a Objetos",
+    "short": "POO",
+    "intro": "O backend é organizado em classes: rotas chamam serviços, serviços chamam repositórios, e os erros formam uma hierarquia."
   },
   {
     "id": "solid",
-    "title": "SOLID"
+    "title": "SOLID",
+    "short": "SOLID",
+    "intro": "Os cinco princípios aparecem na divisão em camadas, na hierarquia de erros e na troca de colaboradores nos testes."
   },
   {
     "id": "principios",
-    "title": "KISS, YAGNI e DRY"
+    "title": "KISS, YAGNI e DRY",
+    "short": "KISS, YAGNI e DRY",
+    "intro": "Preferimos a solução simples que resolve, deixamos de fora o que ainda não é necessário e mantemos cada regra num só lugar."
   },
   {
     "id": "padroes",
-    "title": "Padrões de projeto"
+    "title": "Padrões de projeto",
+    "short": "Padrões",
+    "intro": "Padrões conhecidos que usamos, cada um com o trecho de código que o implementa."
   }
 ]
 

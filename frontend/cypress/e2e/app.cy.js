@@ -210,17 +210,33 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('Pedidos encerrados').should('be.visible')
   })
 
-  it('apresentação da arquitetura abre sem login e sem rolagem horizontal no celular (spec 023)', () => {
+  it('apresentação por tópicos abre sem login, navega pelas âncoras e não rola na horizontal no celular (specs 023 e 024)', () => {
     cy.clearLocalStorage()
     cy.viewport(375, 812)
     cy.visit('/apresentacao')
     cy.url().should('include', '/apresentacao')
     cy.contains('h1', 'Como o MesaFácil é construído')
-    cy.get('nav[aria-label="Índice"]').contains('a', 'SOLID').click()
-    cy.get('#grupo-solid').should('be.visible')
+    cy.contains('h2', 'Visão geral')
+    garantirSemScrollHorizontal()
+
+    cy.get('nav[aria-label="Tópicos"]').contains('a', 'Equipe').click()
+    cy.location('hash').should('eq', '#equipe')
+    cy.contains('article', 'Kauan Santos').should('contain', 'Frontend base em React/Vite')
+    garantirSemScrollHorizontal()
+
+    cy.get('nav[aria-label="Tópicos"]').contains('a', 'Padrões').click()
     cy.contains('article', 'Singleton').find('pre code').should('contain', 'static getInstance()')
     cy.contains('article', 'Singleton').find('figcaption a').should('contain', 'DatabaseConnection.js:6')
     garantirSemScrollHorizontal()
+
+    cy.go('back')
+    cy.location('hash').should('eq', '#equipe')
+    cy.contains('h2', 'Equipe: papel e participação')
+
+    cy.visit('/apresentacao#solid/d')
+    cy.contains('h2', 'SOLID')
+    cy.get('#d').should('be.visible')
+    cy.get('nav[aria-label="Tópicos"] a[aria-current="page"]').should('have.text', 'SOLID')
   })
 
   it('celular 375px: barra inferior navega e "Sair" fica na barra superior (spec 012)', () => {
