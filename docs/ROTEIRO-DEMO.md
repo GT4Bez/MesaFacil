@@ -107,4 +107,4 @@ Nenhuma resposta de erro expõe SQL, nome de tabela ou stack trace: erros do Pos
 | RN-21 | `OrderService.addItem`, `SettingsService` e `SettingsRepository` | `settings_key_check`, `settings.key` único | `settings.test.js` |
 | RN-16 | `hasRole`, `authenticateToken` (confere `active`/`token_version`), `UserService` | `users_role_check`, `users_email_normalized_check`, trava `FOR UPDATE` nos admins ativos | `users.test.js` |
 
-Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Executando os Testes Automatizados" no [README](../README.md).
+Os testes rodam contra PostgreSQL real a cada PR (CI no GitHub Actions); veja "Suítes Automatizadas" no [README](../README.md).
