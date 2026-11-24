@@ -30,6 +30,7 @@ export default function Order() {
   const { busy, error, clearError, run } = useAction()
   const { user } = useAuth()
   const isManager = hasRole(user, 'manager')
+  const canManageOrder = hasRole(user, 'waiter', 'manager')
   const canReopen = hasRole(user, 'waiter', 'cashier', 'manager')
 
   function openCancel(target) {
@@ -49,8 +50,12 @@ export default function Order() {
   }
 
   useEffect(() => {
-    run(() => Promise.all([loadOrder(), api.get('/menu-items').then(setMenu)]))
-  }, [id])
+    run(() =>
+      canManageOrder
+        ? Promise.all([loadOrder(), api.get('/menu-items').then(setMenu)])
+        : loadOrder(),
+    )
+  }, [id, canManageOrder])
 
   // Só o garçom tem o limite. Se a leitura falhar, a API continua barrando acima do limite.
   useEffect(() => {
@@ -145,7 +150,8 @@ export default function Order() {
   const kitchenDone =
     order.status === 'in_kitchen' && activeItems.every((item) => item.status === 'ready')
   const orderActive = ACTIVE_ORDER_STATUSES.includes(order.status)
-  const billHint = nextStepHint(order.status, activeItems)
+  // O caixa só consulta a comanda: a dica fala do que ele pode fazer, não do fluxo do garçom.
+  const billHint = canManageOrder ? nextStepHint(order.status, activeItems) : cashierHint(order.status)
 
   return (
     <>
@@ -182,8 +188,8 @@ export default function Order() {
       )}
       {error && !cancelTarget && !addTarget && !reopening && <div className="alert error">{error}</div>}
 
-      <div className="order-layout">
-        <Menu menu={menu} onPick={openAdd} />
+      <div className={canManageOrder ? 'order-layout' : undefined}>
+        {canManageOrder && <Menu menu={menu} onPick={openAdd} />}
 
         <section className="panel">
           <div className="panel-heading">
@@ -198,6 +204,7 @@ export default function Order() {
               <OrderItem
                 key={item.id}
                 item={item}
+                canEdit={canManageOrder}
                 busy={busy}
                 onQuantityChange={(quantity) => setQuantity(item, quantity)}
                 onRemove={() => removeItem(item)}
@@ -216,13 +223,20 @@ export default function Order() {
             <strong>{formatMoney(subtotal)}</strong>
           </div>
           <div className="stack-buttons">
-            <button
-              className="primary-btn full"
-              disabled={busy || !hasPendingItems}
-              onClick={() => setStatus('in_kitchen')}
-            >
-              Enviar para a cozinha →
-            </button>
+            {canManageOrder && (
+              <button
+                className="primary-btn full"
+                disabled={busy || !hasPendingItems}
+                onClick={() => setStatus('in_kitchen')}
+              >
+                Enviar para a cozinha →
+              </button>
+            )}
+            {user?.role === 'cashier' && orderActive && (
+              <Link className="primary-btn full" to="/cashier">
+                Ir para o Caixa →
+              </Link>
+            )}
             {order.status === 'ready_to_pay' ? (
               canReopen && (
                 <button className="outline-btn full" disabled={busy} onClick={openReopen}>
@@ -230,13 +244,15 @@ export default function Order() {
                 </button>
               )
             ) : (
-              <button
-                className="outline-btn full"
-                disabled={busy || !kitchenDone}
-                onClick={() => setStatus('ready_to_pay')}
-              >
-                Pedir a conta
-              </button>
+              canManageOrder && (
+                <button
+                  className="outline-btn full"
+                  disabled={busy || !kitchenDone}
+                  onClick={() => setStatus('ready_to_pay')}
+                >
+                  Pedir a conta
+                </button>
+              )
             )}
           </div>
           {billHint && <small className="hint">{billHint}</small>}
@@ -294,6 +310,15 @@ export default function Order() {
 }
 
 // Diz o que falta para a conta ser pedida (RN-06) ou onde ela segue (RN-03), antes do clique.
+// Modo leitura do caixa: aponta para a tela Caixa.
+function cashierHint(status) {
+  if (status === 'ready_to_pay') return 'Conta pedida: registre o pagamento e encerre na tela Caixa.'
+  if (ACTIVE_ORDER_STATUSES.includes(status)) {
+    return 'Somente leitura: o garçom lança e envia os itens. Os pagamentos ficam na tela Caixa.'
+  }
+  return null
+}
+
 function nextStepHint(status, activeItems) {
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
   const pending = activeItems.filter((item) => item.status === 'pending').length
@@ -400,9 +425,9 @@ function AddItemModal({ item, maxQuantity = null, busy, error, onConfirm, onClos
   )
 }
 
-function OrderItem({ item, busy, onQuantityChange, onRemove, onCancel }) {
-  // RN-04: depois de enviado à cozinha, o item não pode mais ser alterado.
-  const editable = item.status === 'pending'
+function OrderItem({ item, canEdit, busy, onQuantityChange, onRemove, onCancel }) {
+  // RN-04: depois de enviado à cozinha, o item não pode mais ser alterado; caixa vê em modo leitura.
+  const editable = canEdit && item.status === 'pending'
 
   return (
     <div className="order-item">
