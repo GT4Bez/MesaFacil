@@ -14,6 +14,7 @@ import Users from './pages/Users'
 import Account from './pages/Account'
 import Audit from './pages/Audit'
 import Settings from './pages/Settings'
+import Presentation from './pages/presentation/Presentation'
 import { homeFor, SCREENS } from './utils/access'
 
 export default function App() {
@@ -22,6 +23,8 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Spec 023: página pública, sem login e fora do menu. */}
+      <Route path="/apresentacao" element={<Presentation />} />
       <Route path="/login" element={user ? <Navigate to={home} replace /> : <Login />} />
       <Route element={user ? <Layout /> : <Navigate to="/login" replace />}>
         <Route element={<RoleRoute roles={SCREENS.tables.roles} />}>

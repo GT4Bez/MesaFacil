@@ -210,6 +210,19 @@ describe('Fluxos ponta a ponta (Mesa Fácil)', () => {
     cy.contains('Pedidos encerrados').should('be.visible')
   })
 
+  it('apresentação da arquitetura abre sem login e sem rolagem horizontal no celular (spec 023)', () => {
+    cy.clearLocalStorage()
+    cy.viewport(375, 812)
+    cy.visit('/apresentacao')
+    cy.url().should('include', '/apresentacao')
+    cy.contains('h1', 'Como o MesaFácil é construído')
+    cy.get('nav[aria-label="Índice"]').contains('a', 'SOLID').click()
+    cy.get('#grupo-solid').should('be.visible')
+    cy.contains('article', 'Singleton').find('pre code').should('contain', 'static getInstance()')
+    cy.contains('article', 'Singleton').find('figcaption a').should('contain', 'DatabaseConnection.js:6')
+    garantirSemScrollHorizontal()
+  })
+
   it('celular 375px: barra inferior navega e "Sair" fica na barra superior (spec 012)', () => {
     cy.viewport(375, 812)
     fazerLogin('caixa@mesafacil.com')
