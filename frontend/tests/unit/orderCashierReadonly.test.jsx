@@ -37,6 +37,11 @@ describe('Comanda: modo leitura para o caixa (RBAC)', () => {
     expect(screen.queryByRole('button', { name: 'Pedir a conta' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Remover item' })).not.toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalledWith(expect.stringMatching(/\/menu-items$/), expect.anything())
+    // A dica não pede ao caixa uma ação do garçom.
+    expect(
+      screen.getByText('Somente leitura: o garçom lança e envia os itens. Os pagamentos ficam na tela Caixa.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Envie .* para a cozinha/)).not.toBeInTheDocument()
   })
 
   it('mantém o botão Reabrir conta quando o pedido está aguardando pagamento (spec 019)', async () => {
@@ -45,5 +50,6 @@ describe('Comanda: modo leitura para o caixa (RBAC)', () => {
     expect(await screen.findByRole('button', { name: 'Reabrir conta' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Ir para o Caixa/ })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Cardápio' })).not.toBeInTheDocument()
+    expect(screen.getByText('Conta pedida: registre o pagamento e encerre na tela Caixa.')).toBeInTheDocument()
   })
 })

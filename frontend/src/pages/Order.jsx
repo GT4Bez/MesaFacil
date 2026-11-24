@@ -150,7 +150,8 @@ export default function Order() {
   const kitchenDone =
     order.status === 'in_kitchen' && activeItems.every((item) => item.status === 'ready')
   const orderActive = ACTIVE_ORDER_STATUSES.includes(order.status)
-  const billHint = nextStepHint(order.status, activeItems)
+  // O caixa só consulta a comanda: a dica fala do que ele pode fazer, não do fluxo do garçom.
+  const billHint = canManageOrder ? nextStepHint(order.status, activeItems) : cashierHint(order.status)
 
   return (
     <>
@@ -309,6 +310,15 @@ export default function Order() {
 }
 
 // Diz o que falta para a conta ser pedida (RN-06) ou onde ela segue (RN-03), antes do clique.
+// Modo leitura do caixa: aponta para a tela Caixa.
+function cashierHint(status) {
+  if (status === 'ready_to_pay') return 'Conta pedida: registre o pagamento e encerre na tela Caixa.'
+  if (ACTIVE_ORDER_STATUSES.includes(status)) {
+    return 'Somente leitura: o garçom lança e envia os itens. Os pagamentos ficam na tela Caixa.'
+  }
+  return null
+}
+
 function nextStepHint(status, activeItems) {
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
   const pending = activeItems.filter((item) => item.status === 'pending').length
