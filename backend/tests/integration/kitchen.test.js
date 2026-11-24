@@ -139,4 +139,21 @@ describe('KDS da cozinha (spec 003)', () => {
     assert.deepEqual(currentQueue.map((order) => order.orderId), [first.orderId, second.orderId])
     assert.equal(currentQueue[0].items.map((item) => item.id).includes(extra.json.data.id), true)
   })
+
+  test('garçom e caixa recebem 403 (não 409) ao tentar atualizar preparo mesmo em pedido encerrado/cancelado', async () => {
+    const { orderId, itemIds } = await orderWithItems(tableIds[0], [[menu.picanha, 1]])
+    await sendToKitchen(orderId)
+    const canceled = await api('PATCH', `/orders/${orderId}/status`, {
+      role: 'manager',
+      body: { status: 'canceled', reason: 'Cliente desistiu' },
+    })
+    assert.equal(canceled.status, 200)
+
+    for (const role of ['waiter', 'cashier']) {
+      for (const status of ['preparing', 'ready']) {
+        const res = await api('PATCH', `/order-items/${itemIds[0]}/status`, { role, body: { status } })
+        assert.equal(res.status, 403)
+      }
+    }
+  })
 })
