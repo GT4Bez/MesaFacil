@@ -1941,3 +1941,134 @@ footer span {
 .settings-panel .payment-form .hint {
   margin: -4px 0 4px;
 }
+
+/* Spec 023: página pública /apresentacao. */
+.pres-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+  background: var(--bg);
+  min-height: 100vh;
+}
+.pres-hero h1 {
+  font: 800 30px Manrope;
+  margin: 8px 0;
+}
+.pres-hero p {
+  color: var(--text-secondary);
+  max-width: 70ch;
+  line-height: 1.55;
+}
+.pres-stack {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.pres-index {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 16px;
+  padding: 10px 0;
+  background: var(--bg);
+}
+.pres-index a {
+  min-height: var(--touch);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.pres-summary h2,
+.pres-group > h2 {
+  font: 800 22px Manrope;
+  margin: 0 0 12px;
+}
+.pres-table-wrap {
+  overflow-x: auto;
+}
+.pres-summary .report-table td,
+.pres-summary .report-table th {
+  text-align: left;
+}
+.pres-summary a {
+  color: var(--brand);
+  font-weight: 600;
+}
+.pres-group {
+  margin-top: 32px;
+  scroll-margin-top: 72px;
+}
+.pres-entry {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+  scroll-margin-top: 72px;
+}
+.pres-entry h3 {
+  font: 800 18px Manrope;
+  margin: 0 0 6px;
+}
+.pres-entry p {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+.pres-concept {
+  color: var(--text-secondary);
+}
+.pres-code {
+  margin: 12px 0 0;
+}
+.pres-code figcaption {
+  font-size: var(--fs-xs);
+  margin-bottom: 4px;
+}
+.pres-code figcaption a {
+  color: var(--brand);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.pres-code pre {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: #1f1a1b;
+  color: #f4ecec;
+  font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.pres-code pre:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+.pres-note {
+  font-size: var(--fs-sm);
+  color: var(--warning);
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.pres-footer {
+  margin-top: 32px;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+@media (max-width: 650px) {
+  .pres-hero h1 {
+    font-size: 24px;
+  }
+  .pres-entry {
+    padding: 14px;
+  }
+}
