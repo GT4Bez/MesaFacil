@@ -157,6 +157,13 @@ export class OrderService {
   }
 
   async updateItemStatus(itemId, { status, reason } = {}, user) {
+    if (!['canceled', 'preparing', 'ready'].includes(status)) {
+      throw new BadRequestError('Status do item inválido: use "canceled", "preparing" ou "ready".');
+    }
+    if ((status === 'preparing' || status === 'ready') && !hasRole(user, 'kitchen', 'manager')) {
+      throw new ForbiddenError(permissionMessage(['kitchen', 'manager'], user, 'atualizar o preparo dos itens'));
+    }
+
     return this.orders.transaction(async (db) => {
       const { item, order } = await this.#lockItem(itemId, db);
 
@@ -165,7 +172,7 @@ export class OrderService {
         if (item.status !== 'pending') {
           // RN-05: item enviado só é cancelado por gerente, com motivo.
           if (!hasRole(user, 'manager')) {
-            throw new ForbiddenError('Apenas o gerente pode cancelar itens já enviados.');
+            throw new ForbiddenError(permissionMessage(['manager'], user, 'cancelar itens já enviados à cozinha'));
           }
           const cleaned = cleanReason(reason);
           if (!cleaned) throw new DomainValidationError('Informe o motivo do cancelamento.');
@@ -184,7 +191,7 @@ export class OrderService {
           );
         } else {
           if (!hasRole(user, 'waiter', 'manager')) {
-            throw new ForbiddenError('Apenas o garçom ou gerente pode remover itens pendentes.');
+            throw new ForbiddenError(permissionMessage(['waiter', 'manager'], user, 'remover itens pendentes'));
           }
           await this.#assertPaidFitsWithout(item, order, db);
           await this.orders.cancelItem(itemId, {}, db);
@@ -192,20 +199,13 @@ export class OrderService {
         return { id: item.id, status };
       }
 
-      if (status === 'preparing' || status === 'ready') {
-        if (!hasRole(user, 'kitchen', 'manager')) {
-          throw new ForbiddenError('Apenas a cozinha pode atualizar o preparo.');
-        }
-        if (KITCHEN_FLOW[item.status] !== status) {
-          throw new ConflictError(
-            `O item está ${itemStatus(item.status)} e não pode passar para ${itemStatus(status)}. A sequência na cozinha é Enviado → Em preparo → Pronto.`
-          );
-        }
-        await this.orders.updateItemStatus(itemId, status, db);
-        return { id: item.id, status };
+      if (KITCHEN_FLOW[item.status] !== status) {
+        throw new ConflictError(
+          `O item está ${itemStatus(item.status)} e não pode passar para ${itemStatus(status)}. A sequência na cozinha é Enviado → Em preparo → Pronto.`
+        );
       }
-
-      throw new BadRequestError('Status do item inválido: use "canceled", "preparing" ou "ready".');
+      await this.orders.updateItemStatus(itemId, status, db);
+      return { id: item.id, status };
     });
   }
 
