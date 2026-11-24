@@ -36,6 +36,7 @@ Toda funcionalidade nova nasce de uma spec nesta pasta. A spec é o contrato ent
 | 021 | [Mensagens de erro informativas](021-mensagens-de-erro-informativas.md) | Fase 2 | todas |
 | 022 | [Limite de itens iguais por lançamento e tela de Configurações](022-limite-de-itens-por-lancamento.md) | Fase 2 | 012, 016, 017 |
 | 023 | [Página de apresentação da arquitetura (POO, SOLID e padrões)](023-pagina-de-apresentacao.md) | Fase 2 | todas |
+| 024 | [Apresentação por tópicos, com equipe e processo](024-apresentacao-por-topicos.md) | Fase 2 | todas |
 
 **MVP** fecha as regras obrigatórias RN-01 a RN-10 e as telas mínimas. **Fase 2** (pós-MVP) só é retomada depois do MVP entregue e com acordo da equipe; as regras novas são numeradas na ordem de implementação (RN-11 é a da spec 005).
 
