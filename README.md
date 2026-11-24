@@ -1,14 +1,16 @@
 # 🍽️ MesaFácil
 
-![MesaFácil — Painel de Acesso](docs/assets/mesa-facil-cover.jpg)
+![MesaFácil - Painel de Acesso](docs/assets/mesa-facil-cover.jpg)
 
-Sistema de PDV e gestão operacional presencial para restaurantes, conectando **salão**, **cozinha** e **caixa** em um fluxo único, transacional e auditável.
+PDV e gestão operacional presencial para restaurantes, integrando **salão**, **cozinha** e **caixa** em fluxo transacional e auditável.
+
+> 🌐 **Ambiente Online:** [mesafacil.shop](https://mesafacil.shop)
 
 ---
 
 ## 🔄 Visão Geral e Fluxo Operacional
 
-O sistema organiza o atendimento presencial do restaurante ponta a ponta — da abertura de turno e ocupação da mesa até o preparo na cozinha, recebimento de pagamentos parciais e liberação da mesa.
+Atendimento presencial de ponta a ponta: abertura de turno, comanda na mesa, preparo na cozinha, pagamentos parciais e liberação da mesa.
 
 ```mermaid
 flowchart LR
@@ -22,89 +24,83 @@ flowchart LR
 
 ### Perfis de Acesso (RBAC)
 
-| Papel (`role`) | Responsabilidade na Operação |
+| Papel (`role`) | Responsabilidade Principal |
 | :--- | :--- |
-| `waiter` (Garçom) | Visualiza mesas, abre comandas, adiciona/edita itens pendentes, envia pedidos à cozinha e solicita a conta |
-| `kitchen` (Cozinha) | Recebe itens enviados e atualiza o status de preparo (`sent` -> `preparing` -> `ready`) |
-| `cashier` (Caixa) | Consulta extratos com ou sem taxa de 10%, registra pagamentos parciais e encerra pedidos quitados |
-| `manager` (Gerente) | Abre e encerra turnos, cancela itens já enviados com justificativa e possui acesso completo à operação |
-| `admin` (Administrador) | Superadmin: acesso a todas as telas e ações e único responsável por criar, editar, desativar e redefinir a senha de usuários (RN-16) |
+| `waiter` (Garçom) | Mesas, abertura de comandas, lançamento/envio de itens e solicitação de conta |
+| `kitchen` (Cozinha) | Fila KDS e atualização de preparo (`sent` -> `preparing` -> `ready`) |
+| `cashier` (Caixa) | Extrato, taxa de serviço, pagamentos parciais, fechamento cego e encerramento |
+| `manager` (Gerente) | Turnos, cardápio, estoque/fichas técnicas, cancelamentos auditados e auditoria |
+| `admin` (Administrador) | Acesso total, gestão de usuários (`RN-16`) e configurações globais (`settings`) |
 
 ---
 
 ## 📋 Regras de Negócio e Arquitetura
 
-- **Controle de Turno e Mesa (`RN-01`, `RN-02`):** impede múltiplos pedidos ativos na mesma mesa via constraint parcial no PostgreSQL e exige turno aberto para iniciar atendimentos, bloqueando o encerramento do turno enquanto houver comandas ativas.
-- **Máquinas de Estado e Trava Pós-Envio (`RN-03`, `RN-04`, `RN-06`):** transições validadas em transação (`OrderService`); itens enviados não sofrem alteração por garçom/caixa e a conta só vai para pagamento quando todos os itens estão concluídos ou cancelados.
-- **Cancelamento Auditado (`RN-05`, `RN-11`):** itens já enviados à cozinha e pedidos inteiros só podem ser cancelados pelo perfil `manager` mediante justificativa obrigatória gravada no banco; pedido com pagamento não é cancelado. Cancelamentos, abertura/fechamento de turno e mudança de preço do cardápio ficam em `audit_logs`, gravados na mesma transação da ação.
-- **Fechamento Financeiro e Preço Congelado (`RN-07`, `RN-08`, `RN-09`):** suporte a múltiplos pagamentos parciais, bloqueio de encerramento com saldo pendente, taxa de serviço opcional de 10% sobre itens ativos e snapshot de `unit_price` no ato do lançamento.
+- **Turnos e Mesas (`RN-01`, `RN-02`):** bloqueio de múltiplos pedidos ativos por mesa no PostgreSQL e exigência de turno aberto.
+- **Fluxo e Trava Pós-Envio (`RN-03`, `RN-04`, `RN-06`):** transições transacionais em `OrderService` com `SELECT ... FOR UPDATE`.
+- **Auditoria e Cancelamentos (`RN-05`, `RN-11`, `RN-20`):** justificativa obrigatória, PIN de gerente no caixa e registro em `audit_logs`.
+- **Financeiro e Estoque (`RN-07` a `RN-10`, `RN-12` a `RN-21`):** pagamentos parciais, preço congelado, fechamento cego, baixa automática por ficha técnica e exportação CSV.
 
-> 📌 **Atenção às Invariantes de Domínio:** As regras críticas (`RN-01`, `RN-02`, `RN-05`, `RN-07`) possuem dupla proteção — são validadas na camada de serviço (`OrderService`) com bloqueio de linha (`SELECT ... FOR UPDATE`) e garantidas por constraints e índices únicos parciais diretamente no PostgreSQL.
+### 📄 Documentação Técnica
 
-> 📄 **Documentação Complementar:** O detalhamento completo das máquinas de estado e especificações está em [`docs/ESPECIFICACAO.md`](docs/ESPECIFICACAO.md), [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) e [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md).
+| Documento | Conteúdo |
+| :--- | :--- |
+| [`docs/ESPECIFICACAO.md`](docs/ESPECIFICACAO.md) | Regras de negócio (`RN-01` a `RN-21`) e matriz de validação |
+| [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) | Máquinas de estado, modelo relacional, camadas e ambiente |
+| [`docs/ENGENHARIA.md`](docs/ENGENHARIA.md) | Engenharia de software, camadas, SOLID, KISS/DRY, equipe e QA |
+| [`docs/specs/README.md`](docs/specs/README.md) | Índice das especificações numeradas (*Spec-Driven Development*) |
+| [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md) | Endpoints REST, payloads, RBAC e envelopes de resposta |
 
-### Stack e Estrutura do Projeto
+### Stack e Estrutura
 
 - **Frontend:** React 19, Vite 8, React Router 7 (JavaScript ESM)
-- **Backend:** Bun, Express 5, PostgreSQL (`pg` com SQL puro e transações), JWT (`jsonwebtoken`), `bcrypt`
+- **Backend:** Bun, Express 5, PostgreSQL (`pg` com SQL puro e transações), JWT, `bcrypt`
 - **Banco e Infra:** PostgreSQL 16 (migrations e seeds SQL versionados), Docker & Docker Compose
 
 ```text
 MesaFacil/
-├── backend/       # API REST (routes, controllers, services, repositories, middlewares, tests)
-├── frontend/      # SPA React (pages, context, hooks, services) + CONTRATO-API.md
-├── sql/           # Migrations (001–007) e seeds iniciais (001–007)
-├── docker/        # Script de inicialização automática do PostgreSQL
-└── docs/          # Especificação funcional, arquitetura e guias de sprint
+├── backend/       # API REST (routes, controllers, services, domain, repositories, errors, middlewares, tests)
+├── frontend/      # SPA React (pages, components, context, hooks, services, utils) + CONTRATO-API.md
+├── sql/           # 20 migrations (001-020) e 10 seeds (001-010)
+├── docker/        # Inicialização automática do PostgreSQL
+└── docs/          # Especificação, arquitetura, roteiro de demo e specs (docs/specs/)
 ```
 
 ---
 
 ## 🚀 Como Executar
 
-### Opção 1: Stack Completa via Docker Compose (Recomendado)
+### Opção 1: Docker Compose (Recomendado)
 
-1. **Crie o arquivo `.env`** na raiz a partir do modelo:
+1. Crie o `.env` e defina um `JWT_SECRET` próprio (o backend bloqueia o valor padrão `changeme`):
    ```bash
    cp .env.example .env
+   openssl rand -hex 32
    ```
-
-> ⚠️ **Atenção (`JWT_SECRET`):** Antes de subir os containers, substitua `JWT_SECRET=changeme` no `.env` por uma chave própria (ex.: `openssl rand -hex 32`). O arquivo `backend/src/config/env.js` bloqueia a inicialização caso o valor padrão `changeme` seja mantido.
-
-2. **Suba o banco, a API e o Frontend** com um único comando:
+2. Suba banco, API e frontend (migrations e seeds rodam na primeira subida; use `docker compose down -v` para recriar do zero):
    ```bash
    docker compose up --build
    ```
-
-> 💡 **Inicialização do Banco:** As migrations (`sql/migrations/*.sql`) e os seeds (`sql/seeds/*.sql`) são aplicados automaticamente na primeira subida do volume. Para recriar o banco do zero após alterações em `sql/`, execute `docker compose down -v && docker compose up --build`.
-
-3. **Acesse os serviços:**
-   - **Frontend Web:** `http://localhost:5173`
+3. Serviços locais:
+   - **Frontend:** `http://localhost:5173`
    - **Backend API:** `http://localhost:3001`
-   - **PostgreSQL:** `localhost:5432` (usuário, senha e banco: `mesafacil`)
+   - **PostgreSQL:** `localhost:5432` (`mesafacil`)
 
 ### Opção 2: Execução Local com Bun
 
-Suba apenas o banco via Docker e inicie **backend** e **frontend** em terminais dedicados:
+Não há `package.json` na raiz; execute em `backend/` e `frontend/` separadamente:
 
 ```bash
-# 1. Subir PostgreSQL
 docker compose up -d db
-
-# 2. Rodar Backend (terminal 1)
 cd backend && bun install && bun run dev
-
-# 3. Rodar Frontend (terminal 2)
 cd frontend && bun install && bun run dev
 ```
-
-> ⚠️ **Atenção à Estrutura de Pacotes:** Não há `package.json` na raiz do repositório. Os comandos `bun install` e `bun run dev` devem ser executados dentro de `backend/` e `frontend/` separadamente.
 
 ---
 
 ## 🔑 Credenciais de Demonstração
 
-Os seeds (`sql/seeds/001_seed_users.sql` e `sql/seeds/008_seed_admin.sql`) disponibilizam 5 usuários pré-cadastrados para testar cada perfil. A senha `123` vale **apenas** para desenvolvimento e testes locais; usuários novos exigem senha de 8 a 72 caracteres:
+Seeds em `sql/seeds/001_seed_users.sql` e `sql/seeds/008_seed_admin.sql` (credenciais exclusivas para ambiente local/dev com Docker; em produção e novos cadastros exigem senha de 8 a 72 caracteres):
 
 | Perfil | E-mail | Senha | Papel (`role`) |
 | :--- | :--- | :--- | :--- |
@@ -116,63 +112,36 @@ Os seeds (`sql/seeds/001_seed_users.sql` e `sql/seeds/008_seed_admin.sql`) dispo
 
 ---
 
-## 🛣️ Rotas da API e Testes
+## 🛣️ Rotas e Testes
 
-| Recurso | Endpoints | Controle de Acesso |
-| :--- | :--- | :--- |
-| **Autenticação** | `POST /auth/login` | Público |
-| **Usuários** | `GET /users`, `POST /users`, `PATCH /users/:id`, `PUT /users/:id/password` | Autenticado (só `admin`) |
-| **Minha conta** | `GET /me`, `PATCH /me/password` | Autenticado (todos os papéis) |
-| **Mesas e Turnos** | `GET /tables`, `GET /shifts/active`, `POST /shifts`, `PATCH /shifts/:id/close`, `GET /shifts/:id/report` | Autenticado (`POST`, `PATCH` e relatório restritos a `manager`) |
-| **Cardápio** | `GET /menu-items`, `GET /menu-items/categories`, `GET /menu-items?all=true`, `POST /menu-items`, `PATCH /menu-items/:id` | Autenticado (`?all=true`, `POST` e `PATCH` restritos a `manager`) |
-| **Pedidos** | `POST /orders`, `GET /orders/:id`, `PATCH /orders/:id/status` | Autenticado + RBAC por transição |
-| **Cozinha (KDS)** | `GET /kitchen/orders` | Autenticado (`kitchen` e `manager`) |
-| **Itens da Comanda** | `POST /orders/:id/items`, `PATCH /order-items/:id/quantity`, `PATCH /order-items/:id/status` | Autenticado + RBAC por operação |
-| **Caixa** | `GET /orders/:id/bill`, `PATCH /orders/:id/service-tax`, `POST /orders/:id/payments` | Autenticado (`PATCH` de taxa e `POST` restritos a `cashier` e `manager`) |
+- **Acesso Rápido (Produção):** [`mesafacil.shop/tables`](https://mesafacil.shop/tables) *(Salão e Mesas; após login, direciona conforme o perfil RBAC)*
+- **Contrato da API:** [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md) *(endpoints REST e envelope `{ "success": true, "data": ... }`)*
 
-> 🔌 **Contrato de Resposta Padronizado:** Todas as rotas retornam o envelope `{ "success": true, "data": ... }` em caso de sucesso ou `{ "success": false, "error": "mensagem" }` em caso de falha, conforme documentado em [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md).
+### Suítes Automatizadas
 
-### Executando os Testes Automatizados
-
-Os testes rodam com `bun test` e ficam em `backend/tests/`:
-
-- `unit/` — regras isoladas (serviço de autenticação, middleware de RBAC, tradução de erros do PostgreSQL);
-- `integration/` — API completa contra um **PostgreSQL real** (login, CORS e o fluxo `RN-01` a `RN-09`), com o schema recriado a partir de `sql/migrations/` e o banco limpo entre os testes.
-
-Os testes de integração exigem `TEST_DATABASE_URL` apontando para um banco cujo nome termina em `_test` (o schema dele é apagado a cada execução):
-
-```bash
-docker compose up -d db
-docker compose exec db createdb -U mesafacil mesafacil_test   # só na primeira vez
-
-cd backend
-bun install
-TEST_DATABASE_URL=postgresql://mesafacil:mesafacil@localhost:5432/mesafacil_test bun run test
-# ou só uma camada: bun run test:unit | bun run test:integration
-```
-
-Dentro do container do backend, use o host `db` no lugar de `localhost`.
-
-No **frontend**, as suítes ficam em `frontend/tests/` (Vitest) e `frontend/cypress/e2e/` (Cypress):
-
-```bash
-cd frontend
-bun install
-bun run test:unit   # unitários e componentes (Vitest + jsdom)
-bun run test:e2e    # fluxo completo E2E em Cypress (requer API + Vite no ar, ex.: docker compose up -d)
-```
-
-O CI (`.github/workflows/ci.yml`) executa backend (`bun test`), validação SQL, unitários + build do frontend e a suíte E2E em todo PR e push para a `main`.
+- **Backend (`backend/tests/`):** `5` suítes unitárias (`unit/`) e `20` de integração contra PostgreSQL real (`integration/`, regras `RN-01` a `RN-21`). Exige `TEST_DATABASE_URL` terminando em `_test`:
+  ```bash
+  docker compose up -d db
+  docker compose exec db createdb -U mesafacil mesafacil_test   # 1a vez
+  cd backend && bun install
+  TEST_DATABASE_URL=postgresql://mesafacil:mesafacil@localhost:5432/mesafacil_test bun run test
+  ```
+- **Frontend (`frontend/tests/unit/` e `cypress/e2e/`):** `31` arquivos Vitest + E2E Cypress:
+  ```bash
+  cd frontend && bun install
+  bun run test:unit
+  bun run test:e2e
+  ```
+- **CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):** Guardrails (JS ESM, higiene e LF), testes de backend, validação SQL, build/unitários do frontend e E2E.
 
 ---
 
 ## 🎬 Roteiro de Demonstração
 
-O passo a passo para apresentar as regras na prática está em [`docs/ROTEIRO-DEMO.md`](docs/ROTEIRO-DEMO.md):
-
-- história de um atendimento pela interface, perfil por perfil;
-- tabela de onde cada regra é garantida (serviço, constraint e teste);
-- o script [`scripts/demo-regras.sh`](scripts/demo-regras.sh), que prova pela API, com `curl`, que o backend bloqueia cada violação (`401`, `403`, `409`, `422`).
+Guia completo de apresentação em [`docs/ROTEIRO-DEMO.md`](docs/ROTEIRO-DEMO.md):
+- Fluxo pela interface perfil por perfil;
+- Mapeamento regra a regra (serviço, constraint e teste);
+- Prova pela API via [`scripts/demo-regras.sh`](scripts/demo-regras.sh) (`401`, `403`, `409`, `422`).
 
 ---
 
@@ -186,11 +155,15 @@ O passo a passo para apresentar as regras na prática está em [`docs/ROTEIRO-DE
 | **Jadson Laurindo** | [@jadsonelorraine](https://github.com/jadsonelorraine) | Banco de Dados (Modelagem relacional, Migrations, Constraints e Seeds SQL) |
 | **Kauan Santos** | [@kauansantos01](https://github.com/kauansantos01) | Frontend e Interfaces de Operação em React |
 
-### Como a Equipe Operou (Engenharia & Agilidade)
+### Como a Equipe Operou
 
-A condução do projeto seguiu práticas enxutas de engenharia para garantir entregas paralelas sem bloqueios entre as frentes:
+- ***Contract-First* e *Spec-Driven Development*:** contratos ([`docs/SPRINT_1.md`](docs/SPRINT_1.md), [`frontend/CONTRATO-API.md`](frontend/CONTRATO-API.md)) e especificações ([`docs/specs/`](docs/specs/README.md)) antes do código para desenvolvimento paralelo sem bloqueios.
+- **Isolamento no Git:** domínios separados (`sql/`, `backend/`, `frontend/`, `docker/`), branches curtas (`feat/`, `fix/`, `chore/`) e `main` protegida.
+- **Governança (*KISS* e *YAGNI*):** PRs granulares com Code Review, testes obrigatórios e corte de escopo fora do MVP.
+- **Sincronização:** prioridades (`P0` a `P3`) no GitHub Issues e dailies assíncronas de 3 linhas.
 
-- **Abordagem *Contract-First*:** antes da codificação das telas e rotas, o contrato de comunicação (`docs/SPRINT_1.md` e `frontend/CONTRATO-API.md`) definiu payloads e envelopes de erro padronizados, permitindo que Frontend, Backend e Banco avançassem simultaneamente sem depender uns dos outros.
-- **Isolamento por Domínio e Zero Conflito no Git:** o repositório foi particionado por áreas de responsabilidade (`sql/`, `backend/`, `frontend/`, `docker/`), com branches curtas por funcionalidade (`feat/`, `fix/`, `chore/`) e proibição de commits diretos na `main`.
-- **Governança de PRs com *KISS* e *YAGNI*:** todas as entregas passaram por Pull Requests granulares, revisão de código pelo Tech Lead, validação por suíte de testes e corte rigoroso de escopo desnecessário (*"Tesoura do PO"*), priorizando código limpo, SQL explícito em transações e regras de domínio auditáveis.
-- **Sincronização Contínua:** acompanhamento por prioridades (`P0` a `P3`) no GitHub Issues combinado a *Dailies Assíncronas de 3 Linhas* (entregas do dia, próximo passo e bloqueios) para atuação imediata em impedimentos técnicos.
+### Apresentação Interativa (Arquitetura & Equipe)
+
+- 🔗 **Acesse:** [https://mesafacil.shop/apresentacao](https://mesafacil.shop/apresentacao)
+
+<img src="docs/assets/qr-apresentacao.png" alt="QR Code de Acesso à Apresentação MesaFácil" width="220" />
